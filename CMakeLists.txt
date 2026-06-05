@@ -31,3 +31,21 @@ add_executable(tether_sandbox
     tests/sandbox_main.c
     src/backends/tether_backend.c
 )
+
+# Explicitly tell the compiler where to find all required header files (.h)
+target_include_directories(tether_sandbox PRIVATE
+    "${CMAKE_SOURCE_DIR}/include"
+    "${sokol_SOURCE_DIR}"
+    "${CMAKE_SOURCE_DIR}/third_party/thorvg/inc"
+    "${CMAKE_SOURCE_DIR}/third_party/thorvg/src/bindings/capi"
+)
+
+# Link the library that Meson just built for us!
+target_link_libraries(tether_sandbox PRIVATE "${CMAKE_SOURCE_DIR}/third_party/thorvg/builddir/src/thorvg-1.lib")
+
+# Automatically copy the ThorVG DLL to the executable's output directory after building
+add_custom_command(TARGET tether_sandbox POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_SOURCE_DIR}/third_party/thorvg/builddir/src/thorvg-1.dll"
+    $<TARGET_FILE_DIR:tether_sandbox>
+)
