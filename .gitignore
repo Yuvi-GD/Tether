@@ -30,3 +30,5 @@ bin/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+git submodule add --branch v1.0.5 https://github.com/thorvg/thorvg.git third_party/thorvg
