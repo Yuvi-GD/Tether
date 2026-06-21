@@ -50,3 +50,4 @@ third_party/thorvg/builddir/
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.log

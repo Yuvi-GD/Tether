@@ -7,15 +7,15 @@
 #define SOKOL_LOG_IMPL
 #define SOKOL_LOG_CONSOLE
 
-/* Tell ThorVG headers that the WebGPU backend is compiled in */
-#define THORVG_WG_RASTER_SUPPORT 1
-
 #include <webgpu/webgpu.h>
 #include <stdio.h>
 #include <stdbool.h>
 
-/* THE RUST PANIC SHIELD 
-   Intercept every unimplemented debug function before Sokol can call it */
+#include "tether.h"
+#include "backends/tether_hal.h"
+#include "backends/tether_raster.h"
+
+/* Required for macOS (Metal integration) */
 #define wgpuTextureViewSetLabel(a, b) ((void)0)
 #define wgpuTextureSetLabel(a, b) ((void)0)
 #define wgpuBufferSetLabel(a, b) ((void)0)
@@ -25,7 +25,6 @@
 #define wgpuShaderModuleSetLabel(a, b) ((void)0)
 #define wgpuDeviceSetLoggingCallback(device, cb_info) ((void)0)
 
-/* Intercept Sokol's wait call with a real function that returns the exact success enum */
 typedef enum WGPULoggingType {
     WGPULoggingType_Verbose = 0x00000001,
     WGPULoggingType_Info = 0x00000002,
@@ -33,7 +32,6 @@ typedef enum WGPULoggingType {
     WGPULoggingType_Error = 0x00000004,
     WGPULoggingType_Force32 = 0x7FFFFFFF
 } WGPULoggingType;
-
 
 typedef struct WGPULoggingCallbackInfo {
     void * callback;
@@ -66,41 +64,29 @@ static inline void tether_wgpuSurfacePresent(WGPUSurface surface) {
     }
 }
 
-/* Prevent Sokol from crashing on known wgpu-native Outdated swapchain bugs */
-#define SOKOL_ASSERT(c) do { if (!(c)) { printf("SOKOL_ASSERT skipped: %s\n", #c); } } while(0)
+/* Prevent Sokol from crashing on known wgpu-native Outdated swapchain issues.
+   Supressing printf to avoid thread blocking during continuous resize events. */
+#define SOKOL_ASSERT(c) ((void)0)
 
 #include "sokol_app.h"
 #include "sokol_gfx.h"
 #include "sokol_glue.h"
 #include "sokol_log.h"
-#include "thorvg_capi.h"
-#include "tether.h"
 
-#ifndef TVG_ENGINE_WG
-#define TVG_ENGINE_WG (1 << 3)
+#if defined(_WIN32)
+#include <windows.h>
+#include <dwmapi.h>
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
-
-/* WebGPU Error Reporter */
-static void on_wgpu_error(WGPUErrorType type, const char* message, void* userdata) {
-    printf("\n\n>>> WEBGPU VALIDATION ERROR: %s\n\n", message);
-}
-
-static WGPUDevice tether_wgpu_get_device(void) { return _sapp.wgpu.device; }
-static WGPUInstance tether_wgpu_get_instance(void) { return _sapp.wgpu.instance; }
-
-/* ThorVG canvas handle */
-static Tvg_Canvas tvg_canvas = NULL;
-static int current_width  = 0;
-static int current_height = 0;
-static Tvg_Paint bg = NULL;
-static Tvg_Paint triangle = NULL;
+#endif
 
 /* sokol_gfx state */
 static sg_pipeline blit_pip;
 static sg_bindings blit_bind;
-static WGPUTexture offscreen_texture = NULL;
-static uint32_t offscreen_w = 0;
-static uint32_t offscreen_h = 0;
+static sg_image offscreen_img = {0};
+static sg_view offscreen_view = {0};
+static WGPUTexture current_wgpu_texture = NULL;
 
 static void init(void) {
     /* Initialize sokol_gfx */
@@ -163,7 +149,7 @@ static void init(void) {
     };
     blit_pip = sg_make_pipeline(&pip_desc);
 
-    /* Create sampler */
+    /* Create linear sampler */
     sg_sampler_desc smp_desc = {
         .min_filter = SG_FILTER_LINEAR,
         .mag_filter = SG_FILTER_LINEAR,
@@ -172,63 +158,48 @@ static void init(void) {
     };
     blit_bind.samplers[0] = sg_make_sampler(&smp_desc);
 
-    /* Initialize WebGPU Engine */
-    if (tvg_engine_init(TVG_ENGINE_WG) != TVG_RESULT_SUCCESS) {
-        printf(">>> ERROR: WebGPU Engine Init Failed!\n");
+#if defined(_WIN32)
+    /* Enable Windows 10/11 Dark Mode Title Bar */
+    HWND hwnd = (HWND)sapp_win32_get_hwnd();
+    if (hwnd) {
+        BOOL value = TRUE;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
     }
-    tvg_canvas = tvg_wgcanvas_create(TVG_ENGINE_OPTION_NONE);
+#endif
 
-    /* Construct the Retained UI Tree ONCE */
-    bg = tvg_shape_new();
-    tvg_canvas_add(tvg_canvas, bg);
-
-    /* The Triangle is perfectly retained. We set it up once and never touch it again. */
-    triangle = tvg_shape_new();
-    tvg_shape_move_to(triangle, 300.0f, 100.0f);
-    tvg_shape_line_to(triangle, 500.0f, 400.0f);
-    tvg_shape_line_to(triangle, 100.0f, 400.0f);
-    tvg_shape_close(triangle);
-    tvg_shape_set_fill_color(triangle, 255, 50, 50, 255);
-    tvg_canvas_add(tvg_canvas, triangle);
+    /* Initialize Rasterizer with Sokol WebGPU Device & Instance */
+    tether_raster_init(sapp_width(), sapp_height(), _sapp.wgpu.device, _sapp.wgpu.instance);
 }
 
-static sg_image offscreen_img = {0};
-static sg_view offscreen_view = {0};
-
 static void frame(void) {
-    current_width = sapp_width();
-    current_height = sapp_height();
-    
-    if (current_width == 0 || current_height == 0) return; /* Don't draw if minimized */
+    int w = sapp_width();
+    int h = sapp_height();
+    if (w == 0 || h == 0) return;
 
-    if (!offscreen_texture || offscreen_w != current_width || offscreen_h != current_height) {
-        if (offscreen_texture) wgpuTextureRelease(offscreen_texture);
+    /* Skip rendering if swapchain is invalid (e.g. during Win32 modal resize loops). */
+    sg_swapchain swapchain = sglue_swapchain();
+    if (!swapchain.wgpu.render_view) {
+        return;
+    }
+
+    tether_raster_resize(w, h);
+    tether_raster_draw();
+
+    WGPUTexture raster_tex = (WGPUTexture)tether_raster_get_texture();
+    if (!raster_tex) return;
+
+    /* Update sokol_gfx bindings if rasterizer created a new texture */
+    if (raster_tex != current_wgpu_texture) {
         if (offscreen_view.id != SG_INVALID_ID) sg_destroy_view(offscreen_view);
         if (offscreen_img.id != SG_INVALID_ID) sg_destroy_image(offscreen_img);
 
-        WGPUTextureDescriptor desc = {
-            .nextInChain = NULL,
-            .label = "TetherOffscreenTarget",
-            .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding,
-            .dimension = WGPUTextureDimension_2D,
-            .size = { current_width, current_height, 1 },
-            .format = WGPUTextureFormat_BGRA8Unorm,
-            .mipLevelCount = 1,
-            .sampleCount = 1,
-            .viewFormatCount = 0,
-            .viewFormats = NULL,
-        };
-        offscreen_texture = wgpuDeviceCreateTexture((WGPUDevice)tether_wgpu_get_device(), &desc);
-        offscreen_w = current_width;
-        offscreen_h = current_height;
-
         sg_image_desc img_desc = {
             .type = SG_IMAGETYPE_2D,
-            .width = current_width,
-            .height = current_height,
+            .width = w,
+            .height = h,
             .pixel_format = SG_PIXELFORMAT_BGRA8,
             .sample_count = 1,
-            .wgpu_texture = (const void*)offscreen_texture,
+            .wgpu_texture = (const void*)raster_tex,
         };
         offscreen_img = sg_make_image(&img_desc);
 
@@ -237,71 +208,31 @@ static void frame(void) {
         };
         offscreen_view = sg_make_view(&view_desc);
         blit_bind.views[0] = offscreen_view;
-    }
-
-    /* 1. Feed the offscreen texture to ThorVG */
-    if (tvg_wgcanvas_set_target(
-        tvg_canvas,
-        (void*)tether_wgpu_get_device(),
-        (void*)tether_wgpu_get_instance(), 
-        (void*)offscreen_texture,
-        current_width, current_height,
-        TVG_COLORSPACE_ABGR8888S, 1
-    ) != TVG_RESULT_SUCCESS) {
-        printf(">>> ERROR: Failed to set WebGPU Target!\n");
-    }
-
-    /* 2. Resize the background for the current window size */
-    tvg_shape_reset(bg);
-    tvg_shape_append_rect(bg, 0, 0, current_width, current_height, 0, 0, true);
-    tvg_shape_set_fill_color(bg, 38, 38, 38, 255);
-    
-    /* 3. Update the Retained Scene */
-    Tvg_Result update_res = tvg_canvas_update(tvg_canvas);
-    
-    if (update_res == TVG_RESULT_SUCCESS) {
-        /* Only draw if the update generated valid vertices */
-        Tvg_Result draw_res = tvg_canvas_draw(tvg_canvas, true); 
         
-        if (draw_res == TVG_RESULT_SUCCESS) {
-            /* Wait for ThorVG to finish rendering into offscreen_texture */
-            tvg_canvas_sync(tvg_canvas);
-
-            sg_swapchain swapchain = sglue_swapchain();
-            if (!swapchain.wgpu.render_view) {
-                printf(">>> Swapchain view unavailable (outdated surface?), skipping frame.\n");
-                return;
-            }
-
-            /* Draw fullscreen quad using sokol_gfx to blit onto the swapchain */
-            sg_pass pass = {
-                .action = {
-                    .colors[0] = { .load_action = SG_LOADACTION_DONTCARE }
-                },
-                .swapchain = swapchain
-            };
-            sg_begin_pass(&pass);
-            sg_apply_pipeline(blit_pip);
-            sg_apply_bindings(&blit_bind);
-            sg_draw(0, 3, 1);
-            sg_end_pass();
-            sg_commit();
-
-        } else {
-            printf(">>> ERROR: ThorVG failed to draw! Code: %d\n", draw_res);
-        }
-    } else if (update_res != TVG_RESULT_INSUFFICIENT_CONDITION) {
-        printf(">>> ERROR: ThorVG failed to update vertices! Code: %d\n", update_res);
+        current_wgpu_texture = raster_tex;
     }
+
+    /* Fullscreen blit */
+    sg_pass pass = {
+        .action = {
+            .colors[0] = { .load_action = SG_LOADACTION_DONTCARE }
+        },
+        .swapchain = swapchain
+    };
+    sg_begin_pass(&pass);
+    sg_apply_pipeline(blit_pip);
+    sg_apply_bindings(&blit_bind);
+    sg_draw(0, 3, 1);
+    sg_end_pass();
+    sg_commit();
 }
 
 static void cleanup(void) {
-    tvg_canvas_destroy(tvg_canvas);
-    tvg_engine_term();
+    tether_raster_term();
     sg_shutdown();
 }
 
-void tether_run(Tether_App_Config* config) {
+void tether_hal_run(Tether_App_Config* config) {
     sapp_desc desc      = {0};
     desc.init_cb        = init;
     desc.frame_cb       = frame;

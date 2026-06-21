@@ -3,9 +3,10 @@
     "configurePresets": [
         {
             "name": "windows-debug",
-            "displayName": "Windows — Debug (MSVC + Ninja)",
-            "description": "Debug build for Windows using Ninja. Run from a VS 2022 x64 Native Tools prompt or let VS Code pick up the MSVC kit automatically.",
-            "generator": "Ninja",
+            "displayName": "Windows - Debug (Visual Studio)",
+            "description": "Debug build for Windows using Visual Studio Generator. No special command prompt needed.",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
@@ -18,9 +19,10 @@
         },
         {
             "name": "windows-release",
-            "displayName": "Windows — Release (MSVC + Ninja)",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build-release",
+            "displayName": "Windows - Release (Visual Studio)",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             },
