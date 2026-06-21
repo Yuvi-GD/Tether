@@ -1,0 +1,13 @@
+# wgpu_native.pc.in
+# CMake will configure this template with the real paths before invoking Meson.
+# Meson's dependency('wgpu_native') call finds this via PKG_CONFIG_PATH.
+
+prefix=@WGPU_DIR@
+libdir=${prefix}/lib
+includedir=${prefix}/include/webgpu
+
+Name: wgpu_native
+Description: WebGPU native implementation (wgpu-native pre-built binary)
+Version: @WGPU_VERSION@
+Libs: -L${libdir} @WGPU_LINK_FLAGS@
+Cflags: -I${includedir}
