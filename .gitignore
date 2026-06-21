@@ -1,9 +1,24 @@
+# ============================================================
 # CMake Build Directories
+# ============================================================
 build/
 out/
 bin/
 
-# Compiled Object files and Binaries
+# ============================================================
+# Downloaded / Generated Third-Party Artifacts
+# These are fetched or built locally — never committed.
+# ============================================================
+
+# wgpu-native pre-built binaries (downloaded by CMake FetchContent per-platform)
+third_party/webgpu/
+
+# ThorVG Meson build output (built locally by CMake)
+third_party/thorvg/builddir/
+
+# ============================================================
+# Compiled Object Files and Binaries
+# ============================================================
 *.o
 *.obj
 *.exe
@@ -14,15 +29,20 @@ bin/
 *.lib
 *.out
 *.app
+*.pdb
 
+# ============================================================
 # IDE and Editor Folders
+# ============================================================
 .vscode/
 .idea/
 *.suo
 *.sln
 *.user
 
+# ============================================================
 # OS Generated Files
+# ============================================================
 .DS_Store
 .DS_Store?
 ._*
@@ -30,5 +50,3 @@ bin/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-git submodule add --branch v1.0.5 https://github.com/thorvg/thorvg.git third_party/thorvg
