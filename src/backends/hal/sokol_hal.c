@@ -48,8 +48,16 @@ static bool global_swapchain_view_acquired = false;
 
 #define wgpuSurfaceGetCurrentTexture(a, b) tether_wgpuSurfaceGetCurrentTexture(a, b)
 static inline void tether_wgpuSurfaceGetCurrentTexture(WGPUSurface surface, WGPUSurfaceTexture* surfaceTexture) {
+    if (global_swapchain_view_acquired) {
+        /* Win32 modal resize loop in sokol calls _sapp_frame() directly without presenting.
+           If we are here and still acquired, present the orphaned texture first! */
+        (wgpuSurfacePresent)(surface);
+        global_swapchain_view_acquired = false;
+    }
+    
     (wgpuSurfaceGetCurrentTexture)(surface, surfaceTexture);
-    if (surfaceTexture->status == 0 || surfaceTexture->status == 1) { /* Optimal or Suboptimal */
+    
+    if (surfaceTexture->texture != NULL) {
         global_swapchain_view_acquired = true;
     } else {
         global_swapchain_view_acquired = false;
