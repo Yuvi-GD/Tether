@@ -5,6 +5,7 @@ typedef struct {
     int width;
     int height;
     const char* title;
+    const char* initial_yaml;
 } Tether_App_Config;
 
 /* The core engine promise */

@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 project(TetherUI C CXX)
 
 set(CMAKE_C_STANDARD 99)
@@ -15,14 +16,15 @@ set(WGPU_VERSION "v29.0.0.0")
 # Paths
 # ============================================================
 set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
-set(WGPU_DIR        "${THIRD_PARTY_DIR}/webgpu")
-set(SOKOL_DIR       "${THIRD_PARTY_DIR}/sokol")
-set(THORVG_DIR      "${THIRD_PARTY_DIR}/thorvg")
+set(WGPU_DIR "${THIRD_PARTY_DIR}/webgpu")
+set(SOKOL_DIR "${THIRD_PARTY_DIR}/sokol")
+set(THORVG_DIR "${THIRD_PARTY_DIR}/thorvg")
 set(THORVG_BUILDDIR "${THORVG_DIR}/builddir")
 
 # ============================================================
 # Step 1: Download wgpu-native pre-built binaries
 # ============================================================
+# Include FetchContent for dependencies if needed
 include(FetchContent)
 
 if(NOT EXISTS "${WGPU_DIR}/include/webgpu/webgpu.h")
@@ -65,16 +67,16 @@ endif()
 # Step 2: Resolve wgpu-native library paths
 # ============================================================
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(WGPU_IMPLIB   "${WGPU_DIR}/lib/wgpu_native.dll.lib")
-    set(WGPU_SHARED   "${WGPU_DIR}/lib/wgpu_native.dll")
+    set(WGPU_IMPLIB "${WGPU_DIR}/lib/wgpu_native.dll.lib")
+    set(WGPU_SHARED "${WGPU_DIR}/lib/wgpu_native.dll")
     set(WGPU_LINK_FLAGS "-lwgpu_native")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(WGPU_IMPLIB   "${WGPU_DIR}/lib/libwgpu_native.so")
-    set(WGPU_SHARED   "${WGPU_DIR}/lib/libwgpu_native.so")
+    set(WGPU_IMPLIB "${WGPU_DIR}/lib/libwgpu_native.so")
+    set(WGPU_SHARED "${WGPU_DIR}/lib/libwgpu_native.so")
     set(WGPU_LINK_FLAGS "-lwgpu_native")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(WGPU_IMPLIB   "${WGPU_DIR}/lib/libwgpu_native.dylib")
-    set(WGPU_SHARED   "${WGPU_DIR}/lib/libwgpu_native.dylib")
+    set(WGPU_IMPLIB "${WGPU_DIR}/lib/libwgpu_native.dylib")
+    set(WGPU_SHARED "${WGPU_DIR}/lib/libwgpu_native.dylib")
     set(WGPU_LINK_FLAGS "-lwgpu_native")
 endif()
 
@@ -108,25 +110,25 @@ endif()
 
 set(THORVG_LIB "${THORVG_BUILDDIR}/src/${THORVG_LIB_NAME}")
 
-find_program(MESON_EXE  NAMES meson meson.exe  REQUIRED)
-find_program(NINJA_EXE  NAMES ninja ninja.exe  REQUIRED)
+find_program(MESON_EXE NAMES meson meson.exe REQUIRED)
+find_program(NINJA_EXE NAMES ninja ninja.exe REQUIRED)
 
 if(NOT EXISTS "${THORVG_LIB}")
     message(STATUS "[Tether] Building ThorVG with Meson...")
 
     execute_process(
         COMMAND "${CMAKE_COMMAND}" -E env
-            "CMAKE_PREFIX_PATH=${WGPU_DIR}"
-            "${MESON_EXE}" setup "${THORVG_BUILDDIR}"
-                --reconfigure
-                --cmake-prefix-path "${WGPU_DIR}"
-                -Dcpp_std=c++20
-                -Dengines=wg
-                -Dbindings=capi
-                -Dloaders=svg,lottie,ttf,png,jpg
-                -Dextra=lottie_exp,openmp
-                -Dpartial=true
-                -Dthreads=true
+        "CMAKE_PREFIX_PATH=${WGPU_DIR}"
+        "${MESON_EXE}" setup "${THORVG_BUILDDIR}"
+        --reconfigure
+        --cmake-prefix-path "${WGPU_DIR}"
+        -Dcpp_std=c++20
+        -Dengines=wg
+        -Dbindings=capi
+        -Dloaders=svg,lottie,ttf,png,jpg
+        -Dextra=lottie_exp,openmp
+        -Dpartial=true
+        -Dthreads=true
         WORKING_DIRECTORY "${THORVG_DIR}"
         RESULT_VARIABLE MESON_SETUP_RESULT
         COMMAND_ECHO STDOUT
@@ -138,8 +140,8 @@ if(NOT EXISTS "${THORVG_LIB}")
 
     execute_process(
         COMMAND "${CMAKE_COMMAND}" -E env
-            "CMAKE_PREFIX_PATH=${WGPU_DIR}"
-            "${MESON_EXE}" compile -C "${THORVG_BUILDDIR}"
+        "CMAKE_PREFIX_PATH=${WGPU_DIR}"
+        "${MESON_EXE}" compile -C "${THORVG_BUILDDIR}"
         WORKING_DIRECTORY "${THORVG_DIR}"
         RESULT_VARIABLE MESON_BUILD_RESULT
         COMMAND_ECHO STDOUT
@@ -155,7 +157,13 @@ else()
 endif()
 
 # ============================================================
-# Step 4: Define Executable Targets
+# Step 4: Add libyaml from third_party
+# ============================================================
+message(STATUS "[Tether] Adding libyaml from third_party...")
+add_subdirectory(${THIRD_PARTY_DIR}/libyaml)
+
+# ============================================================
+# Step 5: Define Executable Targets
 # ============================================================
 add_executable(tether_sandbox
     examples/sandbox/sandbox_main.c
@@ -164,6 +172,7 @@ add_executable(tether_sandbox
     src/core/tether_input.c
     src/backends/hal/sokol_hal.c
     src/backends/raster/thorvg_raster.c
+    src/parsers/tether_yaml.c
 )
 
 add_executable(tether_ecs_test
@@ -172,7 +181,7 @@ add_executable(tether_ecs_test
 )
 
 # ============================================================
-# Step 5: Include Paths
+# Step 6: Include Paths
 # ============================================================
 target_include_directories(tether_sandbox PRIVATE
     "${CMAKE_SOURCE_DIR}/include"
@@ -190,7 +199,7 @@ target_include_directories(tether_ecs_test PRIVATE
 )
 
 # ============================================================
-# Step 6: Link Libraries
+# Step 7: Link Libraries
 # ============================================================
 target_link_directories(tether_sandbox PRIVATE
     "${WGPU_DIR}/lib"
@@ -199,6 +208,7 @@ target_link_directories(tether_sandbox PRIVATE
 target_link_libraries(tether_sandbox PRIVATE
     "${THORVG_LIB}"
     "${WGPU_IMPLIB}"
+    yaml
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -219,7 +229,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 # ============================================================
-# Step 7: Runtime Library Copying
+# Step 8: Runtime Library Copying
 # ============================================================
 set(RUNTIME_LIBS_TO_COPY "")
 
@@ -231,11 +241,13 @@ if(EXISTS "${THORVG_BUILDDIR}/src/${THORVG_DLL_NAME}")
     list(APPEND RUNTIME_LIBS_TO_COPY "${THORVG_BUILDDIR}/src/${THORVG_DLL_NAME}")
 endif()
 
+list(APPEND RUNTIME_LIBS_TO_COPY "${CMAKE_SOURCE_DIR}/examples/sandbox/index.yaml")
+
 foreach(LIB_FILE ${RUNTIME_LIBS_TO_COPY})
     add_custom_command(TARGET tether_sandbox POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${LIB_FILE}"
-            $<TARGET_FILE_DIR:tether_sandbox>
+        "${LIB_FILE}"
+        $<TARGET_FILE_DIR:tether_sandbox>
         COMMENT "Copying ${LIB_FILE} next to executable"
     )
 endforeach()

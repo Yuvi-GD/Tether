@@ -27,6 +27,7 @@ Tether uses a multi-tiered build system by design:
 * **Sokol:** Header-only library with zero build configuration.
 * **ThorVG:** Built using Meson to seamlessly integrate with upstream updates.
 * **wgpu-native:** Pre-built binary downloaded automatically.
+* **libyaml:** Included as a git submodule to handle runtime YAML parsing.
 * **Tether:** Built using CMake for cross-platform IDE support.
 
 CMake orchestrates the entire process: it downloads wgpu-native, invokes Meson to build ThorVG, and builds Tether from a single configuration command.
