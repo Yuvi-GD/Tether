@@ -11,9 +11,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "tether.h"
-#include "backends/tether_hal.h"
 #include "backends/tether_raster.h"
+#include "backends/tether_hal.h"
+#include "tether/core/tether_input.h"
 
 /* Required for macOS (Metal integration) */
 #define wgpuTextureViewSetLabel(a, b) ((void)0)
@@ -240,11 +240,33 @@ static void cleanup(void) {
     sg_shutdown();
 }
 
+static void input_event(const sapp_event* e) {
+    if (e->type == SAPP_EVENTTYPE_MOUSE_DOWN) {
+        Tether_Pointer_Event pe;
+        pe.type = TETHER_POINTER_DOWN;
+        pe.x = e->mouse_x;
+        pe.y = e->mouse_y;
+        
+        if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) {
+            pe.button = TETHER_MOUSE_BUTTON_LEFT;
+        } else if (e->mouse_button == SAPP_MOUSEBUTTON_RIGHT) {
+            pe.button = TETHER_MOUSE_BUTTON_RIGHT;
+        } else if (e->mouse_button == SAPP_MOUSEBUTTON_MIDDLE) {
+            pe.button = TETHER_MOUSE_BUTTON_MIDDLE;
+        } else {
+            pe.button = TETHER_MOUSE_BUTTON_NONE;
+        }
+        
+        tether_input_process_event(&pe);
+    }
+}
+
 void tether_hal_run(Tether_App_Config* config) {
     sapp_desc desc      = {0};
     desc.init_cb        = init;
     desc.frame_cb       = frame;
     desc.cleanup_cb     = cleanup;
+    desc.event_cb       = input_event;
     desc.width          = config->width;
     desc.height         = config->height;
     desc.window_title   = config->title;

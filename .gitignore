@@ -4,6 +4,7 @@
 build/
 out/
 bin/
+Docs/
 
 # ============================================================
 # Downloaded / Generated Third-Party Artifacts

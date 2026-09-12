@@ -158,10 +158,17 @@ endif()
 # Step 4: Define Executable Targets
 # ============================================================
 add_executable(tether_sandbox
-    tests/sandbox_main.c
+    examples/sandbox/sandbox_main.c
     src/tether.c
+    src/core/tether_ecs.c
+    src/core/tether_input.c
     src/backends/hal/sokol_hal.c
     src/backends/raster/thorvg_raster.c
+)
+
+add_executable(tether_ecs_test
+    tests/unit/ecs_test.c
+    src/core/tether_ecs.c
 )
 
 # ============================================================
@@ -175,6 +182,11 @@ target_include_directories(tether_sandbox PRIVATE
     "${THORVG_DIR}/src/bindings/capi"
     "${THORVG_BUILDDIR}"
     "${WGPU_DIR}/include"
+)
+
+target_include_directories(tether_ecs_test PRIVATE
+    "${CMAKE_SOURCE_DIR}/include"
+    "${CMAKE_SOURCE_DIR}/src"
 )
 
 # ============================================================

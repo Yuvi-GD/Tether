@@ -1,0 +1,116 @@
+#ifndef TETHER_ECS_H
+#define TETHER_ECS_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * Tether_GUID: A 64-bit Globally Unique Identifier for an Entity.
+ * - Lower 32 bits: The Entity Index (used for fast array lookups).
+ * - Upper 32 bits: The Generation version (prevents use-after-free bugs when
+ * indices are recycled).
+ */
+typedef uint64_t Tether_GUID;
+
+#define TETHER_INVALID_GUID 0
+
+/* Extracts the 32-bit index from a GUID */
+static inline uint32_t tether_ecs_get_index(Tether_GUID guid) {
+  return (uint32_t)(guid & 0xFFFFFFFF);
+}
+
+/* Extracts the 32-bit generation from a GUID */
+static inline uint32_t tether_ecs_get_generation(Tether_GUID guid) {
+  return (uint32_t)((guid >> 32) & 0xFFFFFFFF);
+}
+
+/* Construct a GUID from index and generation */
+static inline Tether_GUID tether_ecs_make_guid(uint32_t index,
+                                               uint32_t generation) {
+  return ((uint64_t)generation << 32) | index;
+}
+
+/*
+ * Sparse Map: Maps an Entity Index to its position in a Dense Array.
+ * The sparse array index is the Entity Index.
+ * The value stored is the index in the Dense Array.
+ */
+#define TETHER_SPARSE_INVALID_INDEX 0xFFFFFFFF
+
+typedef struct Tether_SparseMap {
+  uint32_t *dense_indices;
+  uint32_t capacity;
+} Tether_SparseMap;
+
+/*
+ * Dense Array: A perfectly contiguous block of component data.
+ */
+typedef struct Tether_DenseArray {
+  void *data;              /* Raw block of memory */
+  Tether_GUID *entity_map; /* Maps Dense Array index BACK to the Entity GUID */
+  size_t element_size;     /* Size of one component in bytes */
+  uint32_t count;          /* Number of active elements */
+  uint32_t capacity;       /* Allocated capacity */
+} Tether_DenseArray;
+
+/* --- Global ECS Lifecycle --- */
+
+/* Initialize the global ECS registry. */
+void tether_ecs_init(void);
+
+/* Destroy the global ECS registry and free all memory. */
+void tether_ecs_term(void);
+
+/* --- Entity Management --- */
+
+/* Create a new entity and return its GUID. */
+Tether_GUID tether_ecs_create_entity(void);
+
+/* Destroy an entity, executing the swap-and-pop logic on all its components. */
+void tether_ecs_destroy_entity(Tether_GUID entity);
+
+/* Check if an entity is still alive. */
+bool tether_ecs_is_valid(Tether_GUID entity);
+
+/* --- Component Management --- */
+
+/*
+ * We will define component types as simple integer IDs.
+ * In a full system, you would register component types dynamically,
+ * but for now, we'll assume a fixed maximum number of component types.
+ */
+#define TETHER_MAX_COMPONENT_TYPES 32
+
+/* Initialize a component array for a specific component type ID. */
+void tether_ecs_register_component_type(int component_id, size_t element_size);
+
+/*
+ * Add a component to an entity.
+ * Returns a pointer to the uninitialized memory block in the dense array.
+ */
+void *tether_ecs_add_component(Tether_GUID entity, int component_id);
+
+/*
+ * Get a component for an entity.
+ * Returns NULL if the entity does not have this component.
+ */
+void *tether_ecs_get_component(Tether_GUID entity, int component_id);
+
+/* Remove a component from an entity using Swap-and-Pop. */
+void tether_ecs_remove_component(Tether_GUID entity, int component_id);
+
+/* --- Internal API (Exposed for testing/advanced usage) --- */
+
+/* Exposes the dense array for raw linear iteration (maximum cache locality) */
+Tether_DenseArray *tether_ecs_get_dense_array(int component_id);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* TETHER_ECS_H */
