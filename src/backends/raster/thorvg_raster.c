@@ -8,6 +8,8 @@
 #include <stdbool.h>
 
 #include "backends/tether_raster.h"
+#include "tether/core/tether_ecs.h"
+#include "tether/core/tether_components.h"
 
 static Tvg_Canvas tvg_canvas = NULL;
 static WGPUDevice cached_device = NULL;
@@ -15,9 +17,6 @@ static WGPUInstance cached_instance = NULL;
 static WGPUTexture offscreen_texture = NULL;
 static uint32_t offscreen_w = 0;
 static uint32_t offscreen_h = 0;
-
-static Tvg_Paint bg = NULL;
-static Tvg_Paint triangle = NULL;
 
 void tether_raster_init(uint32_t width, uint32_t height, const void* device, const void* instance) {
     cached_device = (WGPUDevice)device;
@@ -28,18 +27,6 @@ void tether_raster_init(uint32_t width, uint32_t height, const void* device, con
         printf(">>> ERROR: WebGPU Engine Init Failed!\n");
     }
     tvg_canvas = tvg_wgcanvas_create(TVG_ENGINE_OPTION_NONE);
-
-    /* Setup initial UI scene (Sandbox testing) */
-    bg = tvg_shape_new();
-    tvg_canvas_add(tvg_canvas, bg);
-
-    triangle = tvg_shape_new();
-    tvg_shape_move_to(triangle, 300.0f, 100.0f);
-    tvg_shape_line_to(triangle, 500.0f, 400.0f);
-    tvg_shape_line_to(triangle, 100.0f, 400.0f);
-    tvg_shape_close(triangle);
-    tvg_shape_set_fill_color(triangle, 255, 50, 50, 255);
-    tvg_canvas_add(tvg_canvas, triangle);
 
     /* Allocate initial texture */
     tether_raster_resize(width, height);
@@ -80,14 +67,37 @@ void tether_raster_resize(uint32_t width, uint32_t height) {
     ) != TVG_RESULT_SUCCESS) {
         printf(">>> ERROR: ThorVG failed to set WebGPU Target!\n");
     }
-
-    /* Resize background rect */
-    tvg_shape_reset(bg);
-    tvg_shape_append_rect(bg, 0, 0, width, height, 0, 0, true);
-    tvg_shape_set_fill_color(bg, 38, 38, 38, 255);
 }
 
 void tether_raster_draw(void) {
+    /* Clear previous frame's geometry and free memory */
+    tvg_canvas_remove(tvg_canvas, NULL);
+    
+    /* Draw Background */
+    Tvg_Paint bg_rect = tvg_shape_new();
+    tvg_shape_append_rect(bg_rect, 0, 0, (float)offscreen_w, (float)offscreen_h, 0, 0, true);
+    tvg_shape_set_fill_color(bg_rect, 38, 38, 38, 255);
+    tvg_canvas_add(tvg_canvas, bg_rect);
+    
+    /* Draw ECS Scene */
+    Tether_DenseArray* transforms = tether_ecs_get_dense_array(TETHER_COMPONENT_TRANSFORM);
+    if (transforms) {
+        for (uint32_t i = 0; i < transforms->count; i++) {
+            Tether_GUID entity = transforms->entity_map[i];
+            if (!tether_ecs_is_valid(entity)) continue;
+
+            Tether_Transform* t = (Tether_Transform*)((uint8_t*)transforms->data + (i * transforms->element_size));
+            Tether_Color* c = (Tether_Color*)tether_ecs_get_component(entity, TETHER_COMPONENT_COLOR);
+
+            if (c) {
+                Tvg_Paint shape = tvg_shape_new();
+                tvg_shape_append_rect(shape, t->x, t->y, t->width, t->height, 0, 0, true);
+                tvg_shape_set_fill_color(shape, c->r, c->g, c->b, c->a);
+                tvg_canvas_add(tvg_canvas, shape);
+            }
+        }
+    }
+
     /* Update ThorVG scene graph */
     Tvg_Result update_res = tvg_canvas_update(tvg_canvas);
     

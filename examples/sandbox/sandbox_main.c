@@ -1,4 +1,4 @@
-#include "tether.h"
+#include "tether/tether.h"
 
 int main() {
     Tether_App_Config config = {
