@@ -14,12 +14,12 @@ void tether_input_process_event(Tether_Pointer_Event* event) {
      * against the Transform array to detect hovered/clicked UI elements.
      */
     if (event->type == TETHER_POINTER_DOWN) {
-        Tether_DenseArray* transforms = tether_ecs_get_dense_array(TETHER_COMPONENT_TRANSFORM);
+        Tether_DenseArray* transforms = tether_ecs_get_dense_array(TETHER_COMPONENT_SLOT_TRANSFORM);
         if (!transforms) return;
 
         /* Iterate backwards so we hit the top-most rendered element first */
         for (int i = (int)transforms->count - 1; i >= 0; i--) {
-            Tether_Transform* t = (Tether_Transform*)((uint8_t*)transforms->data + (i * transforms->element_size));
+            Tether_SlotTransform* t = (Tether_SlotTransform*)((uint8_t*)transforms->data + (i * transforms->element_size));
             
             /* AABB Hit Test */
             if (event->x >= t->x && event->x <= t->x + t->width &&

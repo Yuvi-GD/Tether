@@ -173,6 +173,7 @@ add_executable(tether_sandbox
     src/backends/hal/sokol_hal.c
     src/backends/raster/thorvg_raster.c
     src/parsers/tether_yaml.c
+    src/ui/tether_layout.c
 )
 
 add_executable(tether_ecs_test

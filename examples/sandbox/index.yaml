@@ -1,10 +1,29 @@
 Panel:
-  transform: [50, 50, 600, 400]
-  color: [30, 30, 30, 255]
+  flow: NONE
+  color: [40, 40, 40, 255]
   children:
-    - Panel:
-        transform: [100, 100, 200, 200]
-        color: [200, 50, 50, 255]
-    - Panel:
-        transform: [350, 100, 200, 200]
-        color: [50, 200, 50, 255]
+    - Panel: # Canvas Child (AnchorSlot)
+        anchor_min: [0.1, 0.1]
+        anchor_max: [0.9, 0.9]
+        color: [60, 60, 60, 255]
+        flow: COLUMN
+        padding: [20, 20, 20, 20]
+        children:
+          - Panel: # Box Child 1 (FlexSlot)
+              fill_ratio: 0.2
+              margin: [10, 10, 10, 10]
+              color: [200, 50, 50, 255]
+          - Panel: # Box Child 2 (FlexSlot)
+              fill_ratio: 0.8
+              margin: [10, 10, 10, 10]
+              color: [50, 200, 50, 255]
+              flow: ROW
+              children:
+                - Panel:
+                    fill_ratio: 0.5
+                    margin: [5, 5, 5, 5]
+                    color: [50, 50, 200, 255]
+                - Panel:
+                    fill_ratio: 0.5
+                    margin: [5, 5, 5, 5]
+                    color: [200, 200, 50, 255]
