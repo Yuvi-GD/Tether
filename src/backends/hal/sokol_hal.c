@@ -14,6 +14,7 @@
 #include "backends/tether_raster.h"
 #include "backends/tether_hal.h"
 #include "tether/core/tether_input.h"
+#include "ui/tether_layout.h"
 
 /* Required for macOS (Metal integration) */
 #define wgpuTextureViewSetLabel(a, b) ((void)0)
@@ -191,6 +192,9 @@ static void frame(void) {
     }
 
     tether_raster_resize(w, h);
+    
+    tether_layout_process_all((float)w, (float)h);
+    
     tether_raster_draw();
 
     WGPUTexture raster_tex = (WGPUTexture)tether_raster_get_texture();

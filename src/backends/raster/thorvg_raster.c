@@ -80,19 +80,35 @@ void tether_raster_draw(void) {
     tvg_canvas_add(tvg_canvas, bg_rect);
     
     /* Draw ECS Scene */
-    Tether_DenseArray* transforms = tether_ecs_get_dense_array(TETHER_COMPONENT_TRANSFORM);
+    Tether_DenseArray* transforms = tether_ecs_get_dense_array(TETHER_COMPONENT_SLOT_TRANSFORM);
     if (transforms) {
         for (uint32_t i = 0; i < transforms->count; i++) {
             Tether_GUID entity = transforms->entity_map[i];
             if (!tether_ecs_is_valid(entity)) continue;
 
-            Tether_Transform* t = (Tether_Transform*)((uint8_t*)transforms->data + (i * transforms->element_size));
+            Tether_SlotTransform* t = (Tether_SlotTransform*)((uint8_t*)transforms->data + (i * transforms->element_size));
             Tether_Color* c = (Tether_Color*)tether_ecs_get_component(entity, TETHER_COMPONENT_COLOR);
 
             if (c) {
                 Tvg_Paint shape = tvg_shape_new();
                 tvg_shape_append_rect(shape, t->x, t->y, t->width, t->height, 0, 0, true);
                 tvg_shape_set_fill_color(shape, c->r, c->g, c->b, c->a);
+                
+                /* Check for Render Transform (Animations / Visual Offsets) */
+                Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
+                if (rt) {
+                    /* Pivot calculation could be done manually, but for now we apply scale, rotation and translation */
+                    tvg_paint_translate(shape, rt->translation_x, rt->translation_y);
+                    if (rt->scale_x != 0.0f || rt->scale_y != 0.0f) {
+                        /* To fully support Pivot, we would translate to pivot, scale, then translate back. 
+                           For this initial pass, we just apply standard scale. */
+                        tvg_paint_scale(shape, rt->scale_x);
+                    }
+                    if (rt->rotation_deg != 0.0f) {
+                        tvg_paint_rotate(shape, rt->rotation_deg);
+                    }
+                }
+                
                 tvg_canvas_add(tvg_canvas, shape);
             }
         }
