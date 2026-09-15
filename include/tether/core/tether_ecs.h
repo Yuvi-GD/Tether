@@ -58,6 +58,7 @@ typedef struct Tether_DenseArray {
   uint32_t capacity;       /* Allocated capacity */
 } Tether_DenseArray;
 
+
 /* --- Global ECS Lifecycle --- */
 
 /* Initialize the global ECS registry. */
@@ -108,6 +109,22 @@ void tether_ecs_remove_component(Tether_GUID entity, int component_id);
 
 /* Exposes the dense array for raw linear iteration (maximum cache locality) */
 Tether_DenseArray *tether_ecs_get_dense_array(int component_id);
+
+/* --- Text Component API --- */
+
+/* Retrieves the character pointer from whichever Text Component the entity has attached. Returns NULL if none. */
+const char* tether_ecs_get_text_string(Tether_GUID entity);
+
+/* --- Font Registry API --- */
+
+/* Registers a font file path and assigns it an ID (or returns existing ID if already registered). */
+uint32_t tether_font_register(const char* name, const char* path);
+
+/* Gets the file path of a registered font by its ID. Returns NULL if invalid. */
+const char* tether_font_get_path(uint32_t font_id);
+
+/* Gets the name of a registered font by its ID. Returns NULL if invalid. */
+const char* tether_font_get_name(uint32_t font_id);
 
 #ifdef __cplusplus
 }

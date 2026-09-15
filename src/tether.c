@@ -16,6 +16,11 @@ void tether_run(Tether_App_Config* config) {
     tether_ecs_register_component_type(TETHER_COMPONENT_LAYOUT_NODE, sizeof(Tether_LayoutNode));
     tether_ecs_register_component_type(TETHER_COMPONENT_ANCHOR_SLOT, sizeof(Tether_AnchorSlot));
     tether_ecs_register_component_type(TETHER_COMPONENT_FLEX_SLOT, sizeof(Tether_FlexSlot));
+    tether_ecs_register_component_type(TETHER_COMPONENT_TEXT_STYLE, sizeof(Tether_TextStyle));
+    tether_ecs_register_component_type(TETHER_COMPONENT_TEXT_WORD, sizeof(Tether_TextWord));
+    tether_ecs_register_component_type(TETHER_COMPONENT_TEXT_LABEL, sizeof(Tether_TextLabel));
+    tether_ecs_register_component_type(TETHER_COMPONENT_TEXT_PARAGRAPH, sizeof(Tether_TextParagraph));
+    tether_ecs_register_component_type(TETHER_COMPONENT_TEXT_DYNAMIC, sizeof(Tether_TextDynamic));
 
     if (config->initial_yaml) {
         tether_yaml_load(config->initial_yaml);

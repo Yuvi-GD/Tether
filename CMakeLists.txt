@@ -242,8 +242,6 @@ if(EXISTS "${THORVG_BUILDDIR}/src/${THORVG_DLL_NAME}")
     list(APPEND RUNTIME_LIBS_TO_COPY "${THORVG_BUILDDIR}/src/${THORVG_DLL_NAME}")
 endif()
 
-list(APPEND RUNTIME_LIBS_TO_COPY "${CMAKE_SOURCE_DIR}/examples/sandbox/index.yaml")
-
 foreach(LIB_FILE ${RUNTIME_LIBS_TO_COPY})
     add_custom_command(TARGET tether_sandbox POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different

@@ -26,6 +26,17 @@ void tether_raster_init(uint32_t width, uint32_t height, const void* device, con
     if (tvg_engine_init(TVG_ENGINE_WG) != TVG_RESULT_SUCCESS) {
         printf(">>> ERROR: WebGPU Engine Init Failed!\n");
     }
+    
+    /* Load fonts from the registry */
+    for (uint32_t i = 1; i <= 31; ++i) {
+        const char* path = tether_font_get_path(i);
+        if (path) {
+            if (tvg_font_load(path) != TVG_RESULT_SUCCESS) {
+                printf(">>> ERROR: Failed to load font: %s\n", path);
+            }
+        }
+    }
+
     tvg_canvas = tvg_wgcanvas_create(TVG_ENGINE_OPTION_NONE);
 
     /* Allocate initial texture */
@@ -88,8 +99,11 @@ void tether_raster_draw(void) {
 
             Tether_SlotTransform* t = (Tether_SlotTransform*)((uint8_t*)transforms->data + (i * transforms->element_size));
             Tether_Color* c = (Tether_Color*)tether_ecs_get_component(entity, TETHER_COMPONENT_COLOR);
+            Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
+            Tether_TextStyle* text = (Tether_TextStyle*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_STYLE);
 
-            if (c) {
+            /* Render Background (Only if NOT a Text node, or if we introduce a separate bg_color later) */
+            if (c && !text) {
                 Tvg_Paint shape = tvg_shape_new();
                 tvg_shape_append_rect(shape, t->x, t->y, t->width, t->height, 0, 0, true);
                 tvg_shape_set_fill_color(shape, c->r, c->g, c->b, c->a);
@@ -110,6 +124,70 @@ void tether_raster_draw(void) {
                 }
                 
                 tvg_canvas_add(tvg_canvas, shape);
+            }
+
+            /* Render Text */
+            if (text) {
+                const char* str = tether_ecs_get_text_string(entity);
+                if (str && str[0] != '\0') {
+                    Tvg_Paint text_node = tvg_text_new();
+                    
+                    const char* font_name = tether_font_get_name(text->font_id);
+                    tvg_text_set_font(text_node, font_name ? font_name : "Roboto-Regular");
+                    
+                    tvg_text_set_size(text_node, text->font_size);
+                    tvg_text_set_text(text_node, str);
+                    
+                    if (c) {
+                        tvg_text_set_color(text_node, c->r, c->g, c->b);
+                        tvg_paint_set_opacity(text_node, c->a);
+                    } else {
+                        tvg_text_set_color(text_node, 255, 255, 255);
+                        tvg_paint_set_opacity(text_node, 255);
+                    }
+                    
+                    /* Enable Text Wrapping to bounds of the text slot */
+                    tvg_text_layout(text_node, t->width, t->height);
+                    tvg_text_wrap_mode(text_node, TVG_TEXT_WRAP_WORD);
+                    
+                    /* Simple alignment logic based on intrinsic bounds */
+                    float tx = t->x;
+                    float ty = t->y;
+                    
+                    float t_x, t_y, tw, th;
+                    tvg_paint_get_aabb(text_node, &t_x, &t_y, &tw, &th);
+                    
+                    if (text->align_x == TETHER_ALIGN_CENTER) {
+                        tx += (t->width - tw) * 0.5f;
+                    } else if (text->align_x == TETHER_ALIGN_RIGHT) {
+                        tx += (t->width - tw);
+                    }
+                    
+                    if (text->align_y == TETHER_ALIGN_CENTER) {
+                        ty += (t->height - th) * 0.5f;
+                    } else if (text->align_y == TETHER_ALIGN_BOTTOM) {
+                        ty += (t->height - th);
+                    }
+
+                    /* Compensate for ThorVG's internal origin of the text bounding box */
+                    tx -= t_x;
+                    ty -= t_y;
+
+                    tvg_paint_translate(text_node, tx, ty);
+                    
+                    Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
+                    if (rt) {
+                        tvg_paint_translate(text_node, tx + rt->translation_x, ty + rt->translation_y);
+                        if (rt->scale_x != 0.0f || rt->scale_y != 0.0f) {
+                            tvg_paint_scale(text_node, rt->scale_x);
+                        }
+                        if (rt->rotation_deg != 0.0f) {
+                            tvg_paint_rotate(text_node, rt->rotation_deg);
+                        }
+                    }
+
+                    tvg_canvas_add(tvg_canvas, text_node);
+                }
             }
         }
     }
@@ -144,4 +222,24 @@ void tether_raster_term(void) {
     if (offscreen_texture) {
         wgpuTextureRelease(offscreen_texture);
     }
+}
+
+void tether_raster_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float* out_w, float* out_h) {
+    if (!text || !out_w || !out_h) return;
+
+    Tvg_Paint text_node = tvg_text_new();
+    
+    const char* font_name = tether_font_get_name(font_id);
+    tvg_text_set_font(text_node, font_name ? font_name : "Roboto-Regular");
+    
+    tvg_text_set_size(text_node, font_size);
+    tvg_text_set_text(text_node, text);
+
+    float w = 0.0f, h = 0.0f;
+    tvg_paint_get_aabb(text_node, NULL, NULL, &w, &h);
+    
+    *out_w = w;
+    *out_h = h;
+
+    tvg_paint_rel(text_node); /* Clean up the temporary paint node */
 }
