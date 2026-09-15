@@ -1,4 +1,5 @@
 #include "tether/core/tether_ecs.h"
+#include "tether/core/tether_components.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -17,6 +18,12 @@ typedef struct {
 
   Tether_SparseMap sparse_maps[TETHER_MAX_COMPONENT_TYPES];
   Tether_DenseArray dense_arrays[TETHER_MAX_COMPONENT_TYPES];
+
+  struct {
+      char names[32][64];
+      char paths[32][256];
+      uint32_t count;
+  } font_registry;
 } Tether_Registry;
 
 static Tether_Registry g_registry = {0};
@@ -95,6 +102,13 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
     return;
 
   uint32_t index = tether_ecs_get_index(entity);
+
+  /* If this entity has a Dynamic Text component, free its heap allocation! */
+  Tether_TextDynamic* dyn = (Tether_TextDynamic*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+  if (dyn && dyn->data) {
+      free(dyn->data);
+      dyn->data = NULL;
+  }
 
   /* Remove all components for this entity using swap-and-pop */
   for (int i = 0; i < TETHER_MAX_COMPONENT_TYPES; ++i) {
@@ -231,4 +245,59 @@ Tether_DenseArray *tether_ecs_get_dense_array(int component_id) {
   if (component_id < 0 || component_id >= TETHER_MAX_COMPONENT_TYPES)
     return NULL;
   return &g_registry.dense_arrays[component_id];
+}
+
+const char* tether_ecs_get_text_string(Tether_GUID entity) {
+    /* Fast check from smallest to largest */
+    Tether_TextWord* word = (Tether_TextWord*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_WORD);
+    if (word) return word->data;
+    
+    Tether_TextLabel* label = (Tether_TextLabel*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_LABEL);
+    if (label) return label->data;
+    
+    Tether_TextParagraph* paragraph = (Tether_TextParagraph*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
+    if (paragraph) return paragraph->data;
+    
+    Tether_TextDynamic* dynamic = (Tether_TextDynamic*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+    if (dynamic) return dynamic->data;
+    
+    return NULL;
+}
+
+/* --- Font Registry API --- */
+
+uint32_t tether_font_register(const char* name, const char* path) {
+    if (!name || !path) return 0;
+    
+    /* Check if already registered */
+    for (uint32_t i = 1; i <= g_registry.font_registry.count; ++i) {
+        if (strcmp(g_registry.font_registry.names[i], name) == 0) {
+            return i;
+        }
+    }
+    
+    if (g_registry.font_registry.count >= 31) {
+        return 0; /* Full */
+    }
+    
+    g_registry.font_registry.count++;
+    uint32_t id = g_registry.font_registry.count;
+    
+    strncpy(g_registry.font_registry.names[id], name, 63);
+    g_registry.font_registry.names[id][63] = '\0';
+    
+    strncpy(g_registry.font_registry.paths[id], path, 255);
+    g_registry.font_registry.paths[id][255] = '\0';
+    
+    return id;
+}
+
+const char* tether_font_get_path(uint32_t font_id) {
+    if (font_id == 0 || font_id > g_registry.font_registry.count) return NULL;
+    return g_registry.font_registry.paths[font_id];
+}
+
+const char* tether_font_get_name(uint32_t font_id) {
+    if (font_id == 0 || font_id > g_registry.font_registry.count) return NULL;
+    return g_registry.font_registry.names[font_id];
 }

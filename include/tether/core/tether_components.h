@@ -17,7 +17,47 @@ extern "C" {
 #define TETHER_COMPONENT_LAYOUT_NODE      4
 #define TETHER_COMPONENT_ANCHOR_SLOT      5
 #define TETHER_COMPONENT_FLEX_SLOT        6
-#define TETHER_COMPONENT_MAX              7
+#define TETHER_COMPONENT_TEXT_STYLE       7
+#define TETHER_COMPONENT_TEXT_WORD        8
+#define TETHER_COMPONENT_TEXT_LABEL       9
+#define TETHER_COMPONENT_TEXT_PARAGRAPH   10
+#define TETHER_COMPONENT_TEXT_DYNAMIC     11
+typedef enum { TETHER_ALIGN_FILL = 0, TETHER_ALIGN_LEFT, TETHER_ALIGN_CENTER, TETHER_ALIGN_RIGHT } Tether_AlignX;
+typedef enum { TETHER_ALIGN_Y_FILL = 0, TETHER_ALIGN_TOP, TETHER_ALIGN_Y_CENTER, TETHER_ALIGN_BOTTOM } Tether_AlignY;
+
+typedef enum {
+    TETHER_FONT_NORMAL = 0,
+    TETHER_FONT_BOLD = 1,
+    TETHER_FONT_ITALIC = 2
+} Tether_FontStyle;
+
+typedef struct {
+    float font_size;
+    uint32_t font_id;
+    Tether_FontStyle font_style;
+    Tether_AlignX align_x;
+    Tether_AlignY align_y;
+} Tether_TextStyle;
+
+typedef struct {
+    char data[32];
+} Tether_TextWord;
+
+typedef struct {
+    char data[128];
+} Tether_TextLabel;
+
+typedef struct {
+    char data[512];
+} Tether_TextParagraph;
+
+typedef struct {
+    char* data;
+    uint32_t length;
+    uint32_t capacity;
+} Tether_TextDynamic;
+
+#define TETHER_COMPONENT_MAX              12
 
 /*
  * 1. THE OUTPUT (Calculated by the Engine)
@@ -43,8 +83,6 @@ typedef struct Tether_RenderTransform {
  * 2. THE PARENT RULES (How I arrange my children)
  */
 typedef enum { TETHER_FLOW_NONE = 0, TETHER_FLOW_ROW, TETHER_FLOW_COLUMN } Tether_Flow;
-typedef enum { TETHER_ALIGN_FILL = 0, TETHER_ALIGN_LEFT, TETHER_ALIGN_CENTER, TETHER_ALIGN_RIGHT } Tether_AlignX;
-typedef enum { TETHER_ALIGN_Y_FILL = 0, TETHER_ALIGN_TOP, TETHER_ALIGN_Y_CENTER, TETHER_ALIGN_BOTTOM } Tether_AlignY;
 
 typedef struct Tether_LayoutNode {
     Tether_Flow flow;

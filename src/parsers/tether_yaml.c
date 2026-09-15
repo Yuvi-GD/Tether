@@ -65,6 +65,23 @@ static Tether_GUID create_panel(Tether_GUID parent) {
     return entity;
 }
 
+static Tether_GUID create_text_node(Tether_GUID parent) {
+    Tether_GUID entity = create_panel(parent);
+    
+    Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_STYLE);
+    t->font_size = 24.0f;
+    t->font_id = 0;
+    t->font_style = TETHER_FONT_NORMAL;
+    t->align_x = TETHER_ALIGN_LEFT;
+    t->align_y = TETHER_ALIGN_TOP;
+    
+    /* Text defaults to shrink-wrap layout */
+    Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
+    if (f) f->fill_ratio = 0.0f;
+    
+    return entity;
+}
+
 /* Very simple YAML parser for Sandbox UI */
 Tether_GUID tether_yaml_load(const char* filepath) {
     FILE* file = fopen(filepath, "r");
@@ -89,7 +106,10 @@ Tether_GUID tether_yaml_load(const char* filepath) {
         STATE_ANCHOR_MAX,
         STATE_OFFSET,
         STATE_MARGIN,
-        STATE_PADDING
+        STATE_PADDING,
+        STATE_TEXT_STRING,
+        STATE_FONT_SIZE,
+        STATE_DYNAMIC
     } state = STATE_NONE;
     int array_idx = 0;
     int mapping_depth = 0;
@@ -126,6 +146,13 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                     entity_stack[++stack_idx] = new_ent;
                     state = STATE_NONE;
                 } 
+                else if (strcmp(value, "Text") == 0) {
+                    Tether_GUID parent = stack_idx >= 0 ? entity_stack[stack_idx] : TETHER_INVALID_GUID;
+                    Tether_GUID new_ent = create_text_node(parent);
+                    if (root == TETHER_INVALID_GUID) root = new_ent;
+                    entity_stack[++stack_idx] = new_ent;
+                    state = STATE_NONE;
+                }
                 else if (strcmp(value, "color") == 0) { state = STATE_COLOR; array_idx = 0; }
                 else if (strcmp(value, "children") == 0) { state = STATE_CHILDREN; }
                 else if (strcmp(value, "flow") == 0) { state = STATE_FLOW; }
@@ -135,6 +162,9 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                 else if (strcmp(value, "offset") == 0) { state = STATE_OFFSET; array_idx = 0; }
                 else if (strcmp(value, "margin") == 0) { state = STATE_MARGIN; array_idx = 0; }
                 else if (strcmp(value, "padding") == 0) { state = STATE_PADDING; array_idx = 0; }
+                else if (strcmp(value, "string") == 0) { state = STATE_TEXT_STRING; }
+                else if (strcmp(value, "font_size") == 0) { state = STATE_FONT_SIZE; }
+                else if (strcmp(value, "dynamic") == 0) { state = STATE_DYNAMIC; }
                 else if (stack_idx >= 0) {
                     /* Read Values */
                     Tether_GUID ent = entity_stack[stack_idx];
@@ -200,6 +230,43 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                         else if (array_idx == 2) n->padding_left = v;
                         else if (array_idx == 3) n->padding_right = v;
                         array_idx++;
+                    }
+                    else if (state == STATE_TEXT_STRING) {
+                        size_t len = strlen(value);
+                        Tether_TextDynamic* dyn = (Tether_TextDynamic*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_DYNAMIC);
+                        
+                        if (dyn || len > 511) {
+                            if (!dyn) dyn = (Tether_TextDynamic*)tether_ecs_add_component(ent, TETHER_COMPONENT_TEXT_DYNAMIC);
+                            dyn->capacity = (uint32_t)(len + 1) * 2;
+                            dyn->data = (char*)malloc(dyn->capacity);
+                            strcpy(dyn->data, value);
+                            dyn->length = (uint32_t)len;
+                        } else if (len <= 31) {
+                            Tether_TextWord* t = (Tether_TextWord*)tether_ecs_add_component(ent, TETHER_COMPONENT_TEXT_WORD);
+                            strncpy(t->data, value, 31);
+                            t->data[31] = '\0';
+                        } else if (len <= 127) {
+                            Tether_TextLabel* t = (Tether_TextLabel*)tether_ecs_add_component(ent, TETHER_COMPONENT_TEXT_LABEL);
+                            strncpy(t->data, value, 127);
+                            t->data[127] = '\0';
+                        } else if (len <= 511) {
+                            Tether_TextParagraph* t = (Tether_TextParagraph*)tether_ecs_add_component(ent, TETHER_COMPONENT_TEXT_PARAGRAPH);
+                            strncpy(t->data, value, 511);
+                            t->data[511] = '\0';
+                        }
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_FONT_SIZE) {
+                        Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
+                        if (t) t->font_size = strtof(value, NULL);
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_DYNAMIC) {
+                        if (strcmp(value, "true") == 0 || strcmp(value, "1") == 0) {
+                            /* Pre-add the component to mark it as dynamic for when the string is parsed */
+                            tether_ecs_add_component(ent, TETHER_COMPONENT_TEXT_DYNAMIC);
+                        }
+                        state = STATE_NONE;
                     }
                 }
                 break;

@@ -1,5 +1,6 @@
 #include "tether_layout.h"
 #include "tether/core/tether_components.h"
+#include "backends/tether_raster.h"
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -93,19 +94,28 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
         Tether_GUID child = h->first_child;
         while (tether_ecs_is_valid(child)) {
             Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_get_component(child, TETHER_COMPONENT_FLEX_SLOT);
+            Tether_TextStyle* text = (Tether_TextStyle*)tether_ecs_get_component(child, TETHER_COMPONENT_TEXT_STYLE);
             if (flex) {
                 total_fill_ratio += flex->fill_ratio;
+                
+                float intrinsic_w = 50.0f;
+                float intrinsic_h = 50.0f;
+                if (text) {
+                    const char* str = tether_ecs_get_text_string(child);
+                    if (str && str[0] != '\0') {
+                        tether_raster_measure_text(str, text->font_id, text->font_style, text->font_size, &intrinsic_w, &intrinsic_h);
+                    }
+                }
+
                 if (node->flow == TETHER_FLOW_COLUMN) {
                     total_fixed_space += flex->margin_top + flex->margin_bottom;
                     if (flex->fill_ratio == 0.0f) {
-                        /* For now, if fill is 0, we don't have text wrapping bounds yet, so we assume a default min size (e.g., 50px).
-                           In a real engine, we'd query the child's content size here. */
-                        total_fixed_space += 50.0f; 
+                        total_fixed_space += intrinsic_h; 
                     }
                 } else if (node->flow == TETHER_FLOW_ROW) {
                     total_fixed_space += flex->margin_left + flex->margin_right;
                     if (flex->fill_ratio == 0.0f) {
-                        total_fixed_space += 50.0f; 
+                        total_fixed_space += intrinsic_w; 
                     }
                 }
             }
@@ -129,12 +139,22 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
         while (tether_ecs_is_valid(child)) {
             Tether_SlotTransform* ct = (Tether_SlotTransform*)tether_ecs_get_component(child, TETHER_COMPONENT_SLOT_TRANSFORM);
             Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_get_component(child, TETHER_COMPONENT_FLEX_SLOT);
+            Tether_TextStyle* text = (Tether_TextStyle*)tether_ecs_get_component(child, TETHER_COMPONENT_TEXT_STYLE);
             
             if (ct && flex) {
+                float intrinsic_w = 50.0f;
+                float intrinsic_h = 50.0f;
+                if (text) {
+                    const char* str = tether_ecs_get_text_string(child);
+                    if (str && str[0] != '\0') {
+                        tether_raster_measure_text(str, text->font_id, text->font_style, text->font_size, &intrinsic_w, &intrinsic_h);
+                    }
+                }
+
                 if (node->flow == TETHER_FLOW_COLUMN) {
                     current_y += flex->margin_top;
                     
-                    float item_h = 50.0f; /* Min size */
+                    float item_h = intrinsic_h;
                     if (flex->fill_ratio > 0.0f && total_fill_ratio > 0.0f) {
                         item_h = (flex->fill_ratio / total_fill_ratio) * available_space;
                     }
@@ -145,8 +165,10 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                     float item_x = inner_x + flex->margin_left;
                     
                     if (align_x == TETHER_ALIGN_CENTER) {
-                        item_w = 100.0f; /* Arbitrary for now */
+                        item_w = text ? intrinsic_w : 100.0f;
                         item_x = inner_x + (inner_w / 2.0f) - (item_w / 2.0f);
+                    } else if (align_x == TETHER_ALIGN_LEFT && text) {
+                        item_w = intrinsic_w;
                     }
                     
                     ct->x = item_x;
@@ -158,7 +180,7 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                 } else if (node->flow == TETHER_FLOW_ROW) {
                     current_x += flex->margin_left;
                     
-                    float item_w = 50.0f; 
+                    float item_w = intrinsic_w; 
                     if (flex->fill_ratio > 0.0f && total_fill_ratio > 0.0f) {
                         item_w = (flex->fill_ratio / total_fill_ratio) * available_space;
                     }
@@ -166,6 +188,13 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                     Tether_AlignY align_y = flex->override_align_y ? flex->align_self_y : node->content_align_y;
                     float item_h = inner_h - flex->margin_top - flex->margin_bottom;
                     float item_y = inner_y + flex->margin_top;
+                    
+                    if (align_y == TETHER_ALIGN_CENTER) {
+                        item_h = text ? intrinsic_h : 100.0f;
+                        item_y = inner_y + (inner_h / 2.0f) - (item_h / 2.0f);
+                    } else if (align_y == TETHER_ALIGN_TOP && text) {
+                        item_h = intrinsic_h;
+                    }
                     
                     ct->x = current_x;
                     ct->y = item_y;

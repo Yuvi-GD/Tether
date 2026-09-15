@@ -1,0 +1,119 @@
+Panel:
+  flow: NONE
+  color: [30, 32, 36, 255] # Dark background
+  children:
+    - Panel: # Main App Window
+        anchor_min: [0.05, 0.05]
+        anchor_max: [0.95, 0.95]
+        color: [40, 44, 52, 255] # Slightly lighter dark gray
+        flow: COLUMN
+        padding: [20, 20, 20, 20]
+        children:
+          # --- Header Section ---
+          - Panel: 
+              fill_ratio: 0.1
+              margin: [0, 20, 0, 0]
+              color: [50, 56, 68, 255] # Header background
+              flow: ROW
+              children:
+                - Text: # Short Text (TextWord test)
+                    string: "Tether Dashboard"
+                    font_size: 42.0
+                    color: [255, 255, 255, 255]
+                    margin: [15, 0, 20, 0]
+                - Panel: # Spacer
+                    fill_ratio: 1.0
+                    color: [0, 0, 0, 0] # Transparent
+                - Panel: # Simulated Button
+                    fill_ratio: 1
+                    margin: [15, 15, 20, 15]
+                    color: [97, 175, 239, 255] # Blue button
+                    flow: ROW
+                    padding: [10, 10, 20, 20]
+                    children:
+                      - Text:
+                          string: "Settings"
+                          font_size: 24.0
+                          color: [30, 32, 36, 255]
+          
+          # --- Main Content Section ---
+          - Panel:
+              fill_ratio: 0.9
+              color: [40, 44, 52, 255]
+              flow: ROW
+              children:
+                # --- Sidebar ---
+                - Panel:
+                    fill_ratio: 0.25
+                    margin: [0, 0, 0, 20]
+                    color: [50, 56, 68, 255]
+                    flow: COLUMN
+                    padding: [20, 20, 20, 20]
+                    children:
+                      - Text:
+                          string: "Navigation"
+                          font_size: 28.0
+                          color: [171, 178, 191, 255]
+                          margin: [0, 20, 0, 0]
+                      - Panel: # Nav Button 1
+                          fill_ratio: 0.0
+                          margin: [0, 10, 0, 0]
+                          color: [62, 68, 81, 255]
+                          padding: [15, 15, 15, 15]
+                          children:
+                            - Text:
+                                string: "Dashboard"
+                                font_size: 20.0
+                                color: [255, 255, 255, 255]
+                      - Panel: # Nav Button 2
+                          fill_ratio: 0.0
+                          margin: [0, 10, 0, 0]
+                          color: [62, 68, 81, 255]
+                          padding: [15, 15, 15, 15]
+                          children:
+                            - Text:
+                                string: "Analytics"
+                                font_size: 20.0
+                                color: [255, 255, 255, 255]
+
+                # --- Main View ---
+                - Panel:
+                    fill_ratio: 0.75
+                    color: [40, 44, 52, 255]
+                    flow: COLUMN
+                    children:
+                      # Card 1: Label Text (Medium length)
+                      - Panel:
+                          fill_ratio: 0.3
+                          margin: [0, 20, 0, 0]
+                          color: [152, 195, 121, 255] # Green accent
+                          padding: [20, 20, 20, 20]
+                          children:
+                            - Text:
+                                string: "This card tests the TextLabel component! It contains just enough characters to overflow the standard 32-byte Word limit, but doesn't need a huge Paragraph struct."
+                                font_size: 28.0
+                                color: [40, 44, 52, 255]
+
+                      # Card 2: Paragraph Text (Very long text)
+                      - Panel:
+                          fill_ratio: 0.4
+                          margin: [0, 20, 0, 0]
+                          color: [229, 192, 123, 255] # Yellow accent
+                          padding: [20, 20, 20, 20]
+                          children:
+                            - Text:
+                                string: "This is a demonstration of the TextParagraph component. When building modern UI applications, you frequently need to render large bodies of text like descriptions, documentation, or legal disclaimers. Because Tether uses a pure Data-Oriented Entity Component System, this entire massive block of characters is stored cleanly inside a single 512-byte contiguous struct. When the ThorVG rasterizer loops through the dense arrays, the CPU perfectly caches the memory line, completely avoiding pointer-chasing and Garbage Collection overhead!"
+                                font_size: 18.0
+                                color: [40, 44, 52, 255]
+
+                      # Card 3: Dynamic Text (Allocate Text in Heap)
+                      - Panel:
+                          fill_ratio: 0.3
+                          color: [224, 108, 117, 255] # Red accent
+                          padding: [20, 20, 20, 20]
+                          children:
+                            - Text:
+                                string: "[Status]: Disconnected. Waiting for server..."
+                                font_size: 28.0
+                                color: [255, 255, 255, 255]
+                                dynamic: true
