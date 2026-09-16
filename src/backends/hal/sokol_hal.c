@@ -245,21 +245,20 @@ static void cleanup(void) {
 }
 
 static void input_event(const sapp_event* e) {
-    if (e->type == SAPP_EVENTTYPE_MOUSE_DOWN) {
+    if (e->type == SAPP_EVENTTYPE_MOUSE_DOWN || e->type == SAPP_EVENTTYPE_MOUSE_UP || e->type == SAPP_EVENTTYPE_MOUSE_MOVE) {
         Tether_Pointer_Event pe;
-        pe.type = TETHER_POINTER_DOWN;
+        
+        if (e->type == SAPP_EVENTTYPE_MOUSE_DOWN) pe.type = TETHER_POINTER_DOWN;
+        else if (e->type == SAPP_EVENTTYPE_MOUSE_UP) pe.type = TETHER_POINTER_UP;
+        else pe.type = TETHER_POINTER_MOVE;
+        
         pe.x = e->mouse_x;
         pe.y = e->mouse_y;
         
-        if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) {
-            pe.button = TETHER_MOUSE_BUTTON_LEFT;
-        } else if (e->mouse_button == SAPP_MOUSEBUTTON_RIGHT) {
-            pe.button = TETHER_MOUSE_BUTTON_RIGHT;
-        } else if (e->mouse_button == SAPP_MOUSEBUTTON_MIDDLE) {
-            pe.button = TETHER_MOUSE_BUTTON_MIDDLE;
-        } else {
-            pe.button = TETHER_MOUSE_BUTTON_NONE;
-        }
+        if (e->mouse_button == SAPP_MOUSEBUTTON_LEFT) pe.button = TETHER_MOUSE_BUTTON_LEFT;
+        else if (e->mouse_button == SAPP_MOUSEBUTTON_RIGHT) pe.button = TETHER_MOUSE_BUTTON_RIGHT;
+        else if (e->mouse_button == SAPP_MOUSEBUTTON_MIDDLE) pe.button = TETHER_MOUSE_BUTTON_MIDDLE;
+        else pe.button = TETHER_MOUSE_BUTTON_NONE;
         
         tether_input_process_event(&pe);
     }

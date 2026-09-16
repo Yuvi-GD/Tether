@@ -21,6 +21,9 @@ typedef struct {
     Tether_Memory_Strategy memory_strategy;
     Tether_Renderer_Backend renderer;
     int target_fps; /* 0 means sync to monitor refresh rate (VSync) */
+    
+    /* Lifecycle Callbacks */
+    void (*on_init)(void);
 } Tether_App_Config;
 
 /* The core engine promise */

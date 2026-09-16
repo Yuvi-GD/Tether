@@ -20,6 +20,9 @@ static Tether_GUID create_panel(Tether_GUID parent) {
     node->padding.top = 0; node->padding.bottom = 0; node->padding.left = 0; node->padding.right = 0;
     node->gap.x = 0; node->gap.y = 0;
     node->wrap = 0;
+    node->hit_behavior = TETHER_HIT_BLOCK; /* Panels catch hits by default */
+    node->id[0] = '\0';
+    node->hit_behavior = TETHER_HIT_BLOCK; /* Panels catch hits by default */
 
     Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_add_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
     anchor->anchor_min.x = 0; anchor->anchor_min.y = 0;
@@ -88,6 +91,10 @@ static Tether_GUID create_text_node(Tether_GUID parent) {
     Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
     if (f) f->fill_ratio = 0.0f;
     
+    /* Text defaults to ignoring hits so it doesn't block buttons */
+    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+    if (node) node->hit_behavior = TETHER_HIT_IGNORE_SELF;
+    
     return entity;
 }
 
@@ -122,7 +129,12 @@ Tether_GUID tether_yaml_load(const char* filepath) {
         STATE_GAP,
         STATE_WRAP,
         STATE_WRAP_WIDTH,
-        STATE_EXPLICIT_SIZE
+        STATE_EXPLICIT_SIZE,
+        STATE_ID,
+        STATE_HIT_BEHAVIOR,
+        STATE_INTERACTABLE,
+        STATE_HOVER_COLOR,
+        STATE_PRESS_COLOR
     } state = STATE_NONE;
     int array_idx = 0;
     int mapping_depth = 0;
@@ -182,6 +194,11 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                 else if (strcmp(value, "gap") == 0) { state = STATE_GAP; array_idx = 0; }
                 else if (strcmp(value, "wrap") == 0) { state = STATE_WRAP; }
                 else if (strcmp(value, "explicit_size") == 0) { state = STATE_EXPLICIT_SIZE; array_idx = 0; }
+                else if (strcmp(value, "id") == 0) { state = STATE_ID; }
+                else if (strcmp(value, "hit_behavior") == 0) { state = STATE_HIT_BEHAVIOR; }
+                else if (strcmp(value, "interactable") == 0) { state = STATE_INTERACTABLE; }
+                else if (strcmp(value, "hover_color") == 0) { state = STATE_HOVER_COLOR; array_idx = 0; }
+                else if (strcmp(value, "press_color") == 0) { state = STATE_PRESS_COLOR; array_idx = 0; }
                 else if (stack_idx >= 0) {
                     /* Read Values */
                     Tether_GUID ent = entity_stack[stack_idx];
@@ -195,6 +212,38 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                         else if (array_idx == 2) s->bg_color.b = v;
                         else if (array_idx == 3) s->bg_color.a = v;
                         array_idx++;
+                    }
+                    else if (state == STATE_HOVER_COLOR) {
+                        Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+                        if (!s) s = (Tether_Style*)tether_ecs_add_component(ent, TETHER_COMPONENT_STYLE);
+                        if (strcmp(value, "AUTO") == 0) {
+                            s->hover_color_mode = TETHER_COLOR_MODE_AUTO;
+                            state = STATE_NONE;
+                        } else {
+                            s->hover_color_mode = TETHER_COLOR_MODE_MANUAL;
+                            int v = atoi(value);
+                            if (array_idx == 0) s->hover_color.r = v;
+                            else if (array_idx == 1) s->hover_color.g = v;
+                            else if (array_idx == 2) s->hover_color.b = v;
+                            else if (array_idx == 3) { s->hover_color.a = v; state = STATE_NONE; }
+                            array_idx++;
+                        }
+                    }
+                    else if (state == STATE_PRESS_COLOR) {
+                        Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+                        if (!s) s = (Tether_Style*)tether_ecs_add_component(ent, TETHER_COMPONENT_STYLE);
+                        if (strcmp(value, "AUTO") == 0) {
+                            s->press_color_mode = TETHER_COLOR_MODE_AUTO;
+                            state = STATE_NONE;
+                        } else {
+                            s->press_color_mode = TETHER_COLOR_MODE_MANUAL;
+                            int v = atoi(value);
+                            if (array_idx == 0) s->press_color.r = v;
+                            else if (array_idx == 1) s->press_color.g = v;
+                            else if (array_idx == 2) s->press_color.b = v;
+                            else if (array_idx == 3) { s->press_color.a = v; state = STATE_NONE; }
+                            array_idx++;
+                        }
                     }
                     else if (state == STATE_FLOW) {
                         Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
@@ -265,6 +314,29 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                         if (array_idx == 0) f->explicit_size.x = v;
                         else if (array_idx == 1) f->explicit_size.y = v;
                         array_idx++;
+                    }
+                    else if (state == STATE_ID) {
+                        Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
+                        if (n) {
+                            strncpy(n->id, value, 31);
+                            n->id[31] = '\0';
+                        }
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_HIT_BEHAVIOR) {
+                        Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
+                        if (n) {
+                            if (strcmp(value, "BLOCK") == 0) n->hit_behavior = TETHER_HIT_BLOCK;
+                            else if (strcmp(value, "IGNORE_SELF") == 0) n->hit_behavior = TETHER_HIT_IGNORE_SELF;
+                            else if (strcmp(value, "IGNORE_ALL") == 0) n->hit_behavior = TETHER_HIT_IGNORE_ALL;
+                        }
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_INTERACTABLE) {
+                        if (strcmp(value, "true") == 0 || strcmp(value, "1") == 0) {
+                            tether_ecs_add_component(ent, TETHER_COMPONENT_INTERACTABLE);
+                        }
+                        state = STATE_NONE;
                     }
                     else if (state == STATE_TEXT_STRING) {
                         size_t len = strlen(value);

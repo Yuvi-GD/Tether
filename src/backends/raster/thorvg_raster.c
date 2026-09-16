@@ -80,6 +80,46 @@ void tether_raster_resize(uint32_t width, uint32_t height) {
     }
 }
 
+/* Clamp a float to [0, 255] and return as uint8_t */
+static uint8_t clamp_u8(int v) {
+    return (uint8_t)(v < 0 ? 0 : v > 255 ? 255 : v);
+}
+
+/* Resolve the active background color for an entity based on its interaction state.
+ * Checks press first (takes priority), then hover, then falls back to bg_color.
+ * Can be called from any rasterizer backend — pure interface logic. */
+static Tether_Color tether_style_resolve_color(Tether_GUID entity, const Tether_Style* s) {
+    Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
+    if (!i) return s->bg_color;
+
+    /* Press takes priority over hover */
+    if (i->is_pressed) {
+        if (s->press_color_mode == TETHER_COLOR_MODE_MANUAL) return s->press_color;
+        if (s->press_color_mode == TETHER_COLOR_MODE_AUTO) {
+            return (Tether_Color){
+                clamp_u8((int)s->bg_color.r - 30),
+                clamp_u8((int)s->bg_color.g - 30),
+                clamp_u8((int)s->bg_color.b - 30),
+                s->bg_color.a
+            };
+        }
+    }
+
+    if (i->is_hovered) {
+        if (s->hover_color_mode == TETHER_COLOR_MODE_MANUAL) return s->hover_color;
+        if (s->hover_color_mode == TETHER_COLOR_MODE_AUTO) {
+            return (Tether_Color){
+                clamp_u8((int)s->bg_color.r + 30),
+                clamp_u8((int)s->bg_color.g + 30),
+                clamp_u8((int)s->bg_color.b + 30),
+                s->bg_color.a
+            };
+        }
+    }
+
+    return s->bg_color;
+}
+
 void tether_raster_draw(void) {
     /* Clear previous frame's geometry and free memory */
     tvg_canvas_remove(tvg_canvas, NULL);
@@ -106,16 +146,16 @@ void tether_raster_draw(void) {
             if (s && !text) {
                 Tvg_Paint shape = tvg_shape_new();
                 tvg_shape_append_rect(shape, t->x, t->y, t->width, t->height, 0, 0, true);
-                tvg_shape_set_fill_color(shape, s->bg_color.r, s->bg_color.g, s->bg_color.b, s->bg_color.a);
+                
+                /* Resolve the active color based on interaction state */
+                Tether_Color active = tether_style_resolve_color(entity, s);
+                tvg_shape_set_fill_color(shape, active.r, active.g, active.b, active.a);
                 
                 /* Check for Render Transform (Animations / Visual Offsets) */
                 Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
                 if (rt) {
-                    /* Pivot calculation could be done manually, but for now we apply scale, rotation and translation */
                     tvg_paint_translate(shape, rt->translation_x, rt->translation_y);
                     if (rt->scale_x != 0.0f || rt->scale_y != 0.0f) {
-                        /* To fully support Pivot, we would translate to pivot, scale, then translate back. 
-                           For this initial pass, we just apply standard scale. */
                         tvg_paint_scale(shape, rt->scale_x);
                     }
                     if (rt->rotation_deg != 0.0f) {
