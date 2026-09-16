@@ -49,10 +49,10 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
     if (!node || !h || h->child_count == 0) return; /* No children to layout */
 
     /* Available space inside this node (minus padding) */
-    float inner_x = t->x + node->padding_left;
-    float inner_y = t->y + node->padding_top;
-    float inner_w = t->width - node->padding_left - node->padding_right;
-    float inner_h = t->height - node->padding_top - node->padding_bottom;
+    float inner_x = t->x + node->padding.left;
+    float inner_y = t->y + node->padding.top;
+    float inner_w = t->width - node->padding.left - node->padding.right;
+    float inner_h = t->height - node->padding.top - node->padding.bottom;
     
     if (inner_w < 0) inner_w = 0;
     if (inner_h < 0) inner_h = 0;
@@ -65,10 +65,10 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
             Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_get_component(child, TETHER_COMPONENT_ANCHOR_SLOT);
             
             if (ct && anchor) {
-                float min_x = inner_x + (inner_w * anchor->anchor_min_x) + anchor->offset_left;
-                float min_y = inner_y + (inner_h * anchor->anchor_min_y) + anchor->offset_top;
-                float max_x = inner_x + (inner_w * anchor->anchor_max_x) - anchor->offset_right;
-                float max_y = inner_y + (inner_h * anchor->anchor_max_y) - anchor->offset_bottom;
+                float min_x = inner_x + (inner_w * anchor->anchor_min.x) + anchor->offset.left;
+                float min_y = inner_y + (inner_h * anchor->anchor_min.y) + anchor->offset.top;
+                float max_x = inner_x + (inner_w * anchor->anchor_max.x) - anchor->offset.right;
+                float max_y = inner_y + (inner_h * anchor->anchor_max.y) - anchor->offset.bottom;
                 
                 ct->x = min_x;
                 ct->y = min_y;
@@ -108,12 +108,12 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                 }
 
                 if (node->flow == TETHER_FLOW_COLUMN) {
-                    total_fixed_space += flex->margin_top + flex->margin_bottom;
+                    total_fixed_space += flex->margin.top + flex->margin.bottom;
                     if (flex->fill_ratio == 0.0f) {
                         total_fixed_space += intrinsic_h; 
                     }
                 } else if (node->flow == TETHER_FLOW_ROW) {
-                    total_fixed_space += flex->margin_left + flex->margin_right;
+                    total_fixed_space += flex->margin.left + flex->margin.right;
                     if (flex->fill_ratio == 0.0f) {
                         total_fixed_space += intrinsic_w; 
                     }
@@ -152,7 +152,7 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                 }
 
                 if (node->flow == TETHER_FLOW_COLUMN) {
-                    current_y += flex->margin_top;
+                    current_y += flex->margin.top;
                     
                     float item_h = intrinsic_h;
                     if (flex->fill_ratio > 0.0f && total_fill_ratio > 0.0f) {
@@ -161,8 +161,8 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                     
                     /* Horizontal Alignment */
                     Tether_AlignX align_x = flex->override_align_x ? flex->align_self_x : node->content_align_x;
-                    float item_w = inner_w - flex->margin_left - flex->margin_right;
-                    float item_x = inner_x + flex->margin_left;
+                    float item_w = inner_w - flex->margin.left - flex->margin.right;
+                    float item_x = inner_x + flex->margin.left;
                     
                     if (align_x == TETHER_ALIGN_CENTER) {
                         item_w = text ? intrinsic_w : 100.0f;
@@ -176,9 +176,9 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                     ct->width = item_w;
                     ct->height = item_h;
                     
-                    current_y += item_h + flex->margin_bottom;
+                    current_y += item_h + flex->margin.bottom;
                 } else if (node->flow == TETHER_FLOW_ROW) {
-                    current_x += flex->margin_left;
+                    current_x += flex->margin.left;
                     
                     float item_w = intrinsic_w; 
                     if (flex->fill_ratio > 0.0f && total_fill_ratio > 0.0f) {
@@ -186,8 +186,8 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                     }
                     
                     Tether_AlignY align_y = flex->override_align_y ? flex->align_self_y : node->content_align_y;
-                    float item_h = inner_h - flex->margin_top - flex->margin_bottom;
-                    float item_y = inner_y + flex->margin_top;
+                    float item_h = inner_h - flex->margin.top - flex->margin.bottom;
+                    float item_y = inner_y + flex->margin.top;
                     
                     if (align_y == TETHER_ALIGN_CENTER) {
                         item_h = text ? intrinsic_h : 100.0f;
@@ -201,7 +201,7 @@ static void tether_layout_process_entity(Tether_GUID entity, float parent_x, flo
                     ct->width = item_w;
                     ct->height = item_h;
                     
-                    current_x += item_w + flex->margin_right;
+                    current_x += item_w + flex->margin.right;
                 }
             } else if (ct) {
                 /* Fallback if no flex slot provided */

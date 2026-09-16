@@ -138,6 +138,28 @@ int main() {
         printf("    [SUCCESS] Detach seamlessly stitched C1 and C3 together\n");
     }
     
+    // Test Bring to Front
+    printf("[6] Testing Local Z-Index Bring To Front...\n");
+    tether_ecs_bring_to_front(c1); // C1 was first, now it should be last!
+    ph = (Tether_Hierarchy*)tether_ecs_get_component(parent, 3);
+    if (ph->last_child != c1 || ph->first_child != c3) {
+        printf("    [FAILED] Bring to front did not update parent pointers properly\n");
+        valid = false;
+    } else {
+        printf("    [SUCCESS] Bring to front instantly swapped C1 to last_child!\n");
+    }
+    
+    // Test Overlay Root
+    printf("[7] Testing Global Overlay Root...\n");
+    Tether_GUID overlay = tether_ecs_get_overlay_root();
+    Tether_GUID main_r = tether_ecs_get_main_root();
+    if (!tether_ecs_is_valid(overlay) || !tether_ecs_is_valid(main_r) || overlay == main_r) {
+        printf("    [FAILED] Global overlay root not initialized properly\n");
+        valid = false;
+    } else {
+        printf("    [SUCCESS] Main Root and Overlay Root are correctly isolated.\n");
+    }
+    
     // Destroy parent (cascading delete)
     tether_ecs_destroy_entity(parent);
     

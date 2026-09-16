@@ -67,6 +67,12 @@ void tether_ecs_init(void);
 /* Destroy the global ECS registry and free all memory. */
 void tether_ecs_term(void);
 
+/* Get the primary root entity for the layout tree. */
+Tether_GUID tether_ecs_get_main_root(void);
+
+/* Get the global overlay root entity for tooltips and dropdowns. */
+Tether_GUID tether_ecs_get_overlay_root(void);
+
 /* --- Entity Management --- */
 
 /* Create a new entity and return its GUID. */
@@ -114,11 +120,20 @@ int tether_ecs_allocate_custom_component(size_t element_size);
 
 /* --- Hierarchy API --- */
 
-/* Safely detach an entity from its parent (O(1) DLL patching). */
+/*
+ * Safely detach an entity from its parent (stitches siblings together).
+ */
 void tether_ecs_detach_entity(Tether_GUID entity);
 
-/* Attach an entity to a new parent at the end of its sibling list. */
+/*
+ * Attach an entity as the last child of a parent.
+ */
 void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity);
+
+/*
+ * Bring an entity to the front of its parent's local draw order.
+ */
+void tether_ecs_bring_to_front(Tether_GUID entity);
 
 /* --- Internal API (Exposed for testing/advanced usage) --- */
 

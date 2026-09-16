@@ -29,11 +29,11 @@ void tether_input_process_event(Tether_Pointer_Event* event) {
 
                 if (event->button == TETHER_MOUSE_BUTTON_LEFT) {
                     printf("[Sandbox] Left clicked entity %llu at (%.1f, %.1f). Randomizing color!\n", (unsigned long long)hit_entity, event->x, event->y);
-                    Tether_Color* c = (Tether_Color*)tether_ecs_get_component(hit_entity, TETHER_COMPONENT_COLOR);
-                    if (c) {
-                        c->r = (uint8_t)(rand() % 255);
-                        c->g = (uint8_t)(rand() % 255);
-                        c->b = (uint8_t)(rand() % 255);
+                    Tether_Style* s = (Tether_Style*)tether_ecs_get_component(hit_entity, TETHER_COMPONENT_STYLE);
+                    if (s) {
+                        s->bg_color.r = (uint8_t)(rand() % 255);
+                        s->bg_color.g = (uint8_t)(rand() % 255);
+                        s->bg_color.b = (uint8_t)(rand() % 255);
                     }
                 } 
                 else if (event->button == TETHER_MOUSE_BUTTON_RIGHT) {

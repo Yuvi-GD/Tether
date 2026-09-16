@@ -98,15 +98,15 @@ void tether_raster_draw(void) {
             if (!tether_ecs_is_valid(entity)) continue;
 
             Tether_SlotTransform* t = (Tether_SlotTransform*)((uint8_t*)transforms->data + (i * transforms->element_size));
-            Tether_Color* c = (Tether_Color*)tether_ecs_get_component(entity, TETHER_COMPONENT_COLOR);
+            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
             Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
             Tether_TextStyle* text = (Tether_TextStyle*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_STYLE);
 
             /* Render Background (Only if NOT a Text node, or if we introduce a separate bg_color later) */
-            if (c && !text) {
+            if (s && !text) {
                 Tvg_Paint shape = tvg_shape_new();
                 tvg_shape_append_rect(shape, t->x, t->y, t->width, t->height, 0, 0, true);
-                tvg_shape_set_fill_color(shape, c->r, c->g, c->b, c->a);
+                tvg_shape_set_fill_color(shape, s->bg_color.r, s->bg_color.g, s->bg_color.b, s->bg_color.a);
                 
                 /* Check for Render Transform (Animations / Visual Offsets) */
                 Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
@@ -138,9 +138,9 @@ void tether_raster_draw(void) {
                     tvg_text_set_size(text_node, text->font_size);
                     tvg_text_set_text(text_node, str);
                     
-                    if (c) {
-                        tvg_text_set_color(text_node, c->r, c->g, c->b);
-                        tvg_paint_set_opacity(text_node, c->a);
+                    if (s) {
+                        tvg_text_set_color(text_node, s->bg_color.r, s->bg_color.g, s->bg_color.b);
+                        tvg_paint_set_opacity(text_node, s->bg_color.a);
                     } else {
                         tvg_text_set_color(text_node, 255, 255, 255);
                         tvg_paint_set_opacity(text_node, 255);
