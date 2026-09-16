@@ -28,8 +28,12 @@ Panel:
                     fill_ratio: 0.1
                     color: [0, 0, 0, 0]
                 - Panel: # Settings Button
+                    id: "SettingsBtn"
+                    interactable: true
                     explicit_size: [130, 40]
                     color: [97, 175, 239, 255]
+                    hover_color: AUTO
+                    press_color: AUTO
                     padding: [8, 8, 8, 8]
                     children:
                       - Text:
@@ -62,8 +66,11 @@ Panel:
                       - Panel: # Spacer
                           fill_ratio: 1.0
                           color: [0, 0, 0, 0]
-                      - Panel: # Nav: Dashboard
+                      - Panel: # Nav: Dashboard (active state)
+                          interactable: true
                           color: [97, 175, 239, 255]
+                          hover_color: AUTO
+                          press_color: AUTO
                           padding: [12, 12, 12, 12]
                           children:
                             - Text:
@@ -71,7 +78,10 @@ Panel:
                                 font_size: 18.0
                                 color: [30, 32, 36, 255]
                       - Panel: # Nav: Analytics
+                          interactable: true
                           color: [62, 68, 81, 255]
+                          hover_color: AUTO
+                          press_color: AUTO
                           padding: [12, 12, 12, 12]
                           children:
                             - Text:
@@ -79,7 +89,10 @@ Panel:
                                 font_size: 18.0
                                 color: [200, 200, 210, 255]
                       - Panel: # Nav: Reports
+                          interactable: true
                           color: [62, 68, 81, 255]
+                          hover_color: AUTO
+                          press_color: AUTO
                           padding: [12, 12, 12, 12]
                           children:
                             - Text:
@@ -87,7 +100,10 @@ Panel:
                                 font_size: 18.0
                                 color: [200, 200, 210, 255]
                       - Panel: # Nav: Settings
+                          interactable: true
                           color: [62, 68, 81, 255]
+                          hover_color: AUTO
+                          press_color: AUTO
                           padding: [12, 12, 12, 12]
                           children:
                             - Text:
@@ -102,7 +118,7 @@ Panel:
                     flow: COLUMN
                     gap: [0, 15]
                     children:
-                      # ---- ROW 1: Color Boxes (fill_ratio test) ----
+                      # ---- ROW 1: Color Boxes ----
                       - Panel:
                           fill_ratio: 0.25
                           color: [50, 56, 68, 255]
@@ -111,29 +127,44 @@ Panel:
                           padding: [12, 12, 12, 12]
                           children:
                             - Panel:
+                                interactable: true
                                 fill_ratio: 1.0
                                 color: [224, 108, 117, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
                             - Panel:
+                                interactable: true
                                 fill_ratio: 1.0
                                 color: [152, 195, 121, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
                             - Panel:
+                                interactable: true
                                 fill_ratio: 1.0
                                 color: [97, 175, 239, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
                             - Panel:
+                                interactable: true
                                 fill_ratio: 1.0
                                 color: [198, 120, 221, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
 
-                      # ---- ROW 2: Text Cards (TextWord + TextLabel) ----
+                      # ---- ROW 2: Stat Cards ----
                       - Panel:
                           fill_ratio: 0.35
                           color: [40, 44, 52, 255]
                           flow: ROW
                           gap: [12, 0]
                           children:
-                            # Card A: Short text (TextWord, <=31 chars)
+                            # Card A: Active Users
                             - Panel:
+                                interactable: true
                                 fill_ratio: 1.0
                                 color: [152, 195, 121, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
                                 flow: COLUMN
                                 padding: [15, 15, 15, 15]
                                 gap: [0, 8]
@@ -146,10 +177,13 @@ Panel:
                                       string: "2,847"
                                       font_size: 36.0
                                       color: [40, 44, 52, 255]
-                            # Card B: Medium text (TextLabel, <=127 chars)
+                            # Card B: Revenue
                             - Panel:
+                                interactable: true
                                 fill_ratio: 1.0
                                 color: [229, 192, 123, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
                                 flow: COLUMN
                                 padding: [15, 15, 15, 15]
                                 gap: [0, 8]
@@ -162,10 +196,13 @@ Panel:
                                       string: "$14,290"
                                       font_size: 36.0
                                       color: [40, 44, 52, 255]
-                            # Card C: Fixed size box (explicit_size test)
+                            # Card C: Uptime
                             - Panel:
+                                interactable: true
                                 fill_ratio: 1.0
                                 color: [86, 182, 194, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
                                 flow: COLUMN
                                 padding: [15, 15, 15, 15]
                                 gap: [0, 8]
@@ -179,14 +216,14 @@ Panel:
                                       font_size: 36.0
                                       color: [40, 44, 52, 255]
 
-                      # ---- ROW 3: Paragraph + Dynamic Text ----
+                      # ---- ROW 3: Paragraph + Status Log ----
                       - Panel:
                           fill_ratio: 0.40
                           color: [40, 44, 52, 255]
                           flow: ROW
                           gap: [12, 0]
                           children:
-                            # TextParagraph test (wrapping long text)
+                            # System Log panel
                             - Panel:
                                 fill_ratio: 0.6
                                 color: [50, 56, 68, 255]
@@ -203,7 +240,7 @@ Panel:
                                       string: "Tether uses a pure Data-Oriented Entity Component System. Every UI element is an entity with components stored in dense, contiguous arrays. The two-pass layout solver measures bottom-up then arranges top-down for efficient, cache-friendly traversal."
                                       font_size: 14.0
                                       color: [140, 145, 155, 255]
-                            # TextDynamic (heap-allocated) test
+                            # Live Status panel
                             - Panel:
                                 fill_ratio: 0.4
                                 color: [50, 56, 68, 255]
@@ -216,7 +253,10 @@ Panel:
                                       font_size: 18.0
                                       color: [171, 178, 191, 255]
                                   - Panel:
+                                      interactable: true
                                       color: [152, 195, 121, 60]
+                                      hover_color: [152, 195, 121, 120]
+                                      press_color: [152, 195, 121, 200]
                                       padding: [10, 10, 10, 10]
                                       children:
                                         - Text:
@@ -224,7 +264,10 @@ Panel:
                                             font_size: 14.0
                                             color: [152, 195, 121, 255]
                                   - Panel:
+                                      interactable: true
                                       color: [224, 108, 117, 60]
+                                      hover_color: [224, 108, 117, 120]
+                                      press_color: [224, 108, 117, 200]
                                       padding: [10, 10, 10, 10]
                                       children:
                                         - Text:

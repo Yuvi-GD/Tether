@@ -111,13 +111,21 @@ typedef struct Tether_RenderTransform {
  */
 typedef enum { TETHER_FLOW_NONE = 0, TETHER_FLOW_ROW, TETHER_FLOW_COLUMN } Tether_Flow;
 
-typedef struct Tether_LayoutNode {
-    Tether_Flow flow;
+typedef enum {
+    TETHER_HIT_BLOCK = 0,      /* Blocks hits underneath it */
+    TETHER_HIT_IGNORE_SELF = 1,/* Passes through self, tests children */
+    TETHER_HIT_IGNORE_ALL = 2  /* Skips self and all children */
+} Tether_HitBehavior;
+
+typedef struct {
+    char id[32];               /* Human-readable ID for finding from C */
+    Tether_Flow flow;          /* COLUMN, ROW, or NONE */
     Tether_AlignX content_align_x;
     Tether_AlignY content_align_y;
     Tether_Edges padding;
     Tether_Vec2 gap;
     uint8_t wrap;
+    Tether_HitBehavior hit_behavior; /* How this node catches pointer events */
     float measured_width;
     float measured_height;
 } Tether_LayoutNode;
@@ -156,11 +164,23 @@ typedef struct Tether_Color {
     uint8_t a;
 } Tether_Color;
 
+typedef enum {
+    TETHER_COLOR_MODE_NONE   = 0, /* No state color — bg_color used always */
+    TETHER_COLOR_MODE_AUTO   = 1, /* Derive lighter/darker from bg_color automatically */
+    TETHER_COLOR_MODE_MANUAL = 2  /* Use explicit hover_color / press_color */
+} Tether_ColorMode;
+
 typedef struct Tether_Style {
     Tether_Color bg_color;
     Tether_Color border_color;
     float border_width;
     Tether_Edges border_radius;
+
+    /* State colors (requires Tether_Interactable component to take effect) */
+    Tether_ColorMode hover_color_mode;
+    Tether_Color hover_color;  /* Used when hover_color_mode == MANUAL */
+    Tether_ColorMode press_color_mode;
+    Tether_Color press_color;  /* Used when press_color_mode == MANUAL */
 } Tether_Style;
 
 /* Flag component: If present on entity, clips rendering of children to its bounds */

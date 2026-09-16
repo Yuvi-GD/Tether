@@ -28,6 +28,10 @@ void tether_run(Tether_App_Config* config) {
     if (config->initial_yaml) {
         tether_yaml_load(config->initial_yaml);
     }
+    
+    if (config->on_init) {
+        config->on_init();
+    }
 
     /* Hand control over to the Hardware Abstraction Layer to start the OS window loop */
     tether_hal_run(config);

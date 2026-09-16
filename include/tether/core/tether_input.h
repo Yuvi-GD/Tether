@@ -1,6 +1,7 @@
 #ifndef TETHER_INPUT_H
 #define TETHER_INPUT_H
 
+#include "tether/core/tether_ecs.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -28,11 +29,21 @@ typedef struct Tether_Pointer_Event {
     float y;
 } Tether_Pointer_Event;
 
+/* Perform a Z-Index accurate spatial query to find the topmost entity at (x,y).
+ * Culls layout branches instantly if the point is outside the parent's SlotTransform.
+ * Respects Tether_HitBehavior properties.
+ */
+Tether_GUID tether_hit_test(float x, float y);
+
 /*
  * Process a normalized input event.
- * In a full system, this would perform spatial intersection against the ECS Transform array.
+ * Handles state transitions (Hover Enter/Exit, Press, Release, Click) and
+ * automatically fires the Tether_EventRegistry callbacks.
  */
 void tether_input_process_event(Tether_Pointer_Event* event);
+
+/* Reset input tracking (called on shutdown) */
+void tether_input_term(void);
 
 #ifdef __cplusplus
 }

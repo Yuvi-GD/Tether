@@ -73,13 +73,16 @@ Tether_GUID tether_ecs_get_main_root(void);
 /* Get the global overlay root entity for tooltips and dropdowns. */
 Tether_GUID tether_ecs_get_overlay_root(void);
 
-/* --- Entity Management --- */
+/* --- Entity Lifecycle --- */
 
 /* Create a new entity and return its GUID. */
 Tether_GUID tether_ecs_create_entity(void);
 
-/* Destroy an entity, executing the swap-and-pop logic on all its components. */
+/* Destroy an entity, immediately cascading the destroy to all its children. */
 void tether_ecs_destroy_entity(Tether_GUID entity);
+
+/* Search the ECS for a LayoutNode matching the specific string ID */
+Tether_GUID tether_ecs_find_by_id(const char* id);
 
 /* Check if an entity is still alive. */
 bool tether_ecs_is_valid(Tether_GUID entity);
