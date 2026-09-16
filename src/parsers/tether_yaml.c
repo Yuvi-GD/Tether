@@ -17,15 +17,15 @@ static Tether_GUID create_panel(Tether_GUID parent) {
     node->flow = TETHER_FLOW_NONE;
     node->content_align_x = TETHER_ALIGN_FILL;
     node->content_align_y = TETHER_ALIGN_Y_FILL;
-    node->padding_top = 0; node->padding_bottom = 0; node->padding_left = 0; node->padding_right = 0;
+    node->padding.top = 0; node->padding.bottom = 0; node->padding.left = 0; node->padding.right = 0;
 
     Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_add_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
-    anchor->anchor_min_x = 0; anchor->anchor_min_y = 0;
-    anchor->anchor_max_x = 1; anchor->anchor_max_y = 1;
-    anchor->offset_top = 0; anchor->offset_bottom = 0; anchor->offset_left = 0; anchor->offset_right = 0;
+    anchor->anchor_min.x = 0; anchor->anchor_min.y = 0;
+    anchor->anchor_max.x = 1; anchor->anchor_max.y = 1;
+    anchor->offset.top = 0; anchor->offset.bottom = 0; anchor->offset.left = 0; anchor->offset.right = 0;
 
     Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_add_component(entity, TETHER_COMPONENT_FLEX_SLOT);
-    flex->margin_top = 0; flex->margin_bottom = 0; flex->margin_left = 0; flex->margin_right = 0;
+    flex->margin.top = 0; flex->margin.bottom = 0; flex->margin.left = 0; flex->margin.right = 0;
     flex->fill_ratio = 1.0f;
     flex->override_align_x = 0; flex->override_align_y = 0;
 
@@ -33,8 +33,14 @@ static Tether_GUID create_panel(Tether_GUID parent) {
     rt->translation_x = 0; rt->translation_y = 0; rt->scale_x = 1.0f; rt->scale_y = 1.0f;
     rt->rotation_deg = 0; rt->pivot_x = 0.5f; rt->pivot_y = 0.5f;
 
-    Tether_Color* c = (Tether_Color*)tether_ecs_add_component(entity, TETHER_COMPONENT_COLOR);
-    c->r = 255; c->g = 255; c->b = 255; c->a = 255;
+    Tether_Style* s = (Tether_Style*)tether_ecs_add_component(entity, TETHER_COMPONENT_STYLE);
+    if (s) {
+        s->bg_color.r = 255; s->bg_color.g = 255; s->bg_color.b = 255; s->bg_color.a = 255;
+        s->border_color.r = 0; s->border_color.g = 0; s->border_color.b = 0; s->border_color.a = 0;
+        s->border_width = 0.0f;
+        s->border_radius.top = 0.0f; s->border_radius.right = 0.0f;
+        s->border_radius.bottom = 0.0f; s->border_radius.left = 0.0f;
+    }
 
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_add_component(entity, TETHER_COMPONENT_HIERARCHY);
     h->parent = parent;
@@ -169,12 +175,13 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                     Tether_GUID ent = entity_stack[stack_idx];
                     
                     if (state == STATE_COLOR) {
-                        Tether_Color* c = (Tether_Color*)tether_ecs_get_component(ent, TETHER_COMPONENT_COLOR);
+                        Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+                        if (!s) s = (Tether_Style*)tether_ecs_add_component(ent, TETHER_COMPONENT_STYLE);
                         int v = atoi(value);
-                        if (array_idx == 0) c->r = v;
-                        else if (array_idx == 1) c->g = v;
-                        else if (array_idx == 2) c->b = v;
-                        else if (array_idx == 3) c->a = v;
+                        if (array_idx == 0) s->bg_color.r = v;
+                        else if (array_idx == 1) s->bg_color.g = v;
+                        else if (array_idx == 2) s->bg_color.b = v;
+                        else if (array_idx == 3) s->bg_color.a = v;
                         array_idx++;
                     }
                     else if (state == STATE_FLOW) {
@@ -192,42 +199,39 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                     else if (state == STATE_ANCHOR_MIN) {
                         Tether_AnchorSlot* a = (Tether_AnchorSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_ANCHOR_SLOT);
                         float v = strtof(value, NULL);
-                        if (array_idx == 0) a->anchor_min_x = v;
-                        else if (array_idx == 1) a->anchor_min_y = v;
+                        if (array_idx == 0) a->anchor_min.x = v;
+                        else if (array_idx == 1) a->anchor_min.y = v;
                         array_idx++;
                     }
                     else if (state == STATE_ANCHOR_MAX) {
                         Tether_AnchorSlot* a = (Tether_AnchorSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_ANCHOR_SLOT);
                         float v = strtof(value, NULL);
-                        if (array_idx == 0) a->anchor_max_x = v;
-                        else if (array_idx == 1) a->anchor_max_y = v;
+                        if (array_idx == 0) a->anchor_max.x = v;
+                        else if (array_idx == 1) a->anchor_max.y = v;
                         array_idx++;
                     }
                     else if (state == STATE_OFFSET) {
                         Tether_AnchorSlot* a = (Tether_AnchorSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_ANCHOR_SLOT);
-                        float v = strtof(value, NULL);
-                        if (array_idx == 0) a->offset_top = v;
-                        else if (array_idx == 1) a->offset_bottom = v;
-                        else if (array_idx == 2) a->offset_left = v;
-                        else if (array_idx == 3) a->offset_right = v;
+                        if (array_idx < 4) {
+                            float* arr = (float*)&a->offset;
+                            arr[array_idx] = strtof(value, NULL);
+                        }
                         array_idx++;
                     }
                     else if (state == STATE_MARGIN) {
                         Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_FLEX_SLOT);
-                        float v = strtof(value, NULL);
-                        if (array_idx == 0) f->margin_top = v;
-                        else if (array_idx == 1) f->margin_bottom = v;
-                        else if (array_idx == 2) f->margin_left = v;
-                        else if (array_idx == 3) f->margin_right = v;
+                        if (array_idx < 4) {
+                            float* arr = (float*)&f->margin;
+                            arr[array_idx] = strtof(value, NULL);
+                        }
                         array_idx++;
                     }
                     else if (state == STATE_PADDING) {
                         Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
-                        float v = strtof(value, NULL);
-                        if (array_idx == 0) n->padding_top = v;
-                        else if (array_idx == 1) n->padding_bottom = v;
-                        else if (array_idx == 2) n->padding_left = v;
-                        else if (array_idx == 3) n->padding_right = v;
+                        if (array_idx < 4) {
+                            float* arr = (float*)&n->padding;
+                            arr[array_idx] = strtof(value, NULL);
+                        }
                         array_idx++;
                     }
                     else if (state == STATE_TEXT_STRING) {

@@ -22,10 +22,13 @@ typedef struct {
   struct {
       char names[32][64];
       char paths[32][256];
-      uint32_t count;
+    uint32_t count;
   } font_registry;
 
   uint32_t next_custom_component_id;
+  
+  Tether_GUID main_root;
+  Tether_GUID overlay_root;
 } Tether_Registry;
 
 static Tether_Registry g_registry = {0};
@@ -56,6 +59,16 @@ void tether_ecs_init(void) {
     g_registry.dense_arrays[i].entity_map = NULL;
     g_registry.dense_arrays[i].element_size = 0;
   }
+  
+  /* Allocate the global roots */
+  g_registry.main_root = tether_ecs_create_entity();
+  g_registry.overlay_root = tether_ecs_create_entity();
+  
+  Tether_Hierarchy* hm = (Tether_Hierarchy*)tether_ecs_add_component(g_registry.main_root, TETHER_COMPONENT_HIERARCHY);
+  if (hm) memset(hm, 0, sizeof(Tether_Hierarchy));
+  
+  Tether_Hierarchy* ho = (Tether_Hierarchy*)tether_ecs_add_component(g_registry.overlay_root, TETHER_COMPONENT_HIERARCHY);
+  if (ho) memset(ho, 0, sizeof(Tether_Hierarchy));
 }
 
 void tether_ecs_term(void) {
@@ -69,6 +82,14 @@ void tether_ecs_term(void) {
   }
 
   memset(&g_registry, 0, sizeof(Tether_Registry));
+}
+
+Tether_GUID tether_ecs_get_main_root(void) {
+  return g_registry.main_root;
+}
+
+Tether_GUID tether_ecs_get_overlay_root(void) {
+  return g_registry.overlay_root;
 }
 
 Tether_GUID tether_ecs_create_entity(void) {
@@ -234,6 +255,17 @@ void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity) {
   }
 
   p->child_count++;
+}
+
+void tether_ecs_bring_to_front(Tether_GUID entity) {
+    if (!tether_ecs_is_valid(entity)) return;
+
+    Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
+    if (!h || h->parent == 0) return; // Not attached
+
+    Tether_GUID parent = h->parent;
+    tether_ecs_detach_entity(entity);
+    tether_ecs_attach_entity(parent, entity);
 }
 
 static void ensure_sparse_capacity(int component_id,
