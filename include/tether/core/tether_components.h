@@ -135,6 +135,8 @@ typedef struct Tether_Color {
 typedef struct Tether_Hierarchy {
     uint64_t parent;
     uint64_t first_child;
+    uint64_t last_child;
+    uint64_t prev_sibling;
     uint64_t next_sibling;
     uint32_t child_count;
 } Tether_Hierarchy;
