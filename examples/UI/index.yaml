@@ -1,119 +1,234 @@
 Panel:
   flow: NONE
-  color: [30, 32, 36, 255] # Dark background
+  color: [30, 32, 36, 255]
   children:
     - Panel: # Main App Window
-        anchor_min: [0.05, 0.05]
-        anchor_max: [0.95, 0.95]
-        color: [40, 44, 52, 255] # Slightly lighter dark gray
+        anchor_min: [0.0, 0.0]
+        anchor_max: [1.0, 1.0]
+        offset: [20, 20, 20, 20]
+        color: [40, 44, 52, 255]
         flow: COLUMN
         padding: [20, 20, 20, 20]
+        gap: [0, 15]
         children:
-          # --- Header Section ---
-          - Panel: 
-              fill_ratio: 0.1
-              margin: [0, 20, 0, 0]
-              color: [50, 56, 68, 255] # Header background
+          # ============================================================
+          # HEADER
+          # ============================================================
+          - Panel:
+              color: [50, 56, 68, 255]
               flow: ROW
+              padding: [15, 15, 15, 15]
+              gap: [15, 0]
               children:
-                - Text: # Short Text (TextWord test)
-                    string: "Tether Dashboard"
-                    font_size: 42.0
+                - Text:
+                    string: "Tether UI"
+                    font_size: 32.0
                     color: [255, 255, 255, 255]
-                    margin: [15, 0, 20, 0]
                 - Panel: # Spacer
-                    fill_ratio: 1.0
-                    color: [0, 0, 0, 0] # Transparent
-                - Panel: # Simulated Button
-                    fill_ratio: 1
-                    margin: [15, 15, 20, 15]
-                    color: [97, 175, 239, 255] # Blue button
-                    flow: ROW
-                    padding: [10, 10, 20, 20]
+                    fill_ratio: 0.1
+                    color: [0, 0, 0, 0]
+                - Panel: # Settings Button
+                    explicit_size: [130, 40]
+                    color: [97, 175, 239, 255]
+                    padding: [8, 8, 8, 8]
                     children:
                       - Text:
+                          fill_ratio: 1.0
                           string: "Settings"
-                          font_size: 24.0
+                          font_size: 20.0
                           color: [30, 32, 36, 255]
-          
-          # --- Main Content Section ---
+
+          # ============================================================
+          # MAIN CONTENT (Sidebar + View)
+          # ============================================================
           - Panel:
-              fill_ratio: 0.9
+              fill_ratio: 0.92
               color: [40, 44, 52, 255]
               flow: ROW
+              gap: [15, 0]
               children:
                 # --- Sidebar ---
                 - Panel:
-                    fill_ratio: 0.25
-                    margin: [0, 0, 0, 20]
+                    fill_ratio: 0.22
                     color: [50, 56, 68, 255]
                     flow: COLUMN
-                    padding: [20, 20, 20, 20]
+                    padding: [15, 15, 15, 15]
+                    gap: [0, 10]
                     children:
                       - Text:
                           string: "Navigation"
-                          font_size: 28.0
+                          font_size: 22.0
                           color: [171, 178, 191, 255]
-                          margin: [0, 20, 0, 0]
-                      - Panel: # Nav Button 1
-                          fill_ratio: 0.0
-                          margin: [0, 10, 0, 0]
-                          color: [62, 68, 81, 255]
-                          padding: [15, 15, 15, 15]
+                      - Panel: # Spacer
+                          fill_ratio: 1.0
+                          color: [0, 0, 0, 0]
+                      - Panel: # Nav: Dashboard
+                          color: [97, 175, 239, 255]
+                          padding: [12, 12, 12, 12]
                           children:
                             - Text:
                                 string: "Dashboard"
-                                font_size: 20.0
-                                color: [255, 255, 255, 255]
-                      - Panel: # Nav Button 2
-                          fill_ratio: 0.0
-                          margin: [0, 10, 0, 0]
+                                font_size: 18.0
+                                color: [30, 32, 36, 255]
+                      - Panel: # Nav: Analytics
                           color: [62, 68, 81, 255]
-                          padding: [15, 15, 15, 15]
+                          padding: [12, 12, 12, 12]
                           children:
                             - Text:
                                 string: "Analytics"
-                                font_size: 20.0
-                                color: [255, 255, 255, 255]
+                                font_size: 18.0
+                                color: [200, 200, 210, 255]
+                      - Panel: # Nav: Reports
+                          color: [62, 68, 81, 255]
+                          padding: [12, 12, 12, 12]
+                          children:
+                            - Text:
+                                string: "Reports"
+                                font_size: 18.0
+                                color: [200, 200, 210, 255]
+                      - Panel: # Nav: Settings
+                          color: [62, 68, 81, 255]
+                          padding: [12, 12, 12, 12]
+                          children:
+                            - Text:
+                                string: "Settings"
+                                font_size: 18.0
+                                color: [200, 200, 210, 255]
 
                 # --- Main View ---
                 - Panel:
-                    fill_ratio: 0.75
+                    fill_ratio: 0.78
                     color: [40, 44, 52, 255]
                     flow: COLUMN
+                    gap: [0, 15]
                     children:
-                      # Card 1: Label Text (Medium length)
+                      # ---- ROW 1: Color Boxes (fill_ratio test) ----
                       - Panel:
-                          fill_ratio: 0.3
-                          margin: [0, 20, 0, 0]
-                          color: [152, 195, 121, 255] # Green accent
-                          padding: [20, 20, 20, 20]
+                          fill_ratio: 0.25
+                          color: [50, 56, 68, 255]
+                          flow: ROW
+                          gap: [12, 0]
+                          padding: [12, 12, 12, 12]
                           children:
-                            - Text:
-                                string: "This card tests the TextLabel component! It contains just enough characters to overflow the standard 32-byte Word limit, but doesn't need a huge Paragraph struct."
-                                font_size: 28.0
-                                color: [40, 44, 52, 255]
+                            - Panel:
+                                fill_ratio: 1.0
+                                color: [224, 108, 117, 255]
+                            - Panel:
+                                fill_ratio: 1.0
+                                color: [152, 195, 121, 255]
+                            - Panel:
+                                fill_ratio: 1.0
+                                color: [97, 175, 239, 255]
+                            - Panel:
+                                fill_ratio: 1.0
+                                color: [198, 120, 221, 255]
 
-                      # Card 2: Paragraph Text (Very long text)
+                      # ---- ROW 2: Text Cards (TextWord + TextLabel) ----
                       - Panel:
-                          fill_ratio: 0.4
-                          margin: [0, 20, 0, 0]
-                          color: [229, 192, 123, 255] # Yellow accent
-                          padding: [20, 20, 20, 20]
+                          fill_ratio: 0.35
+                          color: [40, 44, 52, 255]
+                          flow: ROW
+                          gap: [12, 0]
                           children:
-                            - Text:
-                                string: "This is a demonstration of the TextParagraph component. When building modern UI applications, you frequently need to render large bodies of text like descriptions, documentation, or legal disclaimers. Because Tether uses a pure Data-Oriented Entity Component System, this entire massive block of characters is stored cleanly inside a single 512-byte contiguous struct. When the ThorVG rasterizer loops through the dense arrays, the CPU perfectly caches the memory line, completely avoiding pointer-chasing and Garbage Collection overhead!"
-                                font_size: 18.0
-                                color: [40, 44, 52, 255]
+                            # Card A: Short text (TextWord, <=31 chars)
+                            - Panel:
+                                fill_ratio: 1.0
+                                color: [152, 195, 121, 255]
+                                flow: COLUMN
+                                padding: [15, 15, 15, 15]
+                                gap: [0, 8]
+                                children:
+                                  - Text:
+                                      string: "Active Users"
+                                      font_size: 16.0
+                                      color: [40, 44, 52, 180]
+                                  - Text:
+                                      string: "2,847"
+                                      font_size: 36.0
+                                      color: [40, 44, 52, 255]
+                            # Card B: Medium text (TextLabel, <=127 chars)
+                            - Panel:
+                                fill_ratio: 1.0
+                                color: [229, 192, 123, 255]
+                                flow: COLUMN
+                                padding: [15, 15, 15, 15]
+                                gap: [0, 8]
+                                children:
+                                  - Text:
+                                      string: "Revenue"
+                                      font_size: 16.0
+                                      color: [40, 44, 52, 180]
+                                  - Text:
+                                      string: "$14,290"
+                                      font_size: 36.0
+                                      color: [40, 44, 52, 255]
+                            # Card C: Fixed size box (explicit_size test)
+                            - Panel:
+                                fill_ratio: 1.0
+                                color: [86, 182, 194, 255]
+                                flow: COLUMN
+                                padding: [15, 15, 15, 15]
+                                gap: [0, 8]
+                                children:
+                                  - Text:
+                                      string: "Uptime"
+                                      font_size: 16.0
+                                      color: [40, 44, 52, 180]
+                                  - Text:
+                                      string: "99.97%"
+                                      font_size: 36.0
+                                      color: [40, 44, 52, 255]
 
-                      # Card 3: Dynamic Text (Allocate Text in Heap)
+                      # ---- ROW 3: Paragraph + Dynamic Text ----
                       - Panel:
-                          fill_ratio: 0.3
-                          color: [224, 108, 117, 255] # Red accent
-                          padding: [20, 20, 20, 20]
+                          fill_ratio: 0.40
+                          color: [40, 44, 52, 255]
+                          flow: ROW
+                          gap: [12, 0]
                           children:
-                            - Text:
-                                string: "[Status]: Disconnected. Waiting for server..."
-                                font_size: 28.0
-                                color: [255, 255, 255, 255]
-                                dynamic: true
+                            # TextParagraph test (wrapping long text)
+                            - Panel:
+                                fill_ratio: 0.6
+                                color: [50, 56, 68, 255]
+                                flow: COLUMN
+                                padding: [15, 15, 15, 15]
+                                gap: [0, 10]
+                                children:
+                                  - Text:
+                                      string: "System Log"
+                                      font_size: 18.0
+                                      color: [171, 178, 191, 255]
+                                  - Text:
+                                      fill_ratio: 1.0
+                                      string: "Tether uses a pure Data-Oriented Entity Component System. Every UI element is an entity with components stored in dense, contiguous arrays. The two-pass layout solver measures bottom-up then arranges top-down for efficient, cache-friendly traversal."
+                                      font_size: 14.0
+                                      color: [140, 145, 155, 255]
+                            # TextDynamic (heap-allocated) test
+                            - Panel:
+                                fill_ratio: 0.4
+                                color: [50, 56, 68, 255]
+                                flow: COLUMN
+                                padding: [15, 15, 15, 15]
+                                gap: [0, 10]
+                                children:
+                                  - Text:
+                                      string: "Live Status"
+                                      font_size: 18.0
+                                      color: [171, 178, 191, 255]
+                                  - Panel:
+                                      color: [152, 195, 121, 60]
+                                      padding: [10, 10, 10, 10]
+                                      children:
+                                        - Text:
+                                            string: "Server: Online"
+                                            font_size: 14.0
+                                            color: [152, 195, 121, 255]
+                                  - Panel:
+                                      color: [224, 108, 117, 60]
+                                      padding: [10, 10, 10, 10]
+                                      children:
+                                        - Text:
+                                            string: "[Alert]: High memory usage detected on node-3"
+                                            font_size: 14.0
+                                            color: [224, 108, 117, 255]
+                                            dynamic: true

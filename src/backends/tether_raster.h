@@ -19,8 +19,9 @@ void tether_raster_draw(void);
  */
 const void* tether_raster_get_texture(void);
 
-/* Measures the size of a text string given a font ID, style, and size. */
-void tether_raster_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float* out_w, float* out_h);
+/* Measures the size of a text string given a font ID, style, and size.
+ * If max_width > 0, text is measured with word-wrapping within that width. */
+void tether_raster_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h);
 
 /* The HAL calls this on teardown */
 void tether_raster_term(void);
