@@ -48,16 +48,15 @@ static Tether_GUID create_panel(Tether_GUID parent) {
             ph->child_count++;
             if (ph->first_child == TETHER_INVALID_GUID) {
                 ph->first_child = entity;
+                ph->last_child = entity;
             } else {
-                Tether_GUID sibling = ph->first_child;
-                while (1) {
-                    Tether_Hierarchy* sh = (Tether_Hierarchy*)tether_ecs_get_component(sibling, TETHER_COMPONENT_HIERARCHY);
-                    if (sh->next_sibling == TETHER_INVALID_GUID) {
-                        sh->next_sibling = entity;
-                        break;
-                    }
-                    sibling = sh->next_sibling;
+                Tether_GUID old_last = ph->last_child;
+                Tether_Hierarchy* old_last_h = (Tether_Hierarchy*)tether_ecs_get_component(old_last, TETHER_COMPONENT_HIERARCHY);
+                if (old_last_h) {
+                    old_last_h->next_sibling = entity;
+                    h->prev_sibling = old_last;
                 }
+                ph->last_child = entity;
             }
         }
     }

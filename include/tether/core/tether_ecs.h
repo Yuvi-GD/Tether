@@ -85,7 +85,9 @@ bool tether_ecs_is_valid(Tether_GUID entity);
  * In a full system, you would register component types dynamically,
  * but for now, we'll assume a fixed maximum number of component types.
  */
-#define TETHER_MAX_COMPONENT_TYPES 32
+#ifndef TETHER_MAX_COMPONENT_TYPES
+#define TETHER_MAX_COMPONENT_TYPES 128
+#endif
 
 /* Initialize a component array for a specific component type ID. */
 void tether_ecs_register_component_type(int component_id, size_t element_size);
@@ -104,6 +106,19 @@ void *tether_ecs_get_component(Tether_GUID entity, int component_id);
 
 /* Remove a component from an entity using Swap-and-Pop. */
 void tether_ecs_remove_component(Tether_GUID entity, int component_id);
+
+/* --- Dynamic Opaque Registration --- */
+
+/* Allocate a custom component ID for a third-party struct. Returns -1 if out of IDs. */
+int tether_ecs_allocate_custom_component(size_t element_size);
+
+/* --- Hierarchy API --- */
+
+/* Safely detach an entity from its parent (O(1) DLL patching). */
+void tether_ecs_detach_entity(Tether_GUID entity);
+
+/* Attach an entity to a new parent at the end of its sibling list. */
+void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity);
 
 /* --- Internal API (Exposed for testing/advanced usage) --- */
 
