@@ -63,6 +63,7 @@ typedef struct {
     Tether_FontStyle font_style;
     Tether_AlignX align_x;
     Tether_AlignY align_y;
+    float wrap_width; /* If > 0, text wraps at this exact width */
 } Tether_TextStyle;
 
 typedef struct {
@@ -115,6 +116,10 @@ typedef struct Tether_LayoutNode {
     Tether_AlignX content_align_x;
     Tether_AlignY content_align_y;
     Tether_Edges padding;
+    Tether_Vec2 gap;
+    uint8_t wrap;
+    float measured_width;
+    float measured_height;
 } Tether_LayoutNode;
 
 /*
@@ -131,6 +136,7 @@ typedef struct Tether_AnchorSlot {
 /* Used ONLY if Parent flow == ROW/COLUMN */
 typedef struct Tether_FlexSlot {
     Tether_Edges margin;
+    Tether_Vec2 explicit_size; /* 0,0 means auto/intrinsic */
     float fill_ratio; 
     
     /* Self Overrides (optional) */

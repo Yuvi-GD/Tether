@@ -146,9 +146,13 @@ void tether_raster_draw(void) {
                         tvg_paint_set_opacity(text_node, 255);
                     }
                     
-                    /* Enable Text Wrapping to bounds of the text slot */
-                    tvg_text_layout(text_node, t->width, t->height);
-                    tvg_text_wrap_mode(text_node, TVG_TEXT_WRAP_WORD);
+                    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+                    
+                    /* Only enable word wrapping if the layout engine determined it was strictly necessary */
+                    if (node && node->wrap) {
+                        tvg_text_layout(text_node, t->width, t->height);
+                        tvg_text_wrap_mode(text_node, TVG_TEXT_WRAP_WORD);
+                    }
                     
                     /* Simple alignment logic based on intrinsic bounds */
                     float tx = t->x;
@@ -224,7 +228,7 @@ void tether_raster_term(void) {
     }
 }
 
-void tether_raster_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float* out_w, float* out_h) {
+void tether_raster_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h) {
     if (!text || !out_w || !out_h) return;
 
     Tvg_Paint text_node = tvg_text_new();
@@ -235,8 +239,14 @@ void tether_raster_measure_text(const char* text, uint32_t font_id, int font_sty
     tvg_text_set_size(text_node, font_size);
     tvg_text_set_text(text_node, text);
 
-    float w = 0.0f, h = 0.0f;
-    tvg_paint_get_aabb(text_node, NULL, NULL, &w, &h);
+    /* If a max_width is provided, enable word wrapping before measuring */
+    if (max_width > 0.0f) {
+        tvg_text_layout(text_node, max_width, 0.0f);
+        tvg_text_wrap_mode(text_node, TVG_TEXT_WRAP_WORD);
+    }
+
+    float x = 0.0f, y = 0.0f, w = 0.0f, h = 0.0f;
+    tvg_paint_get_aabb(text_node, &x, &y, &w, &h);
     
     *out_w = w;
     *out_h = h;

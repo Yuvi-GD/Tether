@@ -18,6 +18,8 @@ static Tether_GUID create_panel(Tether_GUID parent) {
     node->content_align_x = TETHER_ALIGN_FILL;
     node->content_align_y = TETHER_ALIGN_Y_FILL;
     node->padding.top = 0; node->padding.bottom = 0; node->padding.left = 0; node->padding.right = 0;
+    node->gap.x = 0; node->gap.y = 0;
+    node->wrap = 0;
 
     Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_add_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
     anchor->anchor_min.x = 0; anchor->anchor_min.y = 0;
@@ -26,7 +28,8 @@ static Tether_GUID create_panel(Tether_GUID parent) {
 
     Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_add_component(entity, TETHER_COMPONENT_FLEX_SLOT);
     flex->margin.top = 0; flex->margin.bottom = 0; flex->margin.left = 0; flex->margin.right = 0;
-    flex->fill_ratio = 1.0f;
+    flex->explicit_size.x = 0; flex->explicit_size.y = 0;
+    flex->fill_ratio = 0.0f;
     flex->override_align_x = 0; flex->override_align_y = 0;
 
     Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_add_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
@@ -79,6 +82,7 @@ static Tether_GUID create_text_node(Tether_GUID parent) {
     t->font_style = TETHER_FONT_NORMAL;
     t->align_x = TETHER_ALIGN_LEFT;
     t->align_y = TETHER_ALIGN_TOP;
+    t->wrap_width = 0.0f;
     
     /* Text defaults to shrink-wrap layout */
     Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
@@ -114,7 +118,11 @@ Tether_GUID tether_yaml_load(const char* filepath) {
         STATE_PADDING,
         STATE_TEXT_STRING,
         STATE_FONT_SIZE,
-        STATE_DYNAMIC
+        STATE_DYNAMIC,
+        STATE_GAP,
+        STATE_WRAP,
+        STATE_WRAP_WIDTH,
+        STATE_EXPLICIT_SIZE
     } state = STATE_NONE;
     int array_idx = 0;
     int mapping_depth = 0;
@@ -169,7 +177,11 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                 else if (strcmp(value, "padding") == 0) { state = STATE_PADDING; array_idx = 0; }
                 else if (strcmp(value, "string") == 0) { state = STATE_TEXT_STRING; }
                 else if (strcmp(value, "font_size") == 0) { state = STATE_FONT_SIZE; }
+                else if (strcmp(value, "wrap_width") == 0) { state = STATE_WRAP_WIDTH; }
                 else if (strcmp(value, "dynamic") == 0) { state = STATE_DYNAMIC; }
+                else if (strcmp(value, "gap") == 0) { state = STATE_GAP; array_idx = 0; }
+                else if (strcmp(value, "wrap") == 0) { state = STATE_WRAP; }
+                else if (strcmp(value, "explicit_size") == 0) { state = STATE_EXPLICIT_SIZE; array_idx = 0; }
                 else if (stack_idx >= 0) {
                     /* Read Values */
                     Tether_GUID ent = entity_stack[stack_idx];
@@ -234,6 +246,26 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                         }
                         array_idx++;
                     }
+                    else if (state == STATE_GAP) {
+                        Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
+                        float v = strtof(value, NULL);
+                        if (array_idx == 0) n->gap.x = v;
+                        else if (array_idx == 1) n->gap.y = v;
+                        array_idx++;
+                    }
+                    else if (state == STATE_WRAP) {
+                        Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
+                        if (strcmp(value, "true") == 0 || strcmp(value, "1") == 0) n->wrap = 1;
+                        else n->wrap = 0;
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_EXPLICIT_SIZE) {
+                        Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_FLEX_SLOT);
+                        float v = strtof(value, NULL);
+                        if (array_idx == 0) f->explicit_size.x = v;
+                        else if (array_idx == 1) f->explicit_size.y = v;
+                        array_idx++;
+                    }
                     else if (state == STATE_TEXT_STRING) {
                         size_t len = strlen(value);
                         Tether_TextDynamic* dyn = (Tether_TextDynamic*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_DYNAMIC);
@@ -262,6 +294,11 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                     else if (state == STATE_FONT_SIZE) {
                         Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
                         if (t) t->font_size = strtof(value, NULL);
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_WRAP_WIDTH) {
+                        Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
+                        if (t) t->wrap_width = strtof(value, NULL);
                         state = STATE_NONE;
                     }
                     else if (state == STATE_DYNAMIC) {
