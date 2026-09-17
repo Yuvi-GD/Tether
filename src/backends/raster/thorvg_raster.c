@@ -120,6 +120,18 @@ static Tether_Color tether_style_resolve_color(Tether_GUID entity, const Tether_
     return s->bg_color;
 }
 
+static bool is_entity_visible(Tether_GUID entity) {
+    while (tether_ecs_is_valid(entity)) {
+        Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+        if (node && (node->visibility == TETHER_HIDDEN || node->visibility == TETHER_COLLAPSED)) {
+            return false;
+        }
+        Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
+        entity = h ? h->parent : TETHER_INVALID_GUID;
+    }
+    return true;
+}
+
 void tether_raster_draw(void) {
     /* Clear previous frame's geometry and free memory */
     tvg_canvas_remove(tvg_canvas, NULL);
@@ -137,8 +149,7 @@ void tether_raster_draw(void) {
             Tether_GUID entity = transforms->entity_map[i];
             if (!tether_ecs_is_valid(entity)) continue;
 
-            Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
-            if (node && (node->visibility == TETHER_HIDDEN || node->visibility == TETHER_COLLAPSED)) {
+            if (!is_entity_visible(entity)) {
                 continue;
             }
 
