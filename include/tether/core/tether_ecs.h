@@ -64,6 +64,9 @@ typedef struct Tether_DenseArray {
 /* Initialize the global ECS registry. */
 void tether_ecs_init(void);
 
+/* Initialize the global root entities. MUST be called after components are registered. */
+void tether_ecs_init_roots(void);
+
 /* Destroy the global ECS registry and free all memory. */
 void tether_ecs_term(void);
 
@@ -138,6 +141,9 @@ Tether_DenseArray *tether_ecs_get_dense_array(int component_id);
 
 /* Retrieves the character pointer from whichever Text Component the entity has attached. Returns NULL if none. */
 const char* tether_ecs_get_text_string(Tether_GUID entity);
+
+/* Stores text in the smallest component that can hold it. */
+bool tether_ecs_set_text_string(Tether_GUID entity, const char* string);
 
 /* --- Font Registry API --- */
 

@@ -26,13 +26,16 @@ void tether_run(Tether_App_Config* config) {
     tether_ecs_register_component_type(TETHER_COMPONENT_IMAGE, sizeof(Tether_Image));
     tether_ecs_register_component_type(TETHER_COMPONENT_INTERACTABLE, sizeof(Tether_Interactable));
     
+    tether_ecs_init_roots();
+    
     tether_registry_init();
     
     tether_register_widget("Panel", tether_widget_create_panel);
     tether_register_widget("Text", tether_widget_create_text);
+    tether_register_widget("Button", tether_widget_create_button);
     
     if (config->initial_yaml) {
-        tether_yaml_load(config->initial_yaml);
+        tether_yaml_load(config->initial_yaml, TETHER_INVALID_GUID);
     }
     
     if (config->on_init) {

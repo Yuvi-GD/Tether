@@ -17,17 +17,25 @@ void tether_layout_process_tree(Tether_GUID root, float screen_width, float scre
 }
 
 void tether_layout_process_all(float screen_width, float screen_height) {
-    Tether_DenseArray* hierarchies = tether_ecs_get_dense_array(TETHER_COMPONENT_HIERARCHY);
-    if (!hierarchies) return;
+    /* 1. Process all children of the main root */
+    Tether_Hierarchy* h_main = (Tether_Hierarchy*)tether_ecs_get_component(tether_ecs_get_main_root(), TETHER_COMPONENT_HIERARCHY);
+    if (h_main) {
+        Tether_GUID child = h_main->first_child;
+        while (tether_ecs_is_valid(child)) {
+            tether_layout_process_tree(child, screen_width, screen_height);
+            Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
+            child = ch ? ch->next_sibling : TETHER_INVALID_GUID;
+        }
+    }
     
-    for (uint32_t i = 0; i < hierarchies->count; i++) {
-        Tether_GUID entity = hierarchies->entity_map[i];
-        if (!tether_ecs_is_valid(entity)) continue;
-        
-        Tether_Hierarchy* h = (Tether_Hierarchy*)((uint8_t*)hierarchies->data + (i * hierarchies->element_size));
-        /* If entity is a root node (no parent), process it */
-        if (!tether_ecs_is_valid(h->parent)) {
-            tether_layout_process_tree(entity, screen_width, screen_height);
+    /* 2. Process all children of the overlay root */
+    Tether_Hierarchy* h_overlay = (Tether_Hierarchy*)tether_ecs_get_component(tether_ecs_get_overlay_root(), TETHER_COMPONENT_HIERARCHY);
+    if (h_overlay) {
+        Tether_GUID child = h_overlay->first_child;
+        while (tether_ecs_is_valid(child)) {
+            tether_layout_process_tree(child, screen_width, screen_height);
+            Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
+            child = ch ? ch->next_sibling : TETHER_INVALID_GUID;
         }
     }
 }
@@ -195,9 +203,9 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
             }
         }
     }
-    
-    /* Root nodes always take their provided bounds (screen bounds) */
-    if (!h || !tether_ecs_is_valid(h->parent)) {
+
+ /* Root nodes always take their provided bounds (screen bounds) */
+    if (h && (h->parent == tether_ecs_get_main_root() || h->parent == tether_ecs_get_overlay_root())) {
         is_auto_height = false;
     }
 

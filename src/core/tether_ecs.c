@@ -65,7 +65,9 @@ void tether_ecs_init(void) {
     g_registry.dense_arrays[i].entity_map = NULL;
     g_registry.dense_arrays[i].element_size = 0;
   }
-  
+}
+
+void tether_ecs_init_roots(void) {
   /* Allocate the global roots */
   g_registry.main_root = tether_ecs_create_entity();
   g_registry.overlay_root = tether_ecs_create_entity();
@@ -429,6 +431,49 @@ const char* tether_ecs_get_text_string(Tether_GUID entity) {
     
     return NULL;
 }
+
+  bool tether_ecs_set_text_string(Tether_GUID entity, const char* string) {
+    if (!tether_ecs_is_valid(entity) || !string) return false;
+
+    size_t length = strlen(string);
+    Tether_TextDynamic* dynamic = (Tether_TextDynamic*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+    if (dynamic && dynamic->data) {
+      free(dynamic->data);
+      dynamic->data = NULL;
+    }
+
+    tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_WORD);
+    tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_LABEL);
+    tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
+    tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+
+    if (length <= 31) {
+      Tether_TextWord* text = (Tether_TextWord*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_WORD);
+      if (!text) return false;
+      memcpy(text->data, string, length + 1);
+    } else if (length <= 127) {
+      Tether_TextLabel* text = (Tether_TextLabel*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_LABEL);
+      if (!text) return false;
+      memcpy(text->data, string, length + 1);
+    } else if (length <= 511) {
+      Tether_TextParagraph* text = (Tether_TextParagraph*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
+      if (!text) return false;
+      memcpy(text->data, string, length + 1);
+    } else {
+      Tether_TextDynamic* text = (Tether_TextDynamic*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+      if (!text) return false;
+      text->capacity = (uint32_t)(length + 1) * 2;
+      text->data = (char*)malloc(text->capacity);
+      if (!text->data) {
+        tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+        return false;
+      }
+      memcpy(text->data, string, length + 1);
+      text->length = (uint32_t)length;
+    }
+
+    return true;
+  }
 
 Tether_GUID tether_ecs_find_by_id(const char* id) {
     if (!id || id[0] == '\0') return TETHER_INVALID_GUID;
