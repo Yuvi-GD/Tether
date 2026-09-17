@@ -2,7 +2,16 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_events.h"
 #include "tether/core/tether_components.h"
+#include "sandbox_widget.h"
+#include "sandbox_events.h"
 #include <stdio.h>
+#include <string.h>
+
+extern Tether_GUID tether_yaml_load(const char* filepath, Tether_GUID parent);
+
+/* ========================================================
+ * Playground Events
+ * ======================================================== */
 
 void on_settings_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)
 {
@@ -59,6 +68,9 @@ void on_align_clicked(Tether_GUID entity, Tether_EventType type, void* user_data
 
 void sandbox_init(void)
 {
+    /* Register our custom third-party C Widget! */
+    tether_register_widget("MyCModal", create_my_c_modal);
+
     Tether_GUID settings_btn = tether_ecs_find_by_id("SettingsBtn");
     if (settings_btn != TETHER_INVALID_GUID)
     {
@@ -85,6 +97,9 @@ void sandbox_init(void)
     {
         tether_bind_event(btn_align, TETHER_EVENT_CLICK, on_align_clicked, NULL);
     }
+    
+    /* Bind all modal events dynamically via the separated file */
+    sandbox_bind_events();
 }
 
 int main()

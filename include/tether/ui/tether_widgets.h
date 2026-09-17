@@ -10,6 +10,7 @@ extern "C" {
 /* Native Widget Factories */
 Tether_GUID tether_widget_create_panel(Tether_GUID parent);
 Tether_GUID tether_widget_create_text(Tether_GUID parent);
+Tether_GUID tether_widget_create_button(Tether_GUID parent);
 
 #ifdef __cplusplus
 }

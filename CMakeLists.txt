@@ -167,6 +167,8 @@ add_subdirectory(${THIRD_PARTY_DIR}/libyaml)
 # ============================================================
 add_executable(tether_sandbox
     examples/sandbox/sandbox_main.c
+    examples/sandbox/sandbox_events.c
+    examples/sandbox/sandbox_widget.c
     src/tether.c
     src/core/tether_ecs.c
     src/core/tether_registry.c
@@ -190,6 +192,7 @@ add_executable(tether_ecs_test
 # ============================================================
 target_include_directories(tether_sandbox PRIVATE
     "${CMAKE_SOURCE_DIR}/include"
+    "${CMAKE_SOURCE_DIR}/examples/sandbox/include"
     "${CMAKE_SOURCE_DIR}/src"
     "${SOKOL_DIR}"
     "${THORVG_DIR}/inc"

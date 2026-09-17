@@ -37,7 +37,7 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
 
     Tether_Style* s = (Tether_Style*)tether_ecs_add_component(entity, TETHER_COMPONENT_STYLE);
     if (s) {
-        s->bg_color.r = 255; s->bg_color.g = 255; s->bg_color.b = 255; s->bg_color.a = 255;
+        s->bg_color = (Tether_Color){0, 0, 0, 0};
         s->border_color.r = 0; s->border_color.g = 0; s->border_color.b = 0; s->border_color.a = 0;
         s->border_width = 0.0f;
         s->border_radius.top = 0.0f; s->border_radius.right = 0.0f;
@@ -76,7 +76,7 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
 
 Tether_GUID tether_widget_create_text(Tether_GUID parent) {
     Tether_GUID entity = tether_widget_create_panel(parent);
-    
+
     Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_STYLE);
     t->font_size = 24.0f;
     t->font_id = 0;
@@ -85,6 +85,7 @@ Tether_GUID tether_widget_create_text(Tether_GUID parent) {
     t->align_y = TETHER_ALIGN_START;
     t->wrap_width = 0.0f;
     
+    /* Text widgets need a place to store their string data */
     /* Text defaults to shrink-wrap layout */
     Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
     if (f) f->fill_ratio = 0.0f;
@@ -92,6 +93,45 @@ Tether_GUID tether_widget_create_text(Tether_GUID parent) {
     /* Text defaults to ignoring hits so it doesn't block buttons */
     Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
     if (node) node->hit_behavior = TETHER_HIT_IGNORE_SELF;
+    
+    /* Default text color to black (can be overridden via TETHER_COMPONENT_STYLE) */
+    Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
+    if (s) {
+        s->bg_color = (Tether_Color){0, 0, 0, 255};
+    }
+    
+    return entity;
+}
+
+Tether_GUID tether_widget_create_button(Tether_GUID parent) {
+    Tether_GUID entity = tether_widget_create_panel(parent);
+
+    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+    if (node) {
+        node->content_align_x = TETHER_ALIGN_CENTER;
+        node->content_align_y = TETHER_ALIGN_CENTER;
+        node->padding.top = 10; node->padding.bottom = 10;
+        node->padding.left = 20; node->padding.right = 20;
+    }
+    
+    Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
+    if (s) {
+        s->hover_color_mode = TETHER_COLOR_MODE_AUTO;
+        s->press_color_mode = TETHER_COLOR_MODE_AUTO;
+        s->bg_color = (Tether_Color){97, 175, 239, 255}; /* Blueish default */
+    }
+    
+    /* Dynamically add a child Text widget to complete the Button natively */
+    Tether_GUID text_entity = tether_widget_create_text(entity);
+    Tether_TextStyle* ts = (Tether_TextStyle*)tether_ecs_get_component(text_entity, TETHER_COMPONENT_TEXT_STYLE);
+    if (ts) {
+        ts->font_size = 18.0f;
+    }
+    Tether_Style* ts_style = (Tether_Style*)tether_ecs_get_component(text_entity, TETHER_COMPONENT_STYLE);
+    if (ts_style) {
+        ts_style->bg_color = (Tether_Color){255, 255, 255, 255}; /* White text */
+    }
+    tether_ecs_set_text_string(text_entity, "Button");
     
     return entity;
 }
