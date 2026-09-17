@@ -154,6 +154,36 @@ const char* tether_ast_env_get(Tether_ASTEnvironment* env, const char* key) {
     return NULL;
 }
 
+void tether_ast_env_set_slot(Tether_ASTEnvironment* env, const char* key, Tether_ASTNode* node) {
+    if (!env || !key) return;
+    
+    for (uint32_t i = 0; i < env->slot_count; i++) {
+        if (strcmp(env->slot_keys[i], key) == 0) {
+            env->slot_values[i] = node; /* Weak ref to AST node */
+            return;
+        }
+    }
+    
+    if (env->slot_count >= env->slot_capacity) {
+        env->slot_capacity = env->slot_capacity == 0 ? 4 : env->slot_capacity * 2;
+        env->slot_keys = (char**)realloc(env->slot_keys, env->slot_capacity * sizeof(char*));
+        env->slot_values = (Tether_ASTNode**)realloc(env->slot_values, env->slot_capacity * sizeof(Tether_ASTNode*));
+    }
+    env->slot_keys[env->slot_count] = strdup(key);
+    env->slot_values[env->slot_count] = node;
+    env->slot_count++;
+}
+
+Tether_ASTNode* tether_ast_env_get_slot(Tether_ASTEnvironment* env, const char* key) {
+    if (!env || !key) return NULL;
+    for (uint32_t i = 0; i < env->slot_count; i++) {
+        if (strcmp(env->slot_keys[i], key) == 0) {
+            return env->slot_values[i];
+        }
+    }
+    return NULL;
+}
+
 void tether_ast_env_free(Tether_ASTEnvironment* env) {
     if (!env) return;
     for (uint32_t i = 0; i < env->count; i++) {
@@ -162,5 +192,13 @@ void tether_ast_env_free(Tether_ASTEnvironment* env) {
     }
     if (env->keys) free(env->keys);
     if (env->values) free(env->values);
+    
+    for (uint32_t i = 0; i < env->slot_count; i++) {
+        free(env->slot_keys[i]);
+        /* We do not free the slot_values nodes here, they belong to the AST tree */
+    }
+    if (env->slot_keys) free(env->slot_keys);
+    if (env->slot_values) free(env->slot_values);
+    
     free(env);
 }

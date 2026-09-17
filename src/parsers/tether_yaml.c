@@ -7,23 +7,80 @@
 #include <string.h>
 
 static const char* resolve_scalar(Tether_ASTNode* node, Tether_ASTEnvironment* env) {
-    if (!node || node->type != TETHER_AST_SCALAR || !node->scalar_value) return NULL;
-    if (node->scalar_value[0] == '$' && env) {
-        const char* val = tether_ast_env_get(env, node->scalar_value + 1);
+    if (!node) return NULL;
+    if (node->type == TETHER_AST_SCALAR && node->scalar_value[0] == '$') {
+        const char* var_name = node->scalar_value + 1;
+        const char* val = tether_ast_env_get(env, var_name);
         if (val) return val;
     }
     return node->scalar_value;
+}
+
+static Tether_ASTNode* resolve_node(Tether_ASTNode* node, Tether_ASTEnvironment* env) {
+    if (node && node->type == TETHER_AST_SCALAR && node->scalar_value[0] == '$') {
+        const char* var_name = node->scalar_value + 1;
+        Tether_ASTNode* slot = tether_ast_env_get_slot(env, var_name);
+        if (slot) return slot;
+    }
+    return node;
+}
+
+typedef struct {
+    char** names;
+    Tether_ASTNode** trees;
+    uint32_t count;
+    uint32_t capacity;
+} WidgetASTMap;
+
+static WidgetASTMap g_widget_asts = {0};
+
+static void register_widget_ast(Tether_ASTNode* props) {
+    if (!props || props->type != TETHER_AST_MAPPING) return;
+    const char* name = NULL;
+    Tether_ASTNode* tree = NULL;
+    
+    for (uint32_t i = 0; i < props->child_count; i++) {
+        Tether_ASTNode* key_node = props->keys[i];
+        if (key_node && key_node->type == TETHER_AST_SCALAR) {
+            if (strcmp(key_node->scalar_value, "name") == 0 && props->children[i]->type == TETHER_AST_SCALAR) {
+                name = props->children[i]->scalar_value;
+            } else if (strcmp(key_node->scalar_value, "tree") == 0) {
+                tree = props->children[i];
+            }
+        }
+    }
+    
+    if (name && tree) {
+        if (g_widget_asts.count >= g_widget_asts.capacity) {
+            g_widget_asts.capacity = g_widget_asts.capacity == 0 ? 16 : g_widget_asts.capacity * 2;
+            g_widget_asts.names = (char**)realloc(g_widget_asts.names, g_widget_asts.capacity * sizeof(char*));
+            g_widget_asts.trees = (Tether_ASTNode**)realloc(g_widget_asts.trees, g_widget_asts.capacity * sizeof(Tether_ASTNode*));
+        }
+        g_widget_asts.names[g_widget_asts.count] = strdup(name);
+        g_widget_asts.trees[g_widget_asts.count] = tree;
+        g_widget_asts.count++;
+    }
+}
+
+static Tether_ASTNode* get_widget_ast(const char* name) {
+    for (uint32_t i = 0; i < g_widget_asts.count; i++) {
+        if (strcmp(g_widget_asts.names[i], name) == 0) {
+            return g_widget_asts.trees[i];
+        }
+    }
+    return NULL;
 }
 
 static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Tether_ASTEnvironment* env);
 
 static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env) {
     if (!props || props->type != TETHER_AST_MAPPING) return;
-    
+
     for (uint32_t i = 0; i < props->child_count; i++) {
         Tether_ASTNode* key_node = props->keys[i];
-        Tether_ASTNode* val_node = props->children[i];
-        if (!key_node || key_node->type != TETHER_AST_SCALAR) continue;
+        Tether_ASTNode* val_node = resolve_node(props->children[i], env);
+        if (!key_node || key_node->type != TETHER_AST_SCALAR || !val_node) continue;
+
         const char* key = key_node->scalar_value;
         
         if (strcmp(key, "children") == 0) {
@@ -244,7 +301,7 @@ static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Te
         Tether_GUID first_child = TETHER_INVALID_GUID;
         for (uint32_t i = 0; i < node->child_count; i++) {
             Tether_GUID child = instantiate_node(node->children[i], parent, env);
-            if (i == 0) first_child = child;
+            if (first_child == TETHER_INVALID_GUID) first_child = child;
         }
         return first_child;
     } 
@@ -255,11 +312,69 @@ static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Te
             if (key_node && key_node->type == TETHER_AST_SCALAR) {
                 const char* key_str = key_node->scalar_value;
                 
+                if (strcmp(key_str, "Widget") == 0) {
+                    continue; /* Handled in pre-pass */
+                }
+                
+                if (strcmp(key_str, "Slot") == 0) {
+                    Tether_ASTNode* slot_name_node = node->children[i];
+                    if (slot_name_node && slot_name_node->type == TETHER_AST_SCALAR) {
+                        Tether_ASTNode* injected = tether_ast_env_get_slot(env, slot_name_node->scalar_value);
+                        if (injected) {
+                            return instantiate_node(injected, parent, env);
+                        }
+                    }
+                    continue;
+                }
+                
+                /* Check if it's a custom widget */
+                Tether_ASTNode* widget_tree = get_widget_ast(key_str);
+                if (widget_tree) {
+                    Tether_ASTNode* props = node->children[i];
+                    Tether_ASTEnvironment* new_env = tether_ast_env_create();
+                    
+                    if (props && props->type == TETHER_AST_MAPPING) {
+                        for (uint32_t p = 0; p < props->child_count; p++) {
+                            Tether_ASTNode* p_key = props->keys[p];
+                            Tether_ASTNode* p_val = props->children[p];
+                            if (p_key && p_key->type == TETHER_AST_SCALAR) {
+                                if (p_val && p_val->type != TETHER_AST_SCALAR) {
+                                    tether_ast_env_set_slot(new_env, p_key->scalar_value, p_val);
+                                } else if (p_val) {
+                                    tether_ast_env_set(new_env, p_key->scalar_value, resolve_scalar(p_val, env));
+                                }
+                            }
+                        }
+                    } else {
+                        /* Flat syntax fallback */
+                        for (uint32_t p = 0; p < node->child_count; p++) {
+                            if (p == i) continue; /* Skip the Widget name key itself */
+                            Tether_ASTNode* p_key = node->keys[p];
+                            Tether_ASTNode* p_val = node->children[p];
+                            if (p_key && p_key->type == TETHER_AST_SCALAR) {
+                                if (p_val && p_val->type != TETHER_AST_SCALAR) {
+                                    tether_ast_env_set_slot(new_env, p_key->scalar_value, p_val);
+                                } else if (p_val) {
+                                    tether_ast_env_set(new_env, p_key->scalar_value, resolve_scalar(p_val, env));
+                                }
+                            }
+                        }
+                    }
+                    
+                    Tether_GUID new_ent = instantiate_node(widget_tree, parent, new_env);
+                    tether_ast_env_free(new_env);
+                    return new_ent;
+                }
+                
+                /* Check native widgets */
                 Tether_GUID new_ent = tether_create_widget(key_str, parent);
                 if (new_ent != TETHER_INVALID_GUID) {
                     Tether_ASTNode* props = node->children[i];
                     if (props && props->type == TETHER_AST_MAPPING) {
                         apply_properties(new_ent, props, env);
+                    } else {
+                        /* Flat syntax fallback */
+                        apply_properties(new_ent, node, env);
                     }
                     return new_ent;
                 }
@@ -273,6 +388,21 @@ static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Te
 Tether_GUID tether_yaml_load(const char* filepath) {
     Tether_ASTNode* ast = tether_ast_parse_file(filepath);
     if (!ast) return TETHER_INVALID_GUID;
+
+    /* Pre-pass: Find and cache widgets */
+    if (ast->type == TETHER_AST_SEQUENCE) {
+        for (uint32_t i = 0; i < ast->child_count; i++) {
+            Tether_ASTNode* child = ast->children[i];
+            if (child->type == TETHER_AST_MAPPING) {
+                for (uint32_t j = 0; j < child->child_count; j++) {
+                    Tether_ASTNode* key_node = child->keys[j];
+                    if (key_node && key_node->type == TETHER_AST_SCALAR && strcmp(key_node->scalar_value, "Widget") == 0) {
+                        register_widget_ast(child->children[j]);
+                    }
+                }
+            }
+        }
+    }
 
     /* Use a blank environment for the root document */
     Tether_ASTEnvironment* env = tether_ast_env_create();

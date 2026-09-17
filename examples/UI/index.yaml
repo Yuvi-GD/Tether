@@ -1,4 +1,23 @@
-Panel:
+- Widget:
+    name: "StatCard"
+    tree:
+      - Panel:
+          interactable: true
+          fill_ratio: 1.0
+          color: $card_color
+          hover_color: AUTO
+          press_color: AUTO
+          flow: COLUMN
+          padding: [15, 15, 15, 15]
+          gap: [0, 8]
+          children:
+            - Text:
+                string: $card_title
+                font_size: 16.0
+                color: [40, 44, 52, 180]
+            - Slot: "children"
+
+- Panel:
   flow: NONE
   color: [30, 32, 36, 255]
   children:
@@ -159,58 +178,28 @@ Panel:
                           gap: [12, 0]
                           children:
                             # Card A: Active Users
-                            - Panel:
-                                interactable: true
-                                fill_ratio: 1.0
-                                color: [152, 195, 121, 255]
-                                hover_color: AUTO
-                                press_color: AUTO
-                                flow: COLUMN
-                                padding: [15, 15, 15, 15]
-                                gap: [0, 8]
+                            - StatCard:
+                                card_color: [152, 195, 121, 255]
+                                card_title: "Active Users"
                                 children:
-                                  - Text:
-                                      string: "Active Users"
-                                      font_size: 16.0
-                                      color: [40, 44, 52, 180]
                                   - Text:
                                       string: "2,847"
                                       font_size: 36.0
                                       color: [40, 44, 52, 255]
                             # Card B: Revenue
-                            - Panel:
-                                interactable: true
-                                fill_ratio: 1.0
-                                color: [229, 192, 123, 255]
-                                hover_color: AUTO
-                                press_color: AUTO
-                                flow: COLUMN
-                                padding: [15, 15, 15, 15]
-                                gap: [0, 8]
+                            - StatCard:
+                                card_color: [229, 192, 123, 255]
+                                card_title: "Revenue"
                                 children:
-                                  - Text:
-                                      string: "Revenue"
-                                      font_size: 16.0
-                                      color: [40, 44, 52, 180]
                                   - Text:
                                       string: "$14,290"
                                       font_size: 36.0
                                       color: [40, 44, 52, 255]
                             # Card C: Uptime
-                            - Panel:
-                                interactable: true
-                                fill_ratio: 1.0
-                                color: [86, 182, 194, 255]
-                                hover_color: AUTO
-                                press_color: AUTO
-                                flow: COLUMN
-                                padding: [15, 15, 15, 15]
-                                gap: [0, 8]
+                            - StatCard:
+                                card_color: [86, 182, 194, 255]
+                                card_title: "Uptime"
                                 children:
-                                  - Text:
-                                      string: "Uptime"
-                                      font_size: 16.0
-                                      color: [40, 44, 52, 180]
                                   - Text:
                                       string: "99.97%"
                                       font_size: 36.0
