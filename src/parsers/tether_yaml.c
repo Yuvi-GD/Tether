@@ -16,7 +16,7 @@ static Tether_GUID create_panel(Tether_GUID parent) {
     Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_add_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
     node->flow = TETHER_FLOW_NONE;
     node->content_align_x = TETHER_ALIGN_FILL;
-    node->content_align_y = TETHER_ALIGN_Y_FILL;
+    node->content_align_y = TETHER_ALIGN_FILL;
     node->padding.top = 0; node->padding.bottom = 0; node->padding.left = 0; node->padding.right = 0;
     node->gap.x = 0; node->gap.y = 0;
     node->wrap = 0;
@@ -83,8 +83,8 @@ static Tether_GUID create_text_node(Tether_GUID parent) {
     t->font_size = 24.0f;
     t->font_id = 0;
     t->font_style = TETHER_FONT_NORMAL;
-    t->align_x = TETHER_ALIGN_LEFT;
-    t->align_y = TETHER_ALIGN_TOP;
+    t->align_x = TETHER_ALIGN_START;
+    t->align_y = TETHER_ALIGN_START;
     t->wrap_width = 0.0f;
     
     /* Text defaults to shrink-wrap layout */
@@ -134,7 +134,10 @@ Tether_GUID tether_yaml_load(const char* filepath) {
         STATE_HIT_BEHAVIOR,
         STATE_INTERACTABLE,
         STATE_HOVER_COLOR,
-        STATE_PRESS_COLOR
+        STATE_PRESS_COLOR,
+        STATE_VISIBILITY,
+        STATE_ALIGN_X,
+        STATE_ALIGN_Y
     } state = STATE_NONE;
     int array_idx = 0;
     int mapping_depth = 0;
@@ -196,6 +199,9 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                 else if (strcmp(value, "explicit_size") == 0) { state = STATE_EXPLICIT_SIZE; array_idx = 0; }
                 else if (strcmp(value, "id") == 0) { state = STATE_ID; }
                 else if (strcmp(value, "hit_behavior") == 0) { state = STATE_HIT_BEHAVIOR; }
+                else if (strcmp(value, "visibility") == 0) { state = STATE_VISIBILITY; }
+                else if (strcmp(value, "align_x") == 0) { state = STATE_ALIGN_X; }
+                else if (strcmp(value, "align_y") == 0) { state = STATE_ALIGN_Y; }
                 else if (strcmp(value, "interactable") == 0) { state = STATE_INTERACTABLE; }
                 else if (strcmp(value, "hover_color") == 0) { state = STATE_HOVER_COLOR; array_idx = 0; }
                 else if (strcmp(value, "press_color") == 0) { state = STATE_PRESS_COLOR; array_idx = 0; }
@@ -329,6 +335,35 @@ Tether_GUID tether_yaml_load(const char* filepath) {
                             if (strcmp(value, "BLOCK") == 0) n->hit_behavior = TETHER_HIT_BLOCK;
                             else if (strcmp(value, "IGNORE_SELF") == 0) n->hit_behavior = TETHER_HIT_IGNORE_SELF;
                             else if (strcmp(value, "IGNORE_ALL") == 0) n->hit_behavior = TETHER_HIT_IGNORE_ALL;
+                        }
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_VISIBILITY) {
+                        Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
+                        if (n) {
+                            if (strcmp(value, "hidden") == 0) n->visibility = TETHER_HIDDEN;
+                            else if (strcmp(value, "collapsed") == 0) n->visibility = TETHER_COLLAPSED;
+                            else n->visibility = TETHER_VISIBLE;
+                        }
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_ALIGN_X) {
+                        Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
+                        if (t) {
+                            if (strcmp(value, "fill") == 0) t->align_x = TETHER_ALIGN_FILL;
+                            else if (strcmp(value, "center") == 0) t->align_x = TETHER_ALIGN_CENTER;
+                            else if (strcmp(value, "end") == 0 || strcmp(value, "right") == 0) t->align_x = TETHER_ALIGN_END;
+                            else t->align_x = TETHER_ALIGN_START;
+                        }
+                        state = STATE_NONE;
+                    }
+                    else if (state == STATE_ALIGN_Y) {
+                        Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
+                        if (t) {
+                            if (strcmp(value, "fill") == 0) t->align_y = TETHER_ALIGN_FILL;
+                            else if (strcmp(value, "center") == 0) t->align_y = TETHER_ALIGN_CENTER;
+                            else if (strcmp(value, "end") == 0 || strcmp(value, "bottom") == 0) t->align_y = TETHER_ALIGN_END;
+                            else t->align_y = TETHER_ALIGN_START;
                         }
                         state = STATE_NONE;
                     }
