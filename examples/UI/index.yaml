@@ -275,3 +275,57 @@ Panel:
                                             font_size: 14.0
                                             color: [224, 108, 117, 255]
                                             dynamic: true
+
+                      # ---- ROW 4: Playground ----
+                      - Panel:
+                          fill_ratio: 0.15
+                          color: [50, 56, 68, 255]
+                          flow: ROW
+                          gap: [12, 0]
+                          padding: [15, 15, 15, 15]
+                          children:
+                            # Hide button
+                            - Panel:
+                                id: "btn_hide"
+                                interactable: true
+                                fill_ratio: 1.0
+                                color: [229, 192, 123, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
+                                padding: [10, 10, 10, 10]
+                                children:
+                                  - Text:
+                                      string: "Click to Hide"
+                                      font_size: 18.0
+                                      color: [40, 44, 52, 255]
+                            # Collapse button
+                            - Panel:
+                                id: "btn_collapse"
+                                interactable: true
+                                fill_ratio: 1.0
+                                color: [224, 108, 117, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
+                                padding: [10, 10, 10, 10]
+                                children:
+                                  - Text:
+                                      string: "Click to Collapse"
+                                      font_size: 18.0
+                                      color: [40, 44, 52, 255]
+                            # Align button
+                            - Panel:
+                                id: "btn_align"
+                                interactable: true
+                                fill_ratio: 1.0
+                                color: [97, 175, 239, 255]
+                                hover_color: AUTO
+                                press_color: AUTO
+                                padding: [10, 10, 10, 10]
+                                children:
+                                  - Text:
+                                      id: "txt_align"
+                                      string: "Align: CENTER"
+                                      font_size: 18.0
+                                      color: [40, 44, 52, 255]
+                                      align_x: center
+                                      align_y: center

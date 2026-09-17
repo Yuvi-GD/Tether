@@ -137,6 +137,11 @@ void tether_raster_draw(void) {
             Tether_GUID entity = transforms->entity_map[i];
             if (!tether_ecs_is_valid(entity)) continue;
 
+            Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+            if (node && (node->visibility == TETHER_HIDDEN || node->visibility == TETHER_COLLAPSED)) {
+                continue;
+            }
+
             Tether_SlotTransform* t = (Tether_SlotTransform*)((uint8_t*)transforms->data + (i * transforms->element_size));
             Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
             Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
@@ -203,13 +208,13 @@ void tether_raster_draw(void) {
                     
                     if (text->align_x == TETHER_ALIGN_CENTER) {
                         tx += (t->width - tw) * 0.5f;
-                    } else if (text->align_x == TETHER_ALIGN_RIGHT) {
+                    } else if (text->align_x == TETHER_ALIGN_END) {
                         tx += (t->width - tw);
                     }
                     
                     if (text->align_y == TETHER_ALIGN_CENTER) {
                         ty += (t->height - th) * 0.5f;
-                    } else if (text->align_y == TETHER_ALIGN_BOTTOM) {
+                    } else if (text->align_y == TETHER_ALIGN_END) {
                         ty += (t->height - th);
                     }
 
