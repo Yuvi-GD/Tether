@@ -169,12 +169,15 @@ add_executable(tether_sandbox
     examples/sandbox/sandbox_main.c
     src/tether.c
     src/core/tether_ecs.c
+    src/core/tether_registry.c
     src/core/tether_input.c
     src/core/tether_events.c
     src/backends/hal/sokol_hal.c
     src/backends/raster/thorvg_raster.c
     src/parsers/tether_yaml.c
+    src/parsers/tether_yaml_ast.c
     src/ui/tether_layout.c
+    src/ui/tether_widgets.c
 )
 
 add_executable(tether_ecs_test

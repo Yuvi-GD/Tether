@@ -89,15 +89,6 @@ bool tether_ecs_is_valid(Tether_GUID entity);
 
 /* --- Component Management --- */
 
-/*
- * We will define component types as simple integer IDs.
- * In a full system, you would register component types dynamically,
- * but for now, we'll assume a fixed maximum number of component types.
- */
-#ifndef TETHER_MAX_COMPONENT_TYPES
-#define TETHER_MAX_COMPONENT_TYPES 128
-#endif
-
 /* Initialize a component array for a specific component type ID. */
 void tether_ecs_register_component_type(int component_id, size_t element_size);
 

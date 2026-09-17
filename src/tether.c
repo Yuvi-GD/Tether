@@ -3,7 +3,8 @@
 #include "tether/core/tether_components.h"
 #include "backends/tether_hal.h"
 #include "parsers/tether_yaml.h"
-
+#include "tether/core/tether_registry.h"
+#include "tether/ui/tether_widgets.h"
 
 void tether_run(Tether_App_Config* config) {
     /* Initialize the Tether UI Kernel (Memory Arena, Event Dispatcher, etc.) */
@@ -25,6 +26,11 @@ void tether_run(Tether_App_Config* config) {
     tether_ecs_register_component_type(TETHER_COMPONENT_IMAGE, sizeof(Tether_Image));
     tether_ecs_register_component_type(TETHER_COMPONENT_INTERACTABLE, sizeof(Tether_Interactable));
     
+    tether_registry_init();
+    
+    tether_register_widget("Panel", tether_widget_create_panel);
+    tether_register_widget("Text", tether_widget_create_text);
+    
     if (config->initial_yaml) {
         tether_yaml_load(config->initial_yaml);
     }
@@ -36,5 +42,6 @@ void tether_run(Tether_App_Config* config) {
     /* Hand control over to the Hardware Abstraction Layer to start the OS window loop */
     tether_hal_run(config);
     
+    tether_registry_term();
     tether_ecs_term();
 }
