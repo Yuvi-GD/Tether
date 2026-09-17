@@ -5,6 +5,7 @@
 
 #define INITIAL_ENTITY_CAPACITY 1024
 #define INITIAL_DENSE_CAPACITY 64
+#define INITIAL_COMPONENT_TYPE_CAPACITY 32
 
 typedef struct {
   uint32_t *generations;
@@ -16,8 +17,9 @@ typedef struct {
   uint32_t next_entity_index;
   uint32_t entity_capacity;
 
-  Tether_SparseMap sparse_maps[TETHER_MAX_COMPONENT_TYPES];
-  Tether_DenseArray dense_arrays[TETHER_MAX_COMPONENT_TYPES];
+  uint32_t component_type_capacity;
+  Tether_SparseMap *sparse_maps;
+  Tether_DenseArray *dense_arrays;
 
   struct {
       char names[32][64];
@@ -46,10 +48,14 @@ void tether_ecs_init(void) {
   /* Index 0 is reserved for TETHER_INVALID_GUID */
   g_registry.next_entity_index = 1;
   
+  g_registry.component_type_capacity = INITIAL_COMPONENT_TYPE_CAPACITY;
+  g_registry.sparse_maps = (Tether_SparseMap *)calloc(g_registry.component_type_capacity, sizeof(Tether_SparseMap));
+  g_registry.dense_arrays = (Tether_DenseArray *)calloc(g_registry.component_type_capacity, sizeof(Tether_DenseArray));
+  
   /* Custom components start at ID 32 to leave room for internal IDs */
   g_registry.next_custom_component_id = 32;
 
-  for (int i = 0; i < TETHER_MAX_COMPONENT_TYPES; ++i) {
+  for (uint32_t i = 0; i < g_registry.component_type_capacity; ++i) {
     g_registry.sparse_maps[i].capacity = 0;
     g_registry.sparse_maps[i].dense_indices = NULL;
 
@@ -75,10 +81,22 @@ void tether_ecs_term(void) {
   free(g_registry.generations);
   free(g_registry.free_indices);
 
-  for (int i = 0; i < TETHER_MAX_COMPONENT_TYPES; ++i) {
-    free(g_registry.sparse_maps[i].dense_indices);
-    free(g_registry.dense_arrays[i].data);
-    free(g_registry.dense_arrays[i].entity_map);
+  if (g_registry.sparse_maps) {
+      for (uint32_t i = 0; i < g_registry.component_type_capacity; ++i) {
+        if (g_registry.sparse_maps[i].dense_indices) {
+          free(g_registry.sparse_maps[i].dense_indices);
+        }
+        if (g_registry.dense_arrays[i].data) {
+          free(g_registry.dense_arrays[i].data);
+        }
+        if (g_registry.dense_arrays[i].entity_map) {
+          free(g_registry.dense_arrays[i].entity_map);
+        }
+      }
+      free(g_registry.sparse_maps);
+      free(g_registry.dense_arrays);
+      g_registry.sparse_maps = NULL;
+      g_registry.dense_arrays = NULL;
   }
 
   memset(&g_registry, 0, sizeof(Tether_Registry));
@@ -156,7 +174,7 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
   }
 
   /* Remove all components for this entity using swap-and-pop */
-  for (int i = 0; i < TETHER_MAX_COMPONENT_TYPES; ++i) {
+  for (uint32_t i = 0; i < g_registry.component_type_capacity; ++i) {
     if (g_registry.dense_arrays[i].element_size > 0) {
       tether_ecs_remove_component(entity, i);
     }
@@ -175,15 +193,30 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
 }
 
 void tether_ecs_register_component_type(int component_id, size_t element_size) {
-  if (component_id < 0 || component_id >= TETHER_MAX_COMPONENT_TYPES)
-    return;
-  g_registry.dense_arrays[component_id].element_size = element_size;
+  if (component_id < 0) return;
+  
+  if ((uint32_t)component_id >= g_registry.component_type_capacity) {
+      uint32_t old_cap = g_registry.component_type_capacity;
+      uint32_t new_cap = old_cap;
+      while ((uint32_t)component_id >= new_cap) {
+          new_cap *= 2;
+      }
+      g_registry.sparse_maps = (Tether_SparseMap *)realloc(g_registry.sparse_maps, new_cap * sizeof(Tether_SparseMap));
+      g_registry.dense_arrays = (Tether_DenseArray *)realloc(g_registry.dense_arrays, new_cap * sizeof(Tether_DenseArray));
+      
+      /* Initialize the newly allocated memory */
+      memset(g_registry.sparse_maps + old_cap, 0, (new_cap - old_cap) * sizeof(Tether_SparseMap));
+      memset(g_registry.dense_arrays + old_cap, 0, (new_cap - old_cap) * sizeof(Tether_DenseArray));
+      
+      g_registry.component_type_capacity = new_cap;
+  }
+
+  Tether_DenseArray *dense = &g_registry.dense_arrays[component_id];
+  dense->element_size = element_size;
 }
 
 int tether_ecs_allocate_custom_component(size_t element_size) {
-  if (g_registry.next_custom_component_id >= TETHER_MAX_COMPONENT_TYPES) {
-    return -1; // Out of Component IDs!
-  }
+
   int id = g_registry.next_custom_component_id++;
   tether_ecs_register_component_type(id, element_size);
   return id;
@@ -284,7 +317,7 @@ static void ensure_sparse_capacity(int component_id,
 
 void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
   if (!tether_ecs_is_valid(entity) || component_id < 0 ||
-      component_id >= TETHER_MAX_COMPONENT_TYPES)
+      (uint32_t)component_id >= g_registry.component_type_capacity)
     return NULL;
 
   Tether_DenseArray *dense = &g_registry.dense_arrays[component_id];
@@ -322,7 +355,7 @@ void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
 
 void *tether_ecs_get_component(Tether_GUID entity, int component_id) {
   if (!tether_ecs_is_valid(entity) || component_id < 0 ||
-      component_id >= TETHER_MAX_COMPONENT_TYPES)
+      (uint32_t)component_id >= g_registry.component_type_capacity)
     return NULL;
 
   uint32_t entity_index = tether_ecs_get_index(entity);
@@ -339,7 +372,7 @@ void *tether_ecs_get_component(Tether_GUID entity, int component_id) {
 
 void tether_ecs_remove_component(Tether_GUID entity, int component_id) {
   if (!tether_ecs_is_valid(entity) || component_id < 0 ||
-      component_id >= TETHER_MAX_COMPONENT_TYPES)
+      (uint32_t)component_id >= g_registry.component_type_capacity)
     return;
 
   uint32_t entity_index = tether_ecs_get_index(entity);
@@ -375,7 +408,7 @@ void tether_ecs_remove_component(Tether_GUID entity, int component_id) {
 }
 
 Tether_DenseArray *tether_ecs_get_dense_array(int component_id) {
-  if (component_id < 0 || component_id >= TETHER_MAX_COMPONENT_TYPES)
+  if (component_id < 0 || (uint32_t)component_id >= g_registry.component_type_capacity)
     return NULL;
   return &g_registry.dense_arrays[component_id];
 }
