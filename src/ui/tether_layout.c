@@ -42,7 +42,7 @@ void tether_layout_process_all(float screen_width, float screen_height) {
 
 /* Helper: get intrinsic size of a child (text or container) */
 static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, float* out_h) {
-    Tether_LayoutNode* child_node = (Tether_LayoutNode*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT_NODE);
+    Tether_Layout* child_node = (Tether_Layout*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT);
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(child, TETHER_COMPONENT_VISIBILITY);
     if (vis && vis->state == TETHER_COLLAPSED) {
         *out_w = 0.0f;
@@ -80,7 +80,7 @@ static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, fl
  * Recursively measure children first, then sum up total bounds.
  */
 static void tether_layout_measure_bottom_up(Tether_GUID entity) {
-    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+    Tether_Layout* node = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
     if (!node) return;
     if (vis && vis->state == TETHER_COLLAPSED) {
@@ -135,8 +135,11 @@ static void tether_layout_measure_bottom_up(Tether_GUID entity) {
                 
                 /* Overrides */
                 if (flex) {
-                    if (flex->explicit_size.x > 0.0f) item_w = flex->explicit_size.x;
-                    if (flex->explicit_size.y > 0.0f) item_h = flex->explicit_size.y;
+                    Tether_Layout* child_node = (Tether_Layout*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT);
+                    if (child_node) {
+                        if (child_node->size_box.x > 0.0f) item_w = child_node->size_box.x;
+                        if (child_node->size_box.y > 0.0f) item_h = child_node->size_box.y;
+                    }
                     
                     item_w += flex->margin.left + flex->margin.right;
                     item_h += flex->margin.top + flex->margin.bottom;
@@ -172,9 +175,9 @@ static void tether_layout_measure_bottom_up(Tether_GUID entity) {
 static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, float parent_y, float parent_w, float parent_h) {
     Tether_SlotTransform* t = (Tether_SlotTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_SLOT_TRANSFORM);
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+    Tether_Layout* node = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     Tether_Text* text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
-    Tether_FlexSlot* my_flex = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
+    Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
 
     if (!t) return 0.0f;
@@ -194,14 +197,14 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
 
     bool is_auto_height = false;
     /* Determine if we should auto-size our height based on content */
-    if (my_flex && my_flex->fill_ratio == 0.0f && my_flex->explicit_size.y <= 0.0f) {
+    if (flex && flex->fill_ratio == 0.0f && node->size_box.y <= 0.0f) {
         is_auto_height = true;
         
         /* If our parent is a ROW and told us to stretch vertically, we MUST NOT shrink wrap! */
         if (h && tether_ecs_is_valid(h->parent)) {
-            Tether_LayoutNode* pnode = (Tether_LayoutNode*)tether_ecs_get_component(h->parent, TETHER_COMPONENT_LAYOUT_NODE);
+            Tether_Layout* pnode = (Tether_Layout*)tether_ecs_get_component(h->parent, TETHER_COMPONENT_LAYOUT);
             if (pnode && pnode->flow == TETHER_FLOW_ROW) {
-                Tether_Align align = my_flex->override_align_y ? my_flex->align_self_y : pnode->content_align_y;
+                Tether_Align align = (flex->align_self_y != TETHER_ALIGN_AUTO) ? flex->align_self_y : pnode->content_align_y;
                 if (align == TETHER_ALIGN_FILL) {
                     is_auto_height = false;
                 }
@@ -300,9 +303,11 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                 tether_layout_get_intrinsic_size(child, &intrinsic_w, &intrinsic_h);
                 
                 if (flex) {
-                    if (flex->explicit_size.x > 0.0f) intrinsic_w = flex->explicit_size.x;
-                    if (flex->explicit_size.y > 0.0f) intrinsic_h = flex->explicit_size.y;
-                    
+                    Tether_Layout* child_node = (Tether_Layout*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT);
+                    if (child_node) {
+                        if (child_node->size_box.x > 0.0f) intrinsic_w = child_node->size_box.x;
+                        if (child_node->size_box.y > 0.0f) intrinsic_h = child_node->size_box.y;
+                    }
                     total_fill_ratio += flex->fill_ratio;
                     
                     if (node->flow == TETHER_FLOW_ROW) {
@@ -349,8 +354,11 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                 float cx = current_x, cy = current_y, cw = item_w, ch = item_h;
                 
                 if (flex) {
-                    if (flex->explicit_size.x > 0.0f) item_w = flex->explicit_size.x;
-                    if (flex->explicit_size.y > 0.0f) item_h = flex->explicit_size.y;
+                    Tether_Layout* child_node = (Tether_Layout*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT);
+                    if (child_node) {
+                        if (child_node->size_box.x > 0.0f) item_w = child_node->size_box.x;
+                        if (child_node->size_box.y > 0.0f) item_h = child_node->size_box.y;
+                    }
                     
                     if (node->flow == TETHER_FLOW_ROW) {
                         current_x += flex->margin.left;
@@ -361,7 +369,7 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                         }
                         
                         /* Cross-axis (vertical) alignment */
-                        Tether_Align align = flex->override_align_y ? flex->align_self_y : node->content_align_y;
+                        Tether_Align align = (flex->align_self_y != TETHER_ALIGN_AUTO) ? flex->align_self_y : node->content_align_y;
                         if (align == TETHER_ALIGN_FILL) {
                             ch = inner_h - flex->margin.top - flex->margin.bottom;
                         } else if (align == TETHER_ALIGN_CENTER) {
@@ -376,7 +384,7 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                         
                         float child_used_h = tether_layout_arrange_top_down(child, cx, cy, cw, ch);
                         
-                        if (flex->fill_ratio == 0.0f && flex->explicit_size.y <= 0.0f && align != TETHER_ALIGN_FILL) {
+                        if (flex->fill_ratio == 0.0f && (!child_node || child_node->size_box.y <= 0.0f) && align != TETHER_ALIGN_FILL) {
                             ch = child_used_h;
                         }
                         
@@ -392,7 +400,7 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                         }
                         
                         /* Cross-axis (horizontal) alignment */
-                        Tether_Align align = flex->override_align_x ? flex->align_self_x : node->content_align_x;
+                        Tether_Align align = (flex->align_self_x != TETHER_ALIGN_AUTO) ? flex->align_self_x : node->content_align_x;
                         if (align == TETHER_ALIGN_FILL) {
                             cw = inner_w - flex->margin.left - flex->margin.right;
                             cx = inner_x + flex->margin.left;
@@ -410,7 +418,7 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                         float child_used_h = tether_layout_arrange_top_down(child, cx, cy, cw, ch);
                         
                         /* In a Column, an auto-sized child tells us how far to advance Y! */
-                        if (flex->fill_ratio == 0.0f && flex->explicit_size.y <= 0.0f) {
+                        if (flex->fill_ratio == 0.0f && (!child_node || child_node->size_box.y <= 0.0f)) {
                             ch = child_used_h;
                         }
                         

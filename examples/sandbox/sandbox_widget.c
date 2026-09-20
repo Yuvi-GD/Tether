@@ -9,13 +9,14 @@
 Tether_GUID create_my_c_modal(Tether_GUID parent) {
     /* 1. Create Background Overlay Panel */
     Tether_GUID overlay = tether_create_widget("Panel", parent);
-    Tether_LayoutNode* ol = (Tether_LayoutNode*)tether_ecs_get_component(overlay, TETHER_COMPONENT_LAYOUT_NODE);
+    Tether_Layout* ol = (Tether_Layout*)tether_ecs_get_component(overlay, TETHER_COMPONENT_LAYOUT);
     if (ol) {
         ol->flow = TETHER_FLOW_COLUMN;
         ol->content_align_x = TETHER_ALIGN_CENTER;
         ol->content_align_y = TETHER_ALIGN_CENTER;
-        strncpy(ol->id, "c_modal_overlay", sizeof(ol->id) - 1);
     }
+    Tether_Id* oid = (Tether_Id*)tether_ecs_add_component(overlay, TETHER_COMPONENT_ID);
+    if (oid) strncpy(oid->id, "c_modal_overlay", sizeof(oid->id) - 1);
     Tether_Interactable* oi = (Tether_Interactable*)tether_ecs_get_component(overlay, TETHER_COMPONENT_INTERACTABLE);
     if (oi) oi->hit_behavior = TETHER_HIT_BLOCK; /* Block clicks to background */
     
@@ -30,7 +31,7 @@ Tether_GUID create_my_c_modal(Tether_GUID parent) {
     
     /* 2. Create Inner Popup Panel */
     Tether_GUID popup = tether_create_widget("Panel", overlay);
-    Tether_LayoutNode* pl = (Tether_LayoutNode*)tether_ecs_get_component(popup, TETHER_COMPONENT_LAYOUT_NODE);
+    Tether_Layout* pl = (Tether_Layout*)tether_ecs_get_component(popup, TETHER_COMPONENT_LAYOUT);
     if (pl) {
         pl->flow = TETHER_FLOW_COLUMN;
         pl->padding = (Tether_Edges){40, 40, 40, 40};

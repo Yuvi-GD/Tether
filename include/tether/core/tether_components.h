@@ -15,7 +15,7 @@ extern "C" {
 #define TETHER_COMPONENT_RENDER_TRANSFORM 1
 #define TETHER_COMPONENT_HIERARCHY        2
 #define TETHER_COMPONENT_VISIBILITY       3
-#define TETHER_COMPONENT_LAYOUT_NODE      4
+#define TETHER_COMPONENT_LAYOUT           4
 #define TETHER_CORE_COMPONENTS_MAX        5
 
 /* --- SYSTEM UI COMPONENTS (Layer 3) --- */
@@ -31,7 +31,7 @@ extern "C" {
 #define TETHER_COMPONENT_IMAGE            (TETHER_CORE_COMPONENTS_MAX + 9)
 #define TETHER_COMPONENT_INTERACTABLE     (TETHER_CORE_COMPONENTS_MAX + 10)
 #define TETHER_COMPONENT_IS_LEAF          (TETHER_CORE_COMPONENTS_MAX + 11)
-#define TETHER_COMPONENT_TAG              (TETHER_CORE_COMPONENTS_MAX + 12)
+#define TETHER_COMPONENT_ID               (TETHER_CORE_COMPONENTS_MAX + 12)
 
 #define TETHER_SYSTEM_COMPONENTS_MAX      (TETHER_CORE_COMPONENTS_MAX + 13)
 
@@ -47,7 +47,8 @@ extern "C" {
 /* 2. ENUMS                                                                   */
 /* ========================================================================== */
 typedef enum { 
-    TETHER_ALIGN_FILL = 0, 
+    TETHER_ALIGN_AUTO = 0,
+    TETHER_ALIGN_FILL, 
     TETHER_ALIGN_START,   /* Left / Top */
     TETHER_ALIGN_CENTER, 
     TETHER_ALIGN_END      /* Right / Bottom */
@@ -148,32 +149,30 @@ typedef struct Tether_Hierarchy {
 } Tether_Hierarchy;
 
 typedef struct {
-    char id[32];               /* Human-readable ID for finding from C */
     Tether_Flow flow;          /* COLUMN, ROW, or NONE */
     Tether_Align content_align_x;
     Tether_Align content_align_y;
     Tether_Edges padding;
     Tether_Vec2 gap;
+    Tether_Vec2 size_box;      /* 0,0 means auto/intrinsic */
     uint8_t wrap;
     float measured_width;
     float measured_height;
-} Tether_LayoutNode;
+} Tether_Layout;
 
 typedef struct Tether_AnchorSlot {
     Tether_Vec2 anchor_min;
     Tether_Vec2 anchor_max; 
     Tether_Edges offset;
+    Tether_Vec2 pivot;
 } Tether_AnchorSlot;
 
 typedef struct Tether_FlexSlot {
     Tether_Edges margin;
-    Tether_Vec2 explicit_size; /* 0,0 means auto/intrinsic */
     float fill_ratio; 
     
     /* Self Overrides (optional) */
-    uint8_t override_align_x; /* 1 = true, 0 = false */
     Tether_Align align_self_x;
-    uint8_t override_align_y; 
     Tether_Align align_self_y;
 } Tether_FlexSlot;
 
@@ -234,8 +233,8 @@ typedef struct Tether_Interactable {
 } Tether_Interactable;
 
 typedef struct {
-    char name[32];
-} Tether_Tag;
+    char id[32];
+} Tether_Id;
 
 #ifdef __cplusplus
 }

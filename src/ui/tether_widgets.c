@@ -9,14 +9,17 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
     st->x = 0; st->y = 0; st->width = 100; st->height = 100;
     
     /* Defaults */
-    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_add_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+    Tether_Layout* node = (Tether_Layout*)tether_ecs_add_component(entity, TETHER_COMPONENT_LAYOUT);
     node->flow = TETHER_FLOW_NONE;
     node->content_align_x = TETHER_ALIGN_FILL;
     node->content_align_y = TETHER_ALIGN_FILL;
     node->padding.top = 0; node->padding.bottom = 0; node->padding.left = 0; node->padding.right = 0;
     node->gap.x = 0; node->gap.y = 0;
+    node->size_box.x = 0; node->size_box.y = 0;
     node->wrap = 0;
-    node->id[0] = '\0';
+    
+    Tether_Id* id_comp = (Tether_Id*)tether_ecs_add_component(entity, TETHER_COMPONENT_ID);
+    if (id_comp) id_comp->id[0] = '\0';
     
     Tether_Interactable* i = (Tether_Interactable*)tether_ecs_add_component(entity, TETHER_COMPONENT_INTERACTABLE);
     if (i) {
@@ -37,12 +40,13 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
     anchor->anchor_min.x = 0; anchor->anchor_min.y = 0;
     anchor->anchor_max.x = 1; anchor->anchor_max.y = 1;
     anchor->offset.top = 0; anchor->offset.bottom = 0; anchor->offset.left = 0; anchor->offset.right = 0;
+    anchor->pivot.x = 0; anchor->pivot.y = 0;
 
     Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_add_component(entity, TETHER_COMPONENT_FLEX_SLOT);
     flex->margin.top = 0; flex->margin.bottom = 0; flex->margin.left = 0; flex->margin.right = 0;
-    flex->explicit_size.x = 0; flex->explicit_size.y = 0;
     flex->fill_ratio = 0.0f;
-    flex->override_align_x = 0; flex->override_align_y = 0;
+    flex->align_self_x = TETHER_ALIGN_AUTO;
+    flex->align_self_y = TETHER_ALIGN_AUTO;
 
     Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_add_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
     rt->translation_x = 0; rt->translation_y = 0; rt->scale_x = 1.0f; rt->scale_y = 1.0f;
@@ -115,7 +119,7 @@ Tether_GUID tether_widget_create_text(Tether_GUID parent) {
 Tether_GUID tether_widget_create_button(Tether_GUID parent) {
     Tether_GUID entity = tether_widget_create_panel(parent);
 
-    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+    Tether_Layout* node = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     if (node) {
         node->content_align_x = TETHER_ALIGN_CENTER;
         node->content_align_y = TETHER_ALIGN_CENTER;
