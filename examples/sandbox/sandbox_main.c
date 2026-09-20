@@ -53,10 +53,12 @@ void on_align_clicked(Tether_GUID entity, Tether_EventType type, void* user_data
         Tether_TextWord* tw = (Tether_TextWord*)tether_ecs_get_component(txt, TETHER_COMPONENT_TEXT_WORD);
         if (t && tw) 
         {
-            t->align_x = (Tether_Align)((t->align_x + 1) % 4); /* Cycle FILL -> START -> CENTER -> END */
+            /* Cycle AUTO (0) -> FILL (1) -> START (2) -> CENTER (3) -> END (4) */
+            t->align_x = (Tether_Align)((t->align_x + 1) % 5);
             
-            const char* str = "Align: FILL";
-            if (t->align_x == TETHER_ALIGN_START) str = "Align: START";
+            const char* str = "Align: AUTO";
+            if (t->align_x == TETHER_ALIGN_FILL) str = "Align: FILL";
+            else if (t->align_x == TETHER_ALIGN_START) str = "Align: START";
             else if (t->align_x == TETHER_ALIGN_CENTER) str = "Align: CENTER";
             else if (t->align_x == TETHER_ALIGN_END) str = "Align: END";
             

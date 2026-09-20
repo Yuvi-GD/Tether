@@ -200,7 +200,7 @@ void tether_raster_draw(void) {
                     if (rt) final_opacity = (uint8_t)(final_opacity * rt->opacity);
                     tvg_paint_set_opacity(text_node, final_opacity);
                     
-                    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+                    Tether_Layout* node = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
                     
                     /* Only enable word wrapping if the layout engine determined it was strictly necessary */
                     if (node && node->wrap) {

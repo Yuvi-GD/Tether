@@ -479,13 +479,13 @@ const char* tether_ecs_get_text_string(Tether_GUID entity) {
 Tether_GUID tether_ecs_find_by_id(const char* id) {
     if (!id || id[0] == '\0') return TETHER_INVALID_GUID;
     
-    Tether_DenseArray* layouts = tether_ecs_get_dense_array(TETHER_COMPONENT_LAYOUT_NODE);
-    if (!layouts) return TETHER_INVALID_GUID;
+    Tether_DenseArray* ids = tether_ecs_get_dense_array(TETHER_COMPONENT_ID);
+    if (!ids) return TETHER_INVALID_GUID;
     
-    for (uint32_t i = 0; i < layouts->count; i++) {
-        Tether_LayoutNode* node = (Tether_LayoutNode*)((uint8_t*)layouts->data + (i * layouts->element_size));
+    for (uint32_t i = 0; i < ids->count; i++) {
+        Tether_Id* node = (Tether_Id*)((uint8_t*)ids->data + (i * ids->element_size));
         if (strcmp(node->id, id) == 0) {
-            return layouts->entity_map[i];
+            return ids->entity_map[i];
         }
     }
     return TETHER_INVALID_GUID;
