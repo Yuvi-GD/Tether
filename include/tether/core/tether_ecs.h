@@ -92,8 +92,11 @@ bool tether_ecs_is_valid(Tether_GUID entity);
 
 /* --- Component Management --- */
 
-/* Initialize a component array for a specific component type ID. */
-void tether_ecs_register_component_type(int component_id, size_t element_size);
+/* Register a component array for a specific compile-time component type ID. */
+void tether_ecs_register_component_static(uint32_t component_id, size_t element_size);
+
+/* Allocate a custom component ID dynamically for a third-party struct. Returns the assigned ID. */
+uint32_t tether_ecs_register_component_dynamic(size_t element_size);
 
 /*
  * Add a component to an entity.
@@ -109,11 +112,6 @@ void *tether_ecs_get_component(Tether_GUID entity, int component_id);
 
 /* Remove a component from an entity using Swap-and-Pop. */
 void tether_ecs_remove_component(Tether_GUID entity, int component_id);
-
-/* --- Dynamic Opaque Registration --- */
-
-/* Allocate a custom component ID for a third-party struct. Returns -1 if out of IDs. */
-int tether_ecs_allocate_custom_component(size_t element_size);
 
 /* --- Hierarchy API --- */
 
