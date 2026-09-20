@@ -122,8 +122,8 @@ static Tether_Color tether_style_resolve_color(Tether_GUID entity, const Tether_
 
 static bool is_entity_visible(Tether_GUID entity) {
     while (tether_ecs_is_valid(entity)) {
-        Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
-        if (node && (node->visibility == TETHER_HIDDEN || node->visibility == TETHER_COLLAPSED)) {
+        Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
+        if (vis && (vis->state == TETHER_HIDDEN || vis->state == TETHER_COLLAPSED)) {
             return false;
         }
         Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);

@@ -158,7 +158,6 @@ typedef struct {
     Tether_Vec2 gap;
     uint8_t wrap;
     Tether_HitBehavior hit_behavior; /* How this node catches pointer events */
-    Tether_VisibilityState visibility;
     float measured_width;
     float measured_height;
 } Tether_LayoutNode;
@@ -189,6 +188,10 @@ typedef struct {
     Tether_Align align_y;
     float wrap_width; /* If > 0, text wraps at this exact width */
 } Tether_TextStyle;
+
+typedef struct {
+    Tether_VisibilityState state;
+} Tether_Visibility;
 
 typedef struct {
     char data[32];

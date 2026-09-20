@@ -18,7 +18,9 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
     node->wrap = 0;
     node->hit_behavior = TETHER_HIT_BLOCK; /* Panels catch hits by default */
     node->id[0] = '\0';
-    node->visibility = TETHER_VISIBLE;
+    
+    Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_add_component(entity, TETHER_COMPONENT_VISIBILITY);
+    vis->state = TETHER_VISIBLE;
 
     Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_add_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
     anchor->anchor_min.x = 0; anchor->anchor_min.y = 0;

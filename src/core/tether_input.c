@@ -12,7 +12,8 @@ static Tether_GUID hit_test_tree(Tether_GUID entity, float x, float y) {
     if (!tether_ecs_is_valid(entity)) return TETHER_INVALID_GUID;
 
     Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
-    if (node && (node->visibility == TETHER_HIDDEN || node->visibility == TETHER_COLLAPSED)) {
+    Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
+    if (vis && (vis->state == TETHER_HIDDEN || vis->state == TETHER_COLLAPSED)) {
         return TETHER_INVALID_GUID;
     }
 

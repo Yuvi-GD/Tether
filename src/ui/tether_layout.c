@@ -43,7 +43,8 @@ void tether_layout_process_all(float screen_width, float screen_height) {
 /* Helper: get intrinsic size of a child (text or container) */
 static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, float* out_h) {
     Tether_LayoutNode* child_node = (Tether_LayoutNode*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT_NODE);
-    if (child_node && child_node->visibility == TETHER_COLLAPSED) {
+    Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(child, TETHER_COMPONENT_VISIBILITY);
+    if (vis && vis->state == TETHER_COLLAPSED) {
         *out_w = 0.0f;
         *out_h = 0.0f;
         return;
@@ -78,8 +79,9 @@ static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, fl
  */
 static void tether_layout_measure_bottom_up(Tether_GUID entity) {
     Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
+    Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
     if (!node) return;
-    if (node->visibility == TETHER_COLLAPSED) {
+    if (vis && vis->state == TETHER_COLLAPSED) {
         node->measured_width = 0.0f;
         node->measured_height = 0.0f;
         return;
@@ -105,8 +107,8 @@ static void tether_layout_measure_bottom_up(Tether_GUID entity) {
         /* FLOW_NONE: children overlay, content = max child bounding box */
         child = h->first_child;
         while (tether_ecs_is_valid(child)) {
-            Tether_LayoutNode* cnode = (Tether_LayoutNode*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT_NODE);
-            if (!cnode || cnode->visibility != TETHER_COLLAPSED) {
+            Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(child, TETHER_COMPONENT_VISIBILITY);
+            if (!vis || vis->state != TETHER_COLLAPSED) {
                 float item_w = 0.0f, item_h = 0.0f;
                 tether_layout_get_intrinsic_size(child, &item_w, &item_h);
                 
@@ -122,8 +124,8 @@ static void tether_layout_measure_bottom_up(Tether_GUID entity) {
         int child_count = 0;
         child = h->first_child;
         while (tether_ecs_is_valid(child)) {
-            Tether_LayoutNode* cnode = (Tether_LayoutNode*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT_NODE);
-            if (!cnode || cnode->visibility != TETHER_COLLAPSED) {
+            Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(child, TETHER_COMPONENT_VISIBILITY);
+            if (!vis || vis->state != TETHER_COLLAPSED) {
                 Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_get_component(child, TETHER_COMPONENT_FLEX_SLOT);
                 
                 float item_w = 0.0f, item_h = 0.0f;
@@ -171,10 +173,11 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
     Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
     Tether_TextStyle* text = (Tether_TextStyle*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_STYLE);
     Tether_FlexSlot* my_flex = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
+    Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
 
     if (!t) return 0.0f;
 
-    if (node && node->visibility == TETHER_COLLAPSED) {
+    if (vis && vis->state == TETHER_COLLAPSED) {
         t->x = 0.0f;
         t->y = 0.0f;
         t->width = 0.0f;
@@ -251,8 +254,8 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
         /* Absolute positioning via anchors */
         Tether_GUID child = h->first_child;
         while (tether_ecs_is_valid(child)) {
-            Tether_LayoutNode* cnode = (Tether_LayoutNode*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT_NODE);
-            if (!cnode || cnode->visibility != TETHER_COLLAPSED) {
+            Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(child, TETHER_COMPONENT_VISIBILITY);
+            if (!vis || vis->state != TETHER_COLLAPSED) {
                 Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_get_component(child, TETHER_COMPONENT_ANCHOR_SLOT);
                 
                 float cx = inner_x, cy = inner_y, cw = inner_w, ch = inner_h;
@@ -287,8 +290,8 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
         
         Tether_GUID child = h->first_child;
         while (tether_ecs_is_valid(child)) {
-            Tether_LayoutNode* cnode = (Tether_LayoutNode*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT_NODE);
-            if (!cnode || cnode->visibility != TETHER_COLLAPSED) {
+            Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(child, TETHER_COMPONENT_VISIBILITY);
+            if (!vis || vis->state != TETHER_COLLAPSED) {
                 Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_get_component(child, TETHER_COMPONENT_FLEX_SLOT);
                 
                 float intrinsic_w = 0.0f, intrinsic_h = 0.0f;
@@ -331,8 +334,8 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
         
         child = h->first_child;
         while (tether_ecs_is_valid(child)) {
-            Tether_LayoutNode* cnode = (Tether_LayoutNode*)tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT_NODE);
-            if (!cnode || cnode->visibility != TETHER_COLLAPSED) {
+            Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(child, TETHER_COMPONENT_VISIBILITY);
+            if (!vis || vis->state != TETHER_COLLAPSED) {
                 Tether_FlexSlot* flex = (Tether_FlexSlot*)tether_ecs_get_component(child, TETHER_COMPONENT_FLEX_SLOT);
                 
                 float intrinsic_w = 0.0f, intrinsic_h = 0.0f;

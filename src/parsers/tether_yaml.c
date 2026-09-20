@@ -280,12 +280,12 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             }
         }
         else if (strcmp(key, "visibility") == 0) {
-            Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
+            Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(ent, TETHER_COMPONENT_VISIBILITY);
             const char* val = resolve_scalar(val_node, env);
-            if (n && val) {
-                if (strcmp(val, "hidden") == 0) n->visibility = TETHER_HIDDEN;
-                else if (strcmp(val, "collapsed") == 0) n->visibility = TETHER_COLLAPSED;
-                else n->visibility = TETHER_VISIBLE;
+            if (vis && val) {
+                if (strcmp(val, "hidden") == 0) vis->state = TETHER_HIDDEN;
+                else if (strcmp(val, "collapsed") == 0) vis->state = TETHER_COLLAPSED;
+                else vis->state = TETHER_VISIBLE;
             }
         }
         else if (strcmp(key, "align_x") == 0) {
