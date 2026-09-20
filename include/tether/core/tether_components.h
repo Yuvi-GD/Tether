@@ -10,23 +10,36 @@ extern "C" {
 /* ========================================================================== */
 /* 1. COMPONENT ID DEFINITIONS                                                */
 /* ========================================================================== */
+/* --- CORE ENGINE COMPONENTS (Layer 1/2) --- */
 #define TETHER_COMPONENT_SLOT_TRANSFORM   0
 #define TETHER_COMPONENT_RENDER_TRANSFORM 1
-#define TETHER_COMPONENT_STYLE            2
-#define TETHER_COMPONENT_HIERARCHY        3
+#define TETHER_COMPONENT_HIERARCHY        2
+#define TETHER_COMPONENT_VISIBILITY       3
 #define TETHER_COMPONENT_LAYOUT_NODE      4
-#define TETHER_COMPONENT_ANCHOR_SLOT      5
-#define TETHER_COMPONENT_FLEX_SLOT        6
-#define TETHER_COMPONENT_TEXT_STYLE       7
-#define TETHER_COMPONENT_TEXT_WORD        8
-#define TETHER_COMPONENT_TEXT_LABEL       9
-#define TETHER_COMPONENT_TEXT_PARAGRAPH   10
-#define TETHER_COMPONENT_TEXT_DYNAMIC     11
-#define TETHER_COMPONENT_CLIP_MASK        12
-#define TETHER_COMPONENT_IMAGE            13
-#define TETHER_COMPONENT_INTERACTABLE     14
+#define TETHER_CORE_COMPONENTS_MAX        5
 
-#define TETHER_COMPONENT_MAX              15
+/* --- SYSTEM UI COMPONENTS (Layer 3) --- */
+#define TETHER_COMPONENT_STYLE            (TETHER_CORE_COMPONENTS_MAX + 0)
+#define TETHER_COMPONENT_ANCHOR_SLOT      (TETHER_CORE_COMPONENTS_MAX + 1)
+#define TETHER_COMPONENT_FLEX_SLOT        (TETHER_CORE_COMPONENTS_MAX + 2)
+#define TETHER_COMPONENT_TEXT_STYLE       (TETHER_CORE_COMPONENTS_MAX + 3)
+#define TETHER_COMPONENT_TEXT_WORD        (TETHER_CORE_COMPONENTS_MAX + 4)
+#define TETHER_COMPONENT_TEXT_LABEL       (TETHER_CORE_COMPONENTS_MAX + 5)
+#define TETHER_COMPONENT_TEXT_PARAGRAPH   (TETHER_CORE_COMPONENTS_MAX + 6)
+#define TETHER_COMPONENT_TEXT_DYNAMIC     (TETHER_CORE_COMPONENTS_MAX + 7)
+#define TETHER_COMPONENT_CLIP_MASK        (TETHER_CORE_COMPONENTS_MAX + 8)
+#define TETHER_COMPONENT_IMAGE            (TETHER_CORE_COMPONENTS_MAX + 9)
+#define TETHER_COMPONENT_INTERACTABLE     (TETHER_CORE_COMPONENTS_MAX + 10)
+
+#define TETHER_SYSTEM_COMPONENTS_MAX      (TETHER_CORE_COMPONENTS_MAX + 11)
+
+/* --- USER HARDCODED COMPONENTS --- */
+/* Users can hardcode their components starting from TETHER_SYSTEM_COMPONENTS_MAX */
+#define TETHER_USER_COMPONENTS_MAX        (TETHER_SYSTEM_COMPONENTS_MAX + 0)
+
+/* --- DYNAMIC COMPONENTS --- */
+/* Any components registered at runtime via tether_component_register() start here */
+#define TETHER_COMPONENT_MAX              TETHER_USER_COMPONENTS_MAX
 
 /* ========================================================================== */
 /* 2. ENUMS                                                                   */

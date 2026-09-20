@@ -13,8 +13,9 @@ typedef struct {
 int main() {
     printf("--- Tether UI: ECS Kernel Test ---\n");
     tether_ecs_init();
+    tether_ecs_init_roots();
     
-    tether_ecs_register_component_type(COMPONENT_TRANSFORM, sizeof(Transform));
+    tether_ecs_register_component_static(COMPONENT_TRANSFORM, sizeof(Transform));
     
     printf("[1] Spawning 10,000 entities with Transform components...\n");
     Tether_GUID entities[10000];
@@ -71,8 +72,8 @@ int main() {
     
     printf("[4] Testing Custom Component Registration...\n");
     typedef struct { int hp; int mp; } CustomStats;
-    int custom_id = tether_ecs_allocate_custom_component(sizeof(CustomStats));
-    if (custom_id < 32) {
+    int custom_id = tether_ecs_register_component_dynamic(sizeof(CustomStats));
+    if (custom_id < TETHER_COMPONENT_MAX) {
         printf("    [FAILED] Custom component ID should be >= 32 (got %d)\n", custom_id);
         valid = false;
     } else {
@@ -90,58 +91,58 @@ int main() {
     
     printf("[5] Testing Hierarchy Doubly-Linked List and Cascading Delete...\n");
     // Ensure TETHER_COMPONENT_HIERARCHY is registered
-    tether_ecs_register_component_type(3, sizeof(Tether_Hierarchy)); // 3 is TETHER_COMPONENT_HIERARCHY
+    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy)); // 3 is TETHER_COMPONENT_HIERARCHY
     
     Tether_GUID parent = tether_ecs_create_entity();
     Tether_GUID c1 = tether_ecs_create_entity();
     Tether_GUID c2 = tether_ecs_create_entity();
     Tether_GUID c3 = tether_ecs_create_entity();
     
-    // Explicitly add components as required by the new strict decoupled design
-    Tether_Hierarchy* hp = (Tether_Hierarchy*)tether_ecs_add_component(parent, 3);
-    if (hp) memset(hp, 0, sizeof(Tether_Hierarchy));
+    // Add hierarchy components
+    Tether_Hierarchy* hp = (Tether_Hierarchy*)tether_ecs_add_component(parent, TETHER_COMPONENT_HIERARCHY);
+    hp->parent = 0; hp->first_child = 0; hp->last_child = 0; hp->prev_sibling = 0; hp->next_sibling = 0; hp->child_count = 0;
     
-    Tether_Hierarchy* hc1 = (Tether_Hierarchy*)tether_ecs_add_component(c1, 3);
-    if (hc1) memset(hc1, 0, sizeof(Tether_Hierarchy));
+    Tether_Hierarchy* hc1 = (Tether_Hierarchy*)tether_ecs_add_component(c1, TETHER_COMPONENT_HIERARCHY);
+    hc1->parent = 0; hc1->first_child = 0; hc1->last_child = 0; hc1->prev_sibling = 0; hc1->next_sibling = 0; hc1->child_count = 0;
     
-    Tether_Hierarchy* hc2 = (Tether_Hierarchy*)tether_ecs_add_component(c2, 3);
-    if (hc2) memset(hc2, 0, sizeof(Tether_Hierarchy));
+    Tether_Hierarchy* hc2 = (Tether_Hierarchy*)tether_ecs_add_component(c2, TETHER_COMPONENT_HIERARCHY);
+    hc2->parent = 0; hc2->first_child = 0; hc2->last_child = 0; hc2->prev_sibling = 0; hc2->next_sibling = 0; hc2->child_count = 0;
     
-    Tether_Hierarchy* hc3 = (Tether_Hierarchy*)tether_ecs_add_component(c3, 3);
-    if (hc3) memset(hc3, 0, sizeof(Tether_Hierarchy));
+    Tether_Hierarchy* hc3 = (Tether_Hierarchy*)tether_ecs_add_component(c3, TETHER_COMPONENT_HIERARCHY);
+    hc3->parent = 0; hc3->first_child = 0; hc3->last_child = 0; hc3->prev_sibling = 0; hc3->next_sibling = 0; hc3->child_count = 0;
     
+    // Attach c1, c2, c3 to parent
     tether_ecs_attach_entity(parent, c1);
     tether_ecs_attach_entity(parent, c2);
     tether_ecs_attach_entity(parent, c3);
     
-    Tether_Hierarchy* ph = (Tether_Hierarchy*)tether_ecs_get_component(parent, 3);
-    if (!ph || ph->child_count != 3 || ph->first_child != c1) {
+    Tether_Hierarchy* ph = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);
+    if (ph->first_child != c1 || ph->last_child != c3 || ph->child_count != 3) {
         printf("    [FAILED] Parent hierarchy not setup correctly\n");
         valid = false;
     }
     
-    // Detach C2
+    // Detach c2 (middle child)
     tether_ecs_detach_entity(c2);
     
-    ph = (Tether_Hierarchy*)tether_ecs_get_component(parent, 3);
-    if (!ph || ph->child_count != 2) {
+    ph = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);
+    if (ph->child_count != 2) {
         printf("    [FAILED] Detach failed to update child count\n");
         valid = false;
     }
     
-    Tether_Hierarchy* h1 = (Tether_Hierarchy*)tether_ecs_get_component(c1, 3);
-    Tether_Hierarchy* h3 = (Tether_Hierarchy*)tether_ecs_get_component(c3, 3);
+    Tether_Hierarchy* h1 = (Tether_Hierarchy*)tether_ecs_get_component(c1, TETHER_COMPONENT_HIERARCHY);
+    Tether_Hierarchy* h3 = (Tether_Hierarchy*)tether_ecs_get_component(c3, TETHER_COMPONENT_HIERARCHY);
     if (h1->next_sibling != c3 || h3->prev_sibling != c1) {
         printf("    [FAILED] O(1) Doubly-linked list stitch failed\n");
         valid = false;
     } else {
-        printf("    [SUCCESS] Detach seamlessly stitched C1 and C3 together\n");
+        printf("    [SUCCESS] Hierarchy attachment and detachment works.\n");
     }
     
-    // Test Bring to Front
     printf("[6] Testing Local Z-Index Bring To Front...\n");
     tether_ecs_bring_to_front(c1); // C1 was first, now it should be last!
-    ph = (Tether_Hierarchy*)tether_ecs_get_component(parent, 3);
+    ph = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);
     if (ph->last_child != c1 || ph->first_child != c3) {
         printf("    [FAILED] Bring to front did not update parent pointers properly\n");
         valid = false;

@@ -5,7 +5,7 @@
 
 #define INITIAL_ENTITY_CAPACITY 1024
 #define INITIAL_DENSE_CAPACITY 64
-#define INITIAL_COMPONENT_TYPE_CAPACITY 32
+#define INITIAL_COMPONENT_TYPE_CAPACITY (TETHER_COMPONENT_MAX + 32)
 
 typedef struct {
   uint32_t *generations;
@@ -52,8 +52,8 @@ void tether_ecs_init(void) {
   g_registry.sparse_maps = (Tether_SparseMap *)calloc(g_registry.component_type_capacity, sizeof(Tether_SparseMap));
   g_registry.dense_arrays = (Tether_DenseArray *)calloc(g_registry.component_type_capacity, sizeof(Tether_DenseArray));
   
-  /* Custom components start at ID 32 to leave room for internal IDs */
-  g_registry.next_custom_component_id = 32;
+  /* Custom components start exactly where the user ID block ends */
+  g_registry.next_custom_component_id = TETHER_COMPONENT_MAX;
 
   for (uint32_t i = 0; i < g_registry.component_type_capacity; ++i) {
     g_registry.sparse_maps[i].capacity = 0;
@@ -194,7 +194,7 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
   g_registry.free_indices[g_registry.free_count++] = index;
 }
 
-void tether_ecs_register_component_type(int component_id, size_t element_size) {
+void tether_ecs_register_component_static(uint32_t component_id, size_t element_size) {
   if (component_id < 0) return;
   
   if ((uint32_t)component_id >= g_registry.component_type_capacity) {
@@ -217,10 +217,9 @@ void tether_ecs_register_component_type(int component_id, size_t element_size) {
   dense->element_size = element_size;
 }
 
-int tether_ecs_allocate_custom_component(size_t element_size) {
-
-  int id = g_registry.next_custom_component_id++;
-  tether_ecs_register_component_type(id, element_size);
+uint32_t tether_ecs_register_component_dynamic(size_t element_size) {
+  uint32_t id = g_registry.next_custom_component_id++;
+  tether_ecs_register_component_static(id, element_size);
   return id;
 }
 
