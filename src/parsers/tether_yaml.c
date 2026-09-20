@@ -103,19 +103,31 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
         const char* key = key_node->scalar_value;
 
         if (strcmp(key, "children") == 0) {
-            instantiate_node(val_node, ent, env);
+            if (!tether_ecs_get_component(ent, TETHER_COMPONENT_IS_LEAF)) {
+                instantiate_node(val_node, ent, env);
+            }
         }
         else if (strcmp(key, "content") == 0) {
-            apply_content(ent, val_node, env);
+            if (!tether_ecs_get_component(ent, TETHER_COMPONENT_IS_LEAF)) {
+                apply_content(ent, val_node, env);
+            }
         }
         else if (strcmp(key, "color") == 0) {
             Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+            Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
             if (!s) s = (Tether_Style*)tether_ecs_add_component(ent, TETHER_COMPONENT_STYLE);
             if (val_node->type == TETHER_AST_SEQUENCE) {
                 if (val_node->child_count > 0) s->bg_color.r = atoi(resolve_scalar(val_node->children[0], env));
                 if (val_node->child_count > 1) s->bg_color.g = atoi(resolve_scalar(val_node->children[1], env));
                 if (val_node->child_count > 2) s->bg_color.b = atoi(resolve_scalar(val_node->children[2], env));
                 if (val_node->child_count > 3) s->bg_color.a = atoi(resolve_scalar(val_node->children[3], env));
+                
+                if (t) {
+                    t->color.r = s->bg_color.r;
+                    t->color.g = s->bg_color.g;
+                    t->color.b = s->bg_color.b;
+                    t->color.a = s->bg_color.a;
+                }
             }
         }
         else if (strcmp(key, "hover_color") == 0) {
@@ -288,7 +300,7 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             }
         }
         else if (strcmp(key, "align_x") == 0) {
-            Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
+            Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
             const char* val = resolve_scalar(val_node, env);
             if (t && val) {
                 if (strcmp(val, "fill") == 0) t->align_x = TETHER_ALIGN_FILL;
@@ -298,7 +310,7 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             }
         }
         else if (strcmp(key, "align_y") == 0) {
-            Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
+            Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
             const char* val = resolve_scalar(val_node, env);
             if (t && val) {
                 if (strcmp(val, "fill") == 0) t->align_y = TETHER_ALIGN_FILL;
@@ -320,17 +332,37 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             }
         }
         else if (strcmp(key, "font_size") == 0) {
-            Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
+            Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
             if (t) t->font_size = (float)atof(resolve_scalar(val_node, env));
         }
         else if (strcmp(key, "wrap_width") == 0) {
-            Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT_STYLE);
+            Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
             if (t) t->wrap_width = (float)atof(resolve_scalar(val_node, env));
         }
         else if (strcmp(key, "dynamic") == 0) {
             const char* val = resolve_scalar(val_node, env);
             if (val && (strcmp(val, "true") == 0 || strcmp(val, "1") == 0)) {
                 tether_ecs_add_component(ent, TETHER_COMPONENT_TEXT_DYNAMIC);
+            }
+        }
+        else if (strcmp(key, "text_color") == 0) {
+            Tether_Text* text = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
+            if (text && val_node->type == TETHER_AST_SEQUENCE) {
+                if (val_node->child_count > 0) text->color.r = atoi(resolve_scalar(val_node->children[0], env));
+                if (val_node->child_count > 1) text->color.g = atoi(resolve_scalar(val_node->children[1], env));
+                if (val_node->child_count > 2) text->color.b = atoi(resolve_scalar(val_node->children[2], env));
+                if (val_node->child_count > 3) text->color.a = atoi(resolve_scalar(val_node->children[3], env));
+            }
+        }
+        else if (strcmp(key, "opacity") == 0) {
+            Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
+            if (rt) rt->opacity = (float)atof(resolve_scalar(val_node, env));
+        }
+        else if (strcmp(key, "tag") == 0) {
+            Tether_Tag* tag = (Tether_Tag*)tether_ecs_get_component(ent, TETHER_COMPONENT_TAG);
+            if (tag) {
+                strncpy(tag->name, resolve_scalar(val_node, env), 31);
+                tag->name[31] = '\0';
             }
         }
     }

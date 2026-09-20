@@ -50,7 +50,7 @@ static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, fl
         return;
     }
 
-    Tether_TextStyle* text = (Tether_TextStyle*)tether_ecs_get_component(child, TETHER_COMPONENT_TEXT_STYLE);
+    Tether_Text* text = (Tether_Text*)tether_ecs_get_component(child, TETHER_COMPONENT_TEXT);
     
     float w = 0.0f, h = 0.0f;
     
@@ -59,6 +59,8 @@ static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, fl
         const char* str = tether_ecs_get_text_string(child);
         if (str && str[0] != '\0') {
             tether_raster_measure_text(str, text->font_id, text->font_style, text->font_size, text->wrap_width, &w, &h);
+            text->intrinsic_size.x = w;
+            text->intrinsic_size.y = h;
             if (child_node) {
                 child_node->measured_width = w;
                 child_node->measured_height = h;
@@ -171,7 +173,7 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
     Tether_SlotTransform* t = (Tether_SlotTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_SLOT_TRANSFORM);
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
     Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
-    Tether_TextStyle* text = (Tether_TextStyle*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_STYLE);
+    Tether_Text* text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
     Tether_FlexSlot* my_flex = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
 

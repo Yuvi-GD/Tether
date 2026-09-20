@@ -290,12 +290,14 @@
                             # Collapse button
                             - Panel:
                                 id: "btn_collapse"
+                                tag: "collapse_btn"
                                 interactable: true
                                 fill_ratio: 1.0
                                 color: [224, 108, 117, 255]
                                 hover_color: AUTO
                                 press_color: AUTO
                                 padding: [10, 10, 10, 10]
+                                opacity: 0.7
                                 children:
                                   - Text:
                                       string: "Click to Collapse"
@@ -313,9 +315,10 @@
                                 children:
                                   - Text:
                                       id: "txt_align"
+                                      tag: "align_text"
                                       string: "Align: CENTER"
                                       font_size: 18.0
-                                      color: [40, 44, 52, 255]
+                                      text_color: [40, 44, 52, 255]
                                       align_x: center
                                       align_y: center
                             # Open YAML Modal

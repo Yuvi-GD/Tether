@@ -51,7 +51,7 @@ Tether_GUID create_my_c_modal(Tether_GUID parent) {
     
     /* 3. Create Text Label */
     Tether_GUID text = tether_create_widget("Text", popup);
-    Tether_TextStyle* ts = (Tether_TextStyle*)tether_ecs_get_component(text, TETHER_COMPONENT_TEXT_STYLE);
+    Tether_Text* ts = (Tether_Text*)tether_ecs_get_component(text, TETHER_COMPONENT_TEXT);
     if (ts) {
         ts->font_size = 28.0f;
     }

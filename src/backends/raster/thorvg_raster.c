@@ -156,7 +156,7 @@ void tether_raster_draw(void) {
             Tether_SlotTransform* t = (Tether_SlotTransform*)((uint8_t*)transforms->data + (i * transforms->element_size));
             Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
             Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
-            Tether_TextStyle* text = (Tether_TextStyle*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_STYLE);
+            Tether_Text* text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
 
             /* Render Background (Only if NOT a Text node, or if we introduce a separate bg_color later) */
             if (s && !text) {
@@ -168,7 +168,6 @@ void tether_raster_draw(void) {
                 tvg_shape_set_fill_color(shape, active.r, active.g, active.b, active.a);
                 
                 /* Check for Render Transform (Animations / Visual Offsets) */
-                Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
                 if (rt) {
                     tvg_paint_translate(shape, rt->translation_x, rt->translation_y);
                     if (rt->scale_x != 0.0f || rt->scale_y != 0.0f) {
@@ -177,6 +176,7 @@ void tether_raster_draw(void) {
                     if (rt->rotation_deg != 0.0f) {
                         tvg_paint_rotate(shape, rt->rotation_deg);
                     }
+                    tvg_paint_set_opacity(shape, (uint8_t)(active.a * rt->opacity));
                 }
                 
                 tvg_canvas_add(tvg_canvas, shape);
@@ -194,13 +194,11 @@ void tether_raster_draw(void) {
                     tvg_text_set_size(text_node, text->font_size);
                     tvg_text_set_text(text_node, str);
                     
-                    if (s) {
-                        tvg_text_set_color(text_node, s->bg_color.r, s->bg_color.g, s->bg_color.b);
-                        tvg_paint_set_opacity(text_node, s->bg_color.a);
-                    } else {
-                        tvg_text_set_color(text_node, 255, 255, 255);
-                        tvg_paint_set_opacity(text_node, 255);
-                    }
+                    tvg_text_set_color(text_node, text->color.r, text->color.g, text->color.b);
+                    
+                    uint8_t final_opacity = text->color.a;
+                    if (rt) final_opacity = (uint8_t)(final_opacity * rt->opacity);
+                    tvg_paint_set_opacity(text_node, final_opacity);
                     
                     Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
                     

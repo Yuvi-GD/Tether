@@ -47,6 +47,7 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
     Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_add_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
     rt->translation_x = 0; rt->translation_y = 0; rt->scale_x = 1.0f; rt->scale_y = 1.0f;
     rt->rotation_deg = 0; rt->pivot_x = 0.5f; rt->pivot_y = 0.5f;
+    rt->opacity = 1.0f;
 
     Tether_Style* s = (Tether_Style*)tether_ecs_add_component(entity, TETHER_COMPONENT_STYLE);
     if (s) {
@@ -88,13 +89,16 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
 Tether_GUID tether_widget_create_text(Tether_GUID parent) {
     Tether_GUID entity = tether_widget_create_panel(parent);
 
-    Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_STYLE);
+    Tether_Text* t = (Tether_Text*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT);
     t->font_size = 24.0f;
     t->font_id = 0;
     t->font_style = TETHER_FONT_NORMAL;
     t->align_x = TETHER_ALIGN_START;
     t->align_y = TETHER_ALIGN_START;
     t->wrap_width = 0.0f;
+    t->color = (Tether_Color){0, 0, 0, 255}; /* Default black */
+    t->intrinsic_size.x = 0.0f;
+    t->intrinsic_size.y = 0.0f;
     
     /* Text widgets need a place to store their string data */
     /* Text defaults to shrink-wrap layout */
@@ -104,12 +108,6 @@ Tether_GUID tether_widget_create_text(Tether_GUID parent) {
     /* Text defaults to ignoring hits so it doesn't block buttons */
     Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
     if (i) i->hit_behavior = TETHER_HIT_IGNORE;
-    
-    /* Default text color to black (can be overridden via TETHER_COMPONENT_STYLE) */
-    Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
-    if (s) {
-        s->bg_color = (Tether_Color){0, 0, 0, 255};
-    }
     
     return entity;
 }
@@ -138,13 +136,10 @@ Tether_GUID tether_widget_create_button(Tether_GUID parent) {
     
     /* Dynamically add a child Text widget to complete the Button natively */
     Tether_GUID text_entity = tether_widget_create_text(entity);
-    Tether_TextStyle* ts = (Tether_TextStyle*)tether_ecs_get_component(text_entity, TETHER_COMPONENT_TEXT_STYLE);
+    Tether_Text* ts = (Tether_Text*)tether_ecs_get_component(text_entity, TETHER_COMPONENT_TEXT);
     if (ts) {
         ts->font_size = 18.0f;
-    }
-    Tether_Style* ts_style = (Tether_Style*)tether_ecs_get_component(text_entity, TETHER_COMPONENT_STYLE);
-    if (ts_style) {
-        ts_style->bg_color = (Tether_Color){255, 255, 255, 255}; /* White text */
+        ts->color = (Tether_Color){255, 255, 255, 255}; /* White text */
     }
     tether_ecs_set_text_string(text_entity, "Button");
     
