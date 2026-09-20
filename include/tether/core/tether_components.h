@@ -60,9 +60,10 @@ typedef enum {
 typedef enum { TETHER_FLOW_NONE = 0, TETHER_FLOW_ROW, TETHER_FLOW_COLUMN } Tether_Flow;
 
 typedef enum {
-    TETHER_HIT_BLOCK = 0,      /* Blocks hits underneath it */
-    TETHER_HIT_IGNORE_SELF = 1,/* Passes through self, tests children */
-    TETHER_HIT_IGNORE_ALL = 2  /* Skips self and all children */
+    TETHER_HIT_BLOCK = 0,       /* Catches click. Stops propagation to things behind. */
+    TETHER_HIT_IGNORE = 1,      /* Ghost: Clicks pass right through me AND my children. */
+    TETHER_HIT_SELF_ONLY = 2,   /* I catch clicks on my background, but clicks on children pass through. */
+    TETHER_HIT_CHILD_ONLY = 3   /* I cannot be clicked, but my interactive children CAN be. */
 } Tether_HitBehavior;
 
 typedef enum {
@@ -132,12 +133,6 @@ typedef struct Tether_Style {
     Tether_Color border_color;
     float border_width;
     Tether_Edges border_radius;
-
-    /* State colors (requires Tether_Interactable component to take effect) */
-    Tether_ColorMode hover_color_mode;
-    Tether_Color hover_color;  /* Used when hover_color_mode == MANUAL */
-    Tether_ColorMode press_color_mode;
-    Tether_Color press_color;  /* Used when press_color_mode == MANUAL */
 } Tether_Style;
 
 typedef struct Tether_Hierarchy {
@@ -157,7 +152,6 @@ typedef struct {
     Tether_Edges padding;
     Tether_Vec2 gap;
     uint8_t wrap;
-    Tether_HitBehavior hit_behavior; /* How this node catches pointer events */
     float measured_width;
     float measured_height;
 } Tether_LayoutNode;
@@ -223,6 +217,13 @@ typedef struct Tether_Interactable {
     uint8_t is_hovered;
     uint8_t is_pressed;
     uint8_t has_focus;
+    
+    Tether_HitBehavior hit_behavior;
+    
+    Tether_ColorMode hover_color_mode;
+    Tether_Color hover_color;
+    Tether_ColorMode press_color_mode;
+    Tether_Color press_color;
 } Tether_Interactable;
 
 #ifdef __cplusplus

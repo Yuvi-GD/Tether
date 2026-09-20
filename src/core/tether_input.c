@@ -39,25 +39,30 @@ static Tether_GUID hit_test_tree(Tether_GUID entity, float x, float y) {
         return TETHER_INVALID_GUID;
     }
 
-    /* 2. Check hit_behavior cull */
-    if (node->hit_behavior == TETHER_HIT_IGNORE_ALL) {
+    /* 2. Determine hit behavior from Interactable component, or default to child-only if non-interactable */
+    Tether_Interactable* interact = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
+    Tether_HitBehavior hit_behavior = interact ? interact->hit_behavior : TETHER_HIT_CHILD_ONLY;
+
+    if (hit_behavior == TETHER_HIT_IGNORE) {
         return TETHER_INVALID_GUID;
     }
 
-    /* 3. Reverse DFS: Test children back-to-front (top-most Z-Index first) */
-    if (h && h->last_child != TETHER_INVALID_GUID) {
-        Tether_GUID child = h->last_child;
-        while (child != TETHER_INVALID_GUID) {
-            Tether_GUID hit = hit_test_tree(child, x, y);
-            if (hit != TETHER_INVALID_GUID) return hit;
+    /* 3. Reverse DFS: Test children back-to-front (top-most Z-Index first), UNLESS we are SELF_ONLY */
+    if (hit_behavior != TETHER_HIT_SELF_ONLY) {
+        if (h && h->last_child != TETHER_INVALID_GUID) {
+            Tether_GUID child = h->last_child;
+            while (child != TETHER_INVALID_GUID) {
+                Tether_GUID hit = hit_test_tree(child, x, y);
+                if (hit != TETHER_INVALID_GUID) return hit;
 
-            Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-            child = ch ? ch->prev_sibling : TETHER_INVALID_GUID;
+                Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
+                child = ch ? ch->prev_sibling : TETHER_INVALID_GUID;
+            }
         }
     }
 
     /* 4. If children didn't catch it, do I catch it? */
-    if (node->hit_behavior == TETHER_HIT_IGNORE_SELF) {
+    if (hit_behavior == TETHER_HIT_CHILD_ONLY) {
         return TETHER_INVALID_GUID;
     }
 
