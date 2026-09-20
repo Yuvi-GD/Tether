@@ -14,9 +14,10 @@ Tether_GUID create_my_c_modal(Tether_GUID parent) {
         ol->flow = TETHER_FLOW_COLUMN;
         ol->content_align_x = TETHER_ALIGN_CENTER;
         ol->content_align_y = TETHER_ALIGN_CENTER;
-        ol->hit_behavior = TETHER_HIT_BLOCK; /* Block clicks to background */
         strncpy(ol->id, "c_modal_overlay", sizeof(ol->id) - 1);
     }
+    Tether_Interactable* oi = (Tether_Interactable*)tether_ecs_get_component(overlay, TETHER_COMPONENT_INTERACTABLE);
+    if (oi) oi->hit_behavior = TETHER_HIT_BLOCK; /* Block clicks to background */
     
     Tether_Style* os = (Tether_Style*)tether_ecs_get_component(overlay, TETHER_COMPONENT_STYLE);
     if (os) os->bg_color = (Tether_Color){0, 0, 0, 150}; /* Semi-transparent black */

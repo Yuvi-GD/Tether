@@ -119,29 +119,27 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             }
         }
         else if (strcmp(key, "hover_color") == 0) {
-            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
-            if (!s) s = (Tether_Style*)tether_ecs_add_component(ent, TETHER_COMPONENT_STYLE);
+            Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
             if (val_node->type == TETHER_AST_SCALAR && strcmp(resolve_scalar(val_node, env), "AUTO") == 0) {
-                s->hover_color_mode = TETHER_COLOR_MODE_AUTO;
+                i->hover_color_mode = TETHER_COLOR_MODE_AUTO;
             } else if (val_node->type == TETHER_AST_SEQUENCE) {
-                s->hover_color_mode = TETHER_COLOR_MODE_MANUAL;
-                if (val_node->child_count > 0) s->hover_color.r = atoi(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) s->hover_color.g = atoi(resolve_scalar(val_node->children[1], env));
-                if (val_node->child_count > 2) s->hover_color.b = atoi(resolve_scalar(val_node->children[2], env));
-                if (val_node->child_count > 3) s->hover_color.a = atoi(resolve_scalar(val_node->children[3], env));
+                i->hover_color_mode = TETHER_COLOR_MODE_MANUAL;
+                if (val_node->child_count > 0) i->hover_color.r = atoi(resolve_scalar(val_node->children[0], env));
+                if (val_node->child_count > 1) i->hover_color.g = atoi(resolve_scalar(val_node->children[1], env));
+                if (val_node->child_count > 2) i->hover_color.b = atoi(resolve_scalar(val_node->children[2], env));
+                if (val_node->child_count > 3) i->hover_color.a = atoi(resolve_scalar(val_node->children[3], env));
             }
         }
         else if (strcmp(key, "press_color") == 0) {
-            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
-            if (!s) s = (Tether_Style*)tether_ecs_add_component(ent, TETHER_COMPONENT_STYLE);
+            Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
             if (val_node->type == TETHER_AST_SCALAR && strcmp(resolve_scalar(val_node, env), "AUTO") == 0) {
-                s->press_color_mode = TETHER_COLOR_MODE_AUTO;
+                i->press_color_mode = TETHER_COLOR_MODE_AUTO;
             } else if (val_node->type == TETHER_AST_SEQUENCE) {
-                s->press_color_mode = TETHER_COLOR_MODE_MANUAL;
-                if (val_node->child_count > 0) s->press_color.r = atoi(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) s->press_color.g = atoi(resolve_scalar(val_node->children[1], env));
-                if (val_node->child_count > 2) s->press_color.b = atoi(resolve_scalar(val_node->children[2], env));
-                if (val_node->child_count > 3) s->press_color.a = atoi(resolve_scalar(val_node->children[3], env));
+                i->press_color_mode = TETHER_COLOR_MODE_MANUAL;
+                if (val_node->child_count > 0) i->press_color.r = atoi(resolve_scalar(val_node->children[0], env));
+                if (val_node->child_count > 1) i->press_color.g = atoi(resolve_scalar(val_node->children[1], env));
+                if (val_node->child_count > 2) i->press_color.b = atoi(resolve_scalar(val_node->children[2], env));
+                if (val_node->child_count > 3) i->press_color.a = atoi(resolve_scalar(val_node->children[3], env));
             }
         }
         else if (strcmp(key, "flow") == 0) {
@@ -271,12 +269,13 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             }
         }
         else if (strcmp(key, "hit_behavior") == 0) {
-            Tether_LayoutNode* n = (Tether_LayoutNode*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT_NODE);
+            Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
             const char* val = resolve_scalar(val_node, env);
-            if (n && val) {
-                if (strcmp(val, "BLOCK") == 0) n->hit_behavior = TETHER_HIT_BLOCK;
-                else if (strcmp(val, "IGNORE_SELF") == 0) n->hit_behavior = TETHER_HIT_IGNORE_SELF;
-                else if (strcmp(val, "IGNORE_ALL") == 0) n->hit_behavior = TETHER_HIT_IGNORE_ALL;
+            if (i && val) {
+                if (strcmp(val, "BLOCK") == 0) i->hit_behavior = TETHER_HIT_BLOCK;
+                else if (strcmp(val, "IGNORE") == 0) i->hit_behavior = TETHER_HIT_IGNORE;
+                else if (strcmp(val, "SELF_ONLY") == 0) i->hit_behavior = TETHER_HIT_SELF_ONLY;
+                else if (strcmp(val, "CHILD_ONLY") == 0) i->hit_behavior = TETHER_HIT_CHILD_ONLY;
             }
         }
         else if (strcmp(key, "visibility") == 0) {

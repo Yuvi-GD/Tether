@@ -16,8 +16,19 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
     node->padding.top = 0; node->padding.bottom = 0; node->padding.left = 0; node->padding.right = 0;
     node->gap.x = 0; node->gap.y = 0;
     node->wrap = 0;
-    node->hit_behavior = TETHER_HIT_BLOCK; /* Panels catch hits by default */
     node->id[0] = '\0';
+    
+    Tether_Interactable* i = (Tether_Interactable*)tether_ecs_add_component(entity, TETHER_COMPONENT_INTERACTABLE);
+    if (i) {
+        i->is_hovered = 0;
+        i->is_pressed = 0;
+        i->has_focus = 0;
+        i->hit_behavior = TETHER_HIT_BLOCK; /* Panels catch hits by default */
+        i->hover_color_mode = TETHER_COLOR_MODE_NONE;
+        i->press_color_mode = TETHER_COLOR_MODE_NONE;
+        i->hover_color = (Tether_Color){0, 0, 0, 0};
+        i->press_color = (Tether_Color){0, 0, 0, 0};
+    }
     
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_add_component(entity, TETHER_COMPONENT_VISIBILITY);
     vis->state = TETHER_VISIBLE;
@@ -44,8 +55,6 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
         s->border_width = 0.0f;
         s->border_radius.top = 0.0f; s->border_radius.right = 0.0f;
         s->border_radius.bottom = 0.0f; s->border_radius.left = 0.0f;
-        s->hover_color_mode = TETHER_COLOR_MODE_NONE;
-        s->press_color_mode = TETHER_COLOR_MODE_NONE;
     }
 
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_add_component(entity, TETHER_COMPONENT_HIERARCHY);
@@ -93,8 +102,8 @@ Tether_GUID tether_widget_create_text(Tether_GUID parent) {
     if (f) f->fill_ratio = 0.0f;
     
     /* Text defaults to ignoring hits so it doesn't block buttons */
-    Tether_LayoutNode* node = (Tether_LayoutNode*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT_NODE);
-    if (node) node->hit_behavior = TETHER_HIT_IGNORE_SELF;
+    Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
+    if (i) i->hit_behavior = TETHER_HIT_IGNORE;
     
     /* Default text color to black (can be overridden via TETHER_COMPONENT_STYLE) */
     Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
@@ -116,10 +125,14 @@ Tether_GUID tether_widget_create_button(Tether_GUID parent) {
         node->padding.left = 20; node->padding.right = 20;
     }
     
+    Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
+    if (i) {
+        i->hover_color_mode = TETHER_COLOR_MODE_AUTO;
+        i->press_color_mode = TETHER_COLOR_MODE_AUTO;
+    }
+    
     Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
     if (s) {
-        s->hover_color_mode = TETHER_COLOR_MODE_AUTO;
-        s->press_color_mode = TETHER_COLOR_MODE_AUTO;
         s->bg_color = (Tether_Color){97, 175, 239, 255}; /* Blueish default */
     }
     

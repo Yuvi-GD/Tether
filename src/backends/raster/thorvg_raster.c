@@ -94,8 +94,8 @@ static Tether_Color tether_style_resolve_color(Tether_GUID entity, const Tether_
 
     /* Press takes priority over hover */
     if (i->is_pressed) {
-        if (s->press_color_mode == TETHER_COLOR_MODE_MANUAL) return s->press_color;
-        if (s->press_color_mode == TETHER_COLOR_MODE_AUTO) {
+        if (i->press_color_mode == TETHER_COLOR_MODE_MANUAL) return i->press_color;
+        if (i->press_color_mode == TETHER_COLOR_MODE_AUTO) {
             return (Tether_Color){
                 clamp_u8((int)s->bg_color.r - 30),
                 clamp_u8((int)s->bg_color.g - 30),
@@ -106,8 +106,8 @@ static Tether_Color tether_style_resolve_color(Tether_GUID entity, const Tether_
     }
 
     if (i->is_hovered) {
-        if (s->hover_color_mode == TETHER_COLOR_MODE_MANUAL) return s->hover_color;
-        if (s->hover_color_mode == TETHER_COLOR_MODE_AUTO) {
+        if (i->hover_color_mode == TETHER_COLOR_MODE_MANUAL) return i->hover_color;
+        if (i->hover_color_mode == TETHER_COLOR_MODE_AUTO) {
             return (Tether_Color){
                 clamp_u8((int)s->bg_color.r + 30),
                 clamp_u8((int)s->bg_color.g + 30),
