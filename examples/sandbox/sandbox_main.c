@@ -49,7 +49,7 @@ void on_align_clicked(Tether_GUID entity, Tether_EventType type, void* user_data
     Tether_GUID txt = tether_ecs_find_by_id("txt_align");
     if (txt != TETHER_INVALID_GUID)
     {
-        Tether_TextStyle* t = (Tether_TextStyle*)tether_ecs_get_component(txt, TETHER_COMPONENT_TEXT_STYLE);
+        Tether_Text* t = (Tether_Text*)tether_ecs_get_component(txt, TETHER_COMPONENT_TEXT);
         Tether_TextWord* tw = (Tether_TextWord*)tether_ecs_get_component(txt, TETHER_COMPONENT_TEXT_WORD);
         if (t && tw) 
         {

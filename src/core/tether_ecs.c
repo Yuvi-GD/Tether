@@ -259,9 +259,11 @@ void tether_ecs_detach_entity(Tether_GUID entity) {
 }
 
 void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity) {
-  if (!tether_ecs_is_valid(parent) || !tether_ecs_is_valid(entity)) return;
+    if (!tether_ecs_is_valid(parent) || !tether_ecs_is_valid(entity)) return;
 
-  // Make sure it's completely detached from any old parent first!
+    if (tether_ecs_get_component(parent, TETHER_COMPONENT_IS_LEAF)) return;
+
+    /* Make sure it's completely detached from any old parent first! */
   tether_ecs_detach_entity(entity);
 
   Tether_Hierarchy* p = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);

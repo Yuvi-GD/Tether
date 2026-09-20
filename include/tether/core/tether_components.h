@@ -22,7 +22,7 @@ extern "C" {
 #define TETHER_COMPONENT_STYLE            (TETHER_CORE_COMPONENTS_MAX + 0)
 #define TETHER_COMPONENT_ANCHOR_SLOT      (TETHER_CORE_COMPONENTS_MAX + 1)
 #define TETHER_COMPONENT_FLEX_SLOT        (TETHER_CORE_COMPONENTS_MAX + 2)
-#define TETHER_COMPONENT_TEXT_STYLE       (TETHER_CORE_COMPONENTS_MAX + 3)
+#define TETHER_COMPONENT_TEXT             (TETHER_CORE_COMPONENTS_MAX + 3)
 #define TETHER_COMPONENT_TEXT_WORD        (TETHER_CORE_COMPONENTS_MAX + 4)
 #define TETHER_COMPONENT_TEXT_LABEL       (TETHER_CORE_COMPONENTS_MAX + 5)
 #define TETHER_COMPONENT_TEXT_PARAGRAPH   (TETHER_CORE_COMPONENTS_MAX + 6)
@@ -30,8 +30,10 @@ extern "C" {
 #define TETHER_COMPONENT_CLIP_MASK        (TETHER_CORE_COMPONENTS_MAX + 8)
 #define TETHER_COMPONENT_IMAGE            (TETHER_CORE_COMPONENTS_MAX + 9)
 #define TETHER_COMPONENT_INTERACTABLE     (TETHER_CORE_COMPONENTS_MAX + 10)
+#define TETHER_COMPONENT_IS_LEAF          (TETHER_CORE_COMPONENTS_MAX + 11)
+#define TETHER_COMPONENT_TAG              (TETHER_CORE_COMPONENTS_MAX + 12)
 
-#define TETHER_SYSTEM_COMPONENTS_MAX      (TETHER_CORE_COMPONENTS_MAX + 11)
+#define TETHER_SYSTEM_COMPONENTS_MAX      (TETHER_CORE_COMPONENTS_MAX + 13)
 
 /* --- USER HARDCODED COMPONENTS --- */
 /* Users can hardcode their components starting from TETHER_SYSTEM_COMPONENTS_MAX */
@@ -126,6 +128,7 @@ typedef struct Tether_RenderTransform {
     float rotation_deg;
     float pivot_x; /* Default 0.5 */
     float pivot_y; /* Default 0.5 */
+    float opacity; /* Default 1.0 */
 } Tether_RenderTransform;
 
 typedef struct Tether_Style {
@@ -181,7 +184,11 @@ typedef struct {
     Tether_Align align_x;
     Tether_Align align_y;
     float wrap_width; /* If > 0, text wraps at this exact width */
-} Tether_TextStyle;
+    Tether_Color color;
+    
+    /* Computed state (updated by Text Measure System) */
+    Tether_Vec2 intrinsic_size;
+} Tether_Text;
 
 typedef struct {
     Tether_VisibilityState state;
@@ -225,6 +232,10 @@ typedef struct Tether_Interactable {
     Tether_ColorMode press_color_mode;
     Tether_Color press_color;
 } Tether_Interactable;
+
+typedef struct {
+    char name[32];
+} Tether_Tag;
 
 #ifdef __cplusplus
 }

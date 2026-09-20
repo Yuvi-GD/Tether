@@ -18,7 +18,7 @@ void tether_run(Tether_App_Config* config) {
     tether_ecs_register_component_static(TETHER_COMPONENT_STYLE, sizeof(Tether_Style));
     tether_ecs_register_component_static(TETHER_COMPONENT_ANCHOR_SLOT, sizeof(Tether_AnchorSlot));
     tether_ecs_register_component_static(TETHER_COMPONENT_FLEX_SLOT, sizeof(Tether_FlexSlot));
-    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_STYLE, sizeof(Tether_TextStyle));
+    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT, sizeof(Tether_Text));
     tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_WORD, sizeof(Tether_TextWord));
     tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_LABEL, sizeof(Tether_TextLabel));
     tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_PARAGRAPH, sizeof(Tether_TextParagraph));
@@ -26,6 +26,8 @@ void tether_run(Tether_App_Config* config) {
     tether_ecs_register_component_static(TETHER_COMPONENT_CLIP_MASK, sizeof(Tether_ClipMask));
     tether_ecs_register_component_static(TETHER_COMPONENT_IMAGE, sizeof(Tether_Image));
     tether_ecs_register_component_static(TETHER_COMPONENT_INTERACTABLE, sizeof(Tether_Interactable));
+    tether_ecs_register_component_static(TETHER_COMPONENT_IS_LEAF, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_TAG, sizeof(Tether_Tag));
     
     tether_ecs_init_roots();
     
