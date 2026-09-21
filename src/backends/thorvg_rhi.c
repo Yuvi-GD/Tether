@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "backends/tether_raster.h"
+#include "tether/backends/tether_rhi.h"
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
 

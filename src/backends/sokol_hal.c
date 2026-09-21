@@ -11,8 +11,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "backends/tether_raster.h"
-#include "backends/tether_hal.h"
+#include "tether/backends/tether_rhi.h"
+#include "tether/backends/tether_hal.h"
 #include "tether/core/tether_input.h"
 #include "ui/tether_layout.h"
 

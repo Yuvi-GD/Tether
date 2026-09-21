@@ -174,8 +174,8 @@ add_executable(tether_sandbox
     src/core/tether_registry.c
     src/core/tether_input.c
     src/core/tether_events.c
-    src/backends/hal/sokol_hal.c
-    src/backends/raster/thorvg_raster.c
+    src/backends/sokol_hal.c
+    src/backends/thorvg_rhi.c
     src/parsers/tether_yaml.c
     src/parsers/tether_yaml_ast.c
     src/ui/tether_layout.c
