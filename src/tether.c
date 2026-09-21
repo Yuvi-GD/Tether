@@ -1,7 +1,7 @@
 #include "tether/tether.h"
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
-#include "backends/tether_hal.h"
+#include "tether/backends/tether_hal.h"
 #include "parsers/tether_yaml.h"
 #include "tether/core/tether_registry.h"
 #include "tether/ui/tether_widgets.h"
