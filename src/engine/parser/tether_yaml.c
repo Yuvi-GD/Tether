@@ -1,5 +1,5 @@
-#include "parsers/tether_yaml.h"
-#include "parsers/tether_yaml_ast.h"
+#include "tether/engine/parser/tether_yaml.h"
+#include "tether/engine/parser/tether_yaml_ast.h"
 #include "tether/core/tether_components.h"
 #include "tether/core/tether_registry.h"
 #include "tether/ui/tether_widgets.h"

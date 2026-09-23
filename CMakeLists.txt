@@ -177,8 +177,8 @@ add_executable(tether_sandbox
     src/backends/sokol_hal.c
     src/backends/thorvg_rhi.c
     src/engine/tether_render.c
-    src/parsers/tether_yaml.c
-    src/parsers/tether_yaml_ast.c
+    src/engine/parser/tether_yaml.c
+    src/engine/parser/tether_yaml_ast.c
     src/ui/tether_layout.c
     src/ui/tether_widgets.c
 )
