@@ -13,7 +13,7 @@ static Tether_GUID hit_test_tree(Tether_GUID entity, float x, float y) {
 
     Tether_Layout* node = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
-    if (vis && (vis->state == TETHER_HIDDEN || vis->state == TETHER_COLLAPSED)) {
+    if (vis && (vis->computed_state == TETHER_HIDDEN || vis->computed_state == TETHER_COLLAPSED)) {
         return TETHER_INVALID_GUID;
     }
 
@@ -103,6 +103,7 @@ void tether_input_process_event(Tether_Pointer_Event* event) {
             Tether_Interactable* old_i = (Tether_Interactable*)tether_ecs_get_component(g_hovered, TETHER_COMPONENT_INTERACTABLE);
             if (old_i) {
                 old_i->is_hovered = 0;
+                tether_ecs_add_component(g_hovered, TETHER_COMPONENT_DIRTY_VISUAL);
                 tether_dispatch_event(g_hovered, TETHER_EVENT_HOVER_EXIT);
             }
         }
@@ -111,6 +112,7 @@ void tether_input_process_event(Tether_Pointer_Event* event) {
             Tether_Interactable* new_i = (Tether_Interactable*)tether_ecs_get_component(hit, TETHER_COMPONENT_INTERACTABLE);
             if (new_i) {
                 new_i->is_hovered = 1;
+                tether_ecs_add_component(hit, TETHER_COMPONENT_DIRTY_VISUAL);
                 tether_dispatch_event(hit, TETHER_EVENT_HOVER_ENTER);
             }
         }
@@ -122,12 +124,18 @@ void tether_input_process_event(Tether_Pointer_Event* event) {
         if (g_pressed != hit) {
             if (g_pressed != TETHER_INVALID_GUID) {
                 Tether_Interactable* old_p = (Tether_Interactable*)tether_ecs_get_component(g_pressed, TETHER_COMPONENT_INTERACTABLE);
-                if (old_p) old_p->is_pressed = 0;
+                if (old_p) {
+                    old_p->is_pressed = 0;
+                    tether_ecs_add_component(g_pressed, TETHER_COMPONENT_DIRTY_VISUAL);
+                }
             }
             g_pressed = hit;
             if (g_pressed != TETHER_INVALID_GUID) {
                 Tether_Interactable* p = (Tether_Interactable*)tether_ecs_get_component(g_pressed, TETHER_COMPONENT_INTERACTABLE);
-                if (p) p->is_pressed = 1;
+                if (p) {
+                    p->is_pressed = 1;
+                    tether_ecs_add_component(g_pressed, TETHER_COMPONENT_DIRTY_VISUAL);
+                }
                 tether_dispatch_event(g_pressed, TETHER_EVENT_PRESS);
             }
         }
@@ -135,7 +143,10 @@ void tether_input_process_event(Tether_Pointer_Event* event) {
     else if (is_up && event->button == TETHER_MOUSE_BUTTON_LEFT) {
         if (g_pressed != TETHER_INVALID_GUID) {
             Tether_Interactable* p = (Tether_Interactable*)tether_ecs_get_component(g_pressed, TETHER_COMPONENT_INTERACTABLE);
-            if (p) p->is_pressed = 0;
+            if (p) {
+                p->is_pressed = 0;
+                tether_ecs_add_component(g_pressed, TETHER_COMPONENT_DIRTY_VISUAL);
+            }
             
             tether_dispatch_event(g_pressed, TETHER_EVENT_RELEASE);
 

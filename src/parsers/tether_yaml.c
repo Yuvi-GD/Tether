@@ -2,6 +2,7 @@
 #include "parsers/tether_yaml_ast.h"
 #include "tether/core/tether_components.h"
 #include "tether/core/tether_registry.h"
+#include "tether/ui/tether_widgets.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -115,18 +116,18 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
         else if (strcmp(key, "color") == 0) {
             Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
             Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
-            if (!s) s = (Tether_Style*)tether_ecs_add_component(ent, TETHER_COMPONENT_STYLE);
             if (val_node->type == TETHER_AST_SEQUENCE) {
-                if (val_node->child_count > 0) s->bg_color.r = atoi(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) s->bg_color.g = atoi(resolve_scalar(val_node->children[1], env));
-                if (val_node->child_count > 2) s->bg_color.b = atoi(resolve_scalar(val_node->children[2], env));
-                if (val_node->child_count > 3) s->bg_color.a = atoi(resolve_scalar(val_node->children[3], env));
+                Tether_Color c = {0, 0, 0, 255};
+                if (val_node->child_count > 0) c.r = atoi(resolve_scalar(val_node->children[0], env));
+                if (val_node->child_count > 1) c.g = atoi(resolve_scalar(val_node->children[1], env));
+                if (val_node->child_count > 2) c.b = atoi(resolve_scalar(val_node->children[2], env));
+                if (val_node->child_count > 3) c.a = atoi(resolve_scalar(val_node->children[3], env));
                 
+                if (s) {
+                    s->bg_color = c;
+                }
                 if (t) {
-                    t->color.r = s->bg_color.r;
-                    t->color.g = s->bg_color.g;
-                    t->color.b = s->bg_color.b;
-                    t->color.a = s->bg_color.a;
+                    t->color = c;
                 }
             }
         }
@@ -299,9 +300,9 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(ent, TETHER_COMPONENT_VISIBILITY);
             const char* val = resolve_scalar(val_node, env);
             if (vis && val) {
-                if (strcmp(val, "hidden") == 0) vis->state = TETHER_HIDDEN;
-                else if (strcmp(val, "collapsed") == 0) vis->state = TETHER_COLLAPSED;
-                else vis->state = TETHER_VISIBLE;
+                if (strcmp(val, "hidden") == 0) tether_widget_set_visibility(ent, TETHER_HIDDEN);
+                else if (strcmp(val, "collapsed") == 0) tether_widget_set_visibility(ent, TETHER_COLLAPSED);
+                else tether_widget_set_visibility(ent, TETHER_VISIBLE);
             }
         }
         else if (strcmp(key, "align_x") == 0) {
@@ -479,12 +480,16 @@ Tether_GUID tether_yaml_load(const char* filepath, Tether_GUID parent) {
     if (parent == TETHER_INVALID_GUID) {
         parent = tether_ecs_get_main_root();
     }
-
+    
     /* Use a blank environment for the root document */
     Tether_ASTEnvironment* env = tether_ast_env_create();
     
     /* Instantiate */
     Tether_GUID root = instantiate_node(ast, parent, env);
+    
+    if (root != TETHER_INVALID_GUID) {
+        tether_widget_show(root);
+    }
     
     tether_ast_env_free(env);
     tether_ast_free(ast);

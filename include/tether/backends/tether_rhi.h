@@ -1,29 +1,42 @@
-#ifndef TETHER_RASTER_H
-#define TETHER_RASTER_H
+#ifndef TETHER_RHI_H
+#define TETHER_RHI_H
 
 #include <stdint.h>
+#include "tether/core/tether_components.h"
 
-/* The HAL calls this when the window is initialized.
- * For WebGPU backends, 'device' and 'instance' are passed as const void* to avoid WebGPU header coupling.
- */
-void tether_raster_init(uint32_t width, uint32_t height, const void* device, const void* instance);
+/* Lifecycle (Called by HAL) */
+void tether_rhi_init(uint32_t width, uint32_t height, const void* device, const void* instance);
+void tether_rhi_resize(uint32_t width, uint32_t height);
+void tether_rhi_term(void);
+const void* tether_rhi_get_texture(void);
+void  tether_rhi_draw(void);
 
-/* The HAL calls this when the window resizes */
-void tether_raster_resize(uint32_t width, uint32_t height);
+/* Granular Property Sync API */
+void* tether_rhi_create_rect(void);
+void* tether_rhi_create_text(void);
+void* tether_rhi_create_scene(void);
 
-/* The HAL calls this every frame to draw the UI */
-void tether_raster_draw(void);
+void tether_rhi_scene_push(void* scene_handle, void* child_handle);
+void tether_rhi_scene_remove(void* scene_handle, void* child_handle);
+void tether_rhi_scene_clear(void* scene_handle);
+void tether_rhi_add_to_canvas(void* render_handle);
+void tether_rhi_paint_free(void* handle);
 
-/* The HAL calls this to get the rendered texture.
- * For WebGPU backends, this returns the WGPUTexture (as const void*).
- */
-const void* tether_raster_get_texture(void);
+/* Common Transforms (Works on any node: Rect, Text, etc.) */
+void tether_rhi_translate(void* render_handle, float x, float y);
+void tether_rhi_scale(void* render_handle, float factor_x, float factor_y);
+void tether_rhi_rotate(void* render_handle, float degrees);
+void tether_rhi_set_opacity(void* handle, uint8_t opacity);
+void tether_rhi_set_visible(void* handle, int visible);
+void tether_rhi_get_text_bounds(void* handle, float* tx, float* ty, float* w, float* h);
 
-/* Measures the size of a text string given a font ID, style, and size.
- * If max_width > 0, text is measured with word-wrapping within that width. */
-void tether_raster_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h);
-
-/* The HAL calls this on teardown */
-void tether_raster_term(void);
+/* Specific Geometry Setters */
+void tether_rhi_set_rect_geometry(void* render_handle, float w, float h, float rx, float ry);
+void tether_rhi_set_fill_color(void* render_handle, Tether_Color color);
+void tether_rhi_set_text_string(void* render_handle, const char* str);
+void tether_rhi_set_text_font(void* render_handle, uint32_t font_id, int font_style, float font_size);
+void tether_rhi_set_text_color(void* render_handle, Tether_Color color);
+void tether_rhi_set_text_wrap(void* render_handle, float max_width);
+void tether_rhi_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h);
 
 #endif

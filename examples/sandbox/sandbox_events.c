@@ -2,13 +2,14 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_events.h"
 #include "tether/core/tether_registry.h"
+#include "tether/ui/tether_widgets.h"
 #include "parsers/tether_yaml.h"
 #include <stdio.h>
 #include <string.h>
 
 void on_close_c_modal(Tether_GUID entity, Tether_EventType type, void* user_data) {
     Tether_GUID root = (Tether_GUID)(uintptr_t)user_data;
-    tether_ecs_destroy_entity(root);
+    tether_widget_destroy(root);
 }
 
 void on_open_c_modal(Tether_GUID entity, Tether_EventType type, void* user_data) {
@@ -16,12 +17,13 @@ void on_open_c_modal(Tether_GUID entity, Tether_EventType type, void* user_data)
     Tether_GUID modal_root = tether_create_widget("MyCModal", tether_ecs_get_main_root());
     if (modal_root != TETHER_INVALID_GUID) {
         printf("[Sandbox] Opened C Modal dynamically!\n");
+        tether_widget_show(modal_root);
     }
 }
 
 void on_close_yaml_modal(Tether_GUID entity, Tether_EventType type, void* user_data) {
     Tether_GUID root = (Tether_GUID)(uintptr_t)user_data;
-    tether_ecs_destroy_entity(root);
+    tether_widget_destroy(root);
 }
 
 void on_open_yaml_modal(Tether_GUID entity, Tether_EventType type, void* user_data) {
@@ -30,7 +32,6 @@ void on_open_yaml_modal(Tether_GUID entity, Tether_EventType type, void* user_da
     
     if (modal_root != TETHER_INVALID_GUID) {
         printf("[Sandbox] Opened YAML Modal dynamically!\n");
-        
         /* 2. Bind the close button dynamically */
         Tether_GUID close_btn = tether_ecs_find_by_id("btn_close_yaml_modal");
         if (close_btn != TETHER_INVALID_GUID) {

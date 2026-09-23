@@ -6,6 +6,7 @@
 #include <webgpu/webgpu.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "tether/backends/tether_rhi.h"
 #include "tether/core/tether_ecs.h"
@@ -18,7 +19,7 @@ static WGPUTexture offscreen_texture = NULL;
 static uint32_t offscreen_w = 0;
 static uint32_t offscreen_h = 0;
 
-void tether_raster_init(uint32_t width, uint32_t height, const void* device, const void* instance) {
+void tether_rhi_init(uint32_t width, uint32_t height, const void* device, const void* instance) {
     cached_device = (WGPUDevice)device;
     cached_instance = (WGPUInstance)instance;
 
@@ -40,10 +41,10 @@ void tether_raster_init(uint32_t width, uint32_t height, const void* device, con
     tvg_canvas = tvg_wgcanvas_create(TVG_ENGINE_OPTION_NONE);
 
     /* Allocate initial texture */
-    tether_raster_resize(width, height);
+    tether_rhi_resize(width, height);
 }
 
-void tether_raster_resize(uint32_t width, uint32_t height) {
+void tether_rhi_resize(uint32_t width, uint32_t height) {
     if (width == 0 || height == 0) return;
     if (offscreen_texture && offscreen_w == width && offscreen_h == height) return;
 
@@ -80,176 +81,7 @@ void tether_raster_resize(uint32_t width, uint32_t height) {
     }
 }
 
-/* Clamp a float to [0, 255] and return as uint8_t */
-static uint8_t clamp_u8(int v) {
-    return (uint8_t)(v < 0 ? 0 : v > 255 ? 255 : v);
-}
-
-/* Resolve the active background color for an entity based on its interaction state.
- * Checks press first (takes priority), then hover, then falls back to bg_color.
- * Can be called from any rasterizer backend — pure interface logic. */
-static Tether_Color tether_style_resolve_color(Tether_GUID entity, const Tether_Style* s) {
-    Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
-    if (!i) return s->bg_color;
-
-    /* Press takes priority over hover */
-    if (i->is_pressed) {
-        if (i->press_color_mode == TETHER_COLOR_MODE_MANUAL) return i->press_color;
-        if (i->press_color_mode == TETHER_COLOR_MODE_AUTO) {
-            return (Tether_Color){
-                clamp_u8((int)s->bg_color.r - 30),
-                clamp_u8((int)s->bg_color.g - 30),
-                clamp_u8((int)s->bg_color.b - 30),
-                s->bg_color.a
-            };
-        }
-    }
-
-    if (i->is_hovered) {
-        if (i->hover_color_mode == TETHER_COLOR_MODE_MANUAL) return i->hover_color;
-        if (i->hover_color_mode == TETHER_COLOR_MODE_AUTO) {
-            return (Tether_Color){
-                clamp_u8((int)s->bg_color.r + 30),
-                clamp_u8((int)s->bg_color.g + 30),
-                clamp_u8((int)s->bg_color.b + 30),
-                s->bg_color.a
-            };
-        }
-    }
-
-    return s->bg_color;
-}
-
-static bool is_entity_visible(Tether_GUID entity) {
-    while (tether_ecs_is_valid(entity)) {
-        Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
-        if (vis && (vis->state == TETHER_HIDDEN || vis->state == TETHER_COLLAPSED)) {
-            return false;
-        }
-        Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-        entity = h ? h->parent : TETHER_INVALID_GUID;
-    }
-    return true;
-}
-
-void tether_raster_draw(void) {
-    /* Clear previous frame's geometry and free memory */
-    tvg_canvas_remove(tvg_canvas, NULL);
-    
-    /* Draw Background */
-    Tvg_Paint bg_rect = tvg_shape_new();
-    tvg_shape_append_rect(bg_rect, 0, 0, (float)offscreen_w, (float)offscreen_h, 0, 0, true);
-    tvg_shape_set_fill_color(bg_rect, 38, 38, 38, 255);
-    tvg_canvas_add(tvg_canvas, bg_rect);
-    
-    /* Draw ECS Scene */
-    Tether_DenseArray* transforms = tether_ecs_get_dense_array(TETHER_COMPONENT_SLOT_TRANSFORM);
-    if (transforms) {
-        for (uint32_t i = 0; i < transforms->count; i++) {
-            Tether_GUID entity = transforms->entity_map[i];
-            if (!tether_ecs_is_valid(entity)) continue;
-
-            if (!is_entity_visible(entity)) {
-                continue;
-            }
-
-            Tether_SlotTransform* t = (Tether_SlotTransform*)((uint8_t*)transforms->data + (i * transforms->element_size));
-            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
-            Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
-            Tether_Text* text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
-
-            /* Render Background (Only if NOT a Text node, or if we introduce a separate bg_color later) */
-            if (s && !text) {
-                Tvg_Paint shape = tvg_shape_new();
-                tvg_shape_append_rect(shape, t->x, t->y, t->width, t->height, 0, 0, true);
-                
-                /* Resolve the active color based on interaction state */
-                Tether_Color active = tether_style_resolve_color(entity, s);
-                tvg_shape_set_fill_color(shape, active.r, active.g, active.b, active.a);
-                
-                /* Check for Render Transform (Animations / Visual Offsets) */
-                if (rt) {
-                    tvg_paint_translate(shape, rt->translation_x, rt->translation_y);
-                    if (rt->scale_x != 0.0f || rt->scale_y != 0.0f) {
-                        tvg_paint_scale(shape, rt->scale_x);
-                    }
-                    if (rt->rotation_deg != 0.0f) {
-                        tvg_paint_rotate(shape, rt->rotation_deg);
-                    }
-                    tvg_paint_set_opacity(shape, (uint8_t)(active.a * rt->opacity));
-                }
-                
-                tvg_canvas_add(tvg_canvas, shape);
-            }
-
-            /* Render Text */
-            if (text) {
-                const char* str = tether_ecs_get_text_string(entity);
-                if (str && str[0] != '\0') {
-                    Tvg_Paint text_node = tvg_text_new();
-                    
-                    const char* font_name = tether_font_get_name(text->font_id);
-                    tvg_text_set_font(text_node, font_name ? font_name : "Roboto-Regular");
-                    
-                    tvg_text_set_size(text_node, text->font_size);
-                    tvg_text_set_text(text_node, str);
-                    
-                    tvg_text_set_color(text_node, text->color.r, text->color.g, text->color.b);
-                    
-                    uint8_t final_opacity = text->color.a;
-                    if (rt) final_opacity = (uint8_t)(final_opacity * rt->opacity);
-                    tvg_paint_set_opacity(text_node, final_opacity);
-                    
-                    Tether_Layout* node = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
-                    
-                    /* Only enable word wrapping if the layout engine determined it was strictly necessary */
-                    if (node && node->wrap) {
-                        tvg_text_layout(text_node, t->width, t->height);
-                        tvg_text_wrap_mode(text_node, TVG_TEXT_WRAP_WORD);
-                    }
-                    
-                    /* Simple alignment logic based on intrinsic bounds */
-                    float tx = t->x;
-                    float ty = t->y;
-                    
-                    float t_x, t_y, tw, th;
-                    tvg_paint_get_aabb(text_node, &t_x, &t_y, &tw, &th);
-                    
-                    if (text->align_x == TETHER_ALIGN_CENTER) {
-                        tx += (t->width - tw) * 0.5f;
-                    } else if (text->align_x == TETHER_ALIGN_END) {
-                        tx += (t->width - tw);
-                    }
-                    
-                    if (text->align_y == TETHER_ALIGN_CENTER) {
-                        ty += (t->height - th) * 0.5f;
-                    } else if (text->align_y == TETHER_ALIGN_END) {
-                        ty += (t->height - th);
-                    }
-
-                    /* Compensate for ThorVG's internal origin of the text bounding box */
-                    tx -= t_x;
-                    ty -= t_y;
-
-                    tvg_paint_translate(text_node, tx, ty);
-                    
-                    Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
-                    if (rt) {
-                        tvg_paint_translate(text_node, tx + rt->translation_x, ty + rt->translation_y);
-                        if (rt->scale_x != 0.0f || rt->scale_y != 0.0f) {
-                            tvg_paint_scale(text_node, rt->scale_x);
-                        }
-                        if (rt->rotation_deg != 0.0f) {
-                            tvg_paint_rotate(text_node, rt->rotation_deg);
-                        }
-                    }
-
-                    tvg_canvas_add(tvg_canvas, text_node);
-                }
-            }
-        }
-    }
-
+void tether_rhi_draw(void) {
     /* Update ThorVG scene graph */
     Tvg_Result update_res = tvg_canvas_update(tvg_canvas);
     
@@ -268,21 +100,25 @@ void tether_raster_draw(void) {
     }
 }
 
-const void* tether_raster_get_texture(void) {
+const void* tether_rhi_get_texture(void) {
     return (const void*)offscreen_texture;
 }
 
-void tether_raster_term(void) {
-    if (tvg_canvas) {
-        tvg_canvas_destroy(tvg_canvas);
-    }
-    tvg_engine_term();
+void tether_rhi_term(void) {
+    /* 
+     * NOTE: We deliberately skip tvg_canvas_destroy() and tvg_engine_term() 
+     * here. In ThorVG's WebGPU backend, destroying the canvas or engine 
+     * immediately upon window close can cause a thread deadlock/freeze 
+     * if the WebGPU swapchain is in a specific state. 
+     * Since this is only called at application shutdown, the OS will 
+     * automatically reclaim the memory.
+     */
     if (offscreen_texture) {
         wgpuTextureRelease(offscreen_texture);
     }
 }
 
-void tether_raster_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h) {
+void tether_rhi_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h) {
     if (!text || !out_w || !out_h) return;
 
     Tvg_Paint text_node = tvg_text_new();
@@ -305,5 +141,124 @@ void tether_raster_measure_text(const char* text, uint32_t font_id, int font_sty
     *out_w = w;
     *out_h = h;
 
-    tvg_paint_rel(text_node); /* Clean up the temporary paint node */
+    tvg_paint_rel(text_node); /* Clean up the temporary paint node properly */
+
+}
+void tether_rhi_get_text_bounds(void* handle, float* tx, float* ty, float* w, float* h) {
+    if (!handle) return;
+    tvg_paint_get_aabb((Tvg_Paint)handle, tx, ty, w, h);
+}
+
+void tether_rhi_set_visible(void* handle, int visible) {
+    if (!handle) return;
+    tvg_paint_set_visible((Tvg_Paint)handle, visible ? true : false);
+}
+
+/* ============================================================================
+ * RHI Abstraction Contract Implementations (Granular Setters)
+ * ============================================================================ */
+
+void* tether_rhi_create_rect(void) {
+    Tvg_Paint shape = tvg_shape_new();
+    tvg_paint_ref(shape);
+    return (void*)shape;
+}
+
+void* tether_rhi_create_text(void) {
+    Tvg_Paint text = tvg_text_new();
+    tvg_paint_ref(text);
+    return (void*)text;
+}
+
+void* tether_rhi_create_scene(void) {
+    Tvg_Paint scene = tvg_scene_new();
+    tvg_paint_ref(scene);
+    return (void*)scene;
+}
+
+void tether_rhi_scene_push(void* scene_handle, void* child_handle) {
+    if (!scene_handle || !child_handle) return;
+    tvg_scene_add((Tvg_Paint)scene_handle, (Tvg_Paint)child_handle);
+}
+
+void tether_rhi_scene_remove(void* scene_handle, void* child_handle) {
+    if (!scene_handle || !child_handle) return;
+    tvg_scene_remove((Tvg_Paint)scene_handle, (Tvg_Paint)child_handle);
+}
+
+void tether_rhi_scene_clear(void* scene_handle) {
+    if (!scene_handle) return;
+    tvg_scene_remove((Tvg_Paint)scene_handle, NULL);
+}
+
+void tether_rhi_paint_free(void* handle) {
+    if (!handle) return;
+    tvg_paint_unref((Tvg_Paint)handle, true);
+}
+
+void tether_rhi_add_to_canvas(void* render_handle) {
+    if (!render_handle) return;
+    tvg_canvas_add(tvg_canvas, (Tvg_Paint)render_handle);
+}
+
+void tether_rhi_translate(void* render_handle, float x, float y) {
+    if (!render_handle) return;
+    tvg_paint_translate((Tvg_Paint)render_handle, x, y);
+}
+
+void tether_rhi_scale(void* render_handle, float factor_x, float factor_y) {
+    if (!render_handle) return;
+    tvg_paint_scale((Tvg_Paint)render_handle, factor_x); /* ThorVG C-API only supports uniform scale */
+}
+
+void tether_rhi_rotate(void* render_handle, float degrees) {
+    if (!render_handle) return;
+    tvg_paint_rotate((Tvg_Paint)render_handle, degrees);
+}
+
+void tether_rhi_set_opacity(void* render_handle, uint8_t alpha) {
+    if (!render_handle) return;
+    tvg_paint_set_opacity((Tvg_Paint)render_handle, alpha);
+}
+
+void tether_rhi_set_rect_geometry(void* render_handle, float w, float h, float rx, float ry) {
+    if (!render_handle) return;
+    Tvg_Paint paint = (Tvg_Paint)render_handle;
+    tvg_shape_reset(paint);
+    tvg_shape_append_rect(paint, 0, 0, w, h, rx, ry, true);
+}
+
+void tether_rhi_set_fill_color(void* render_handle, Tether_Color color) {
+    if (!render_handle) return;
+    tvg_shape_set_fill_color((Tvg_Paint)render_handle, color.r, color.g, color.b, color.a);
+}
+
+void tether_rhi_set_text_string(void* render_handle, const char* str) {
+    if (!render_handle || !str) return;
+    const char* current_str = tvg_text_get_text((Tvg_Paint)render_handle);
+    if (current_str && strcmp(current_str, str) == 0) return;
+    tvg_text_set_text((Tvg_Paint)render_handle, str);
+}
+
+void tether_rhi_set_text_font(void* render_handle, uint32_t font_id, int font_style, float font_size) {
+    if (!render_handle) return;
+    const char* font_name = tether_font_get_name(font_id);
+    tvg_text_set_font((Tvg_Paint)render_handle, font_name ? font_name : "Roboto-Regular");
+    tvg_text_set_size((Tvg_Paint)render_handle, font_size);
+}
+
+void tether_rhi_set_text_color(void* render_handle, Tether_Color color) {
+    if (!render_handle) return;
+    tvg_text_set_color((Tvg_Paint)render_handle, color.r, color.g, color.b);
+}
+
+void tether_rhi_set_text_wrap(void* render_handle, float max_width) {
+    if (!render_handle) return;
+    if (max_width > 0.0f) {
+        tvg_text_layout((Tvg_Paint)render_handle, max_width, 0.0f);
+        tvg_text_wrap_mode((Tvg_Paint)render_handle, TVG_TEXT_WRAP_WORD);
+    } else {
+        tvg_text_layout((Tvg_Paint)render_handle, 0.0f, 0.0f);
+        tvg_text_wrap_mode((Tvg_Paint)render_handle, TVG_TEXT_WRAP_NONE);
+    }
 }

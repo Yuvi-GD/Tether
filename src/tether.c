@@ -15,6 +15,12 @@ void tether_run(Tether_App_Config* config) {
     tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy));
     tether_ecs_register_component_static(TETHER_COMPONENT_VISIBILITY, sizeof(Tether_Visibility));
     tether_ecs_register_component_static(TETHER_COMPONENT_LAYOUT, sizeof(Tether_Layout));
+
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_LAYOUT, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_VISUAL, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_HIERARCHY, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_VOLATILE, 0);
+    
     tether_ecs_register_component_static(TETHER_COMPONENT_STYLE, sizeof(Tether_Style));
     tether_ecs_register_component_static(TETHER_COMPONENT_ANCHOR_SLOT, sizeof(Tether_AnchorSlot));
     tether_ecs_register_component_static(TETHER_COMPONENT_FLEX_SLOT, sizeof(Tether_FlexSlot));
