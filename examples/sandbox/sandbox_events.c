@@ -3,7 +3,7 @@
 #include "tether/core/tether_events.h"
 #include "tether/core/tether_registry.h"
 #include "tether/ui/tether_widgets.h"
-#include "parsers/tether_yaml.h"
+#include "tether/engine/parser/tether_yaml.h"
 #include <stdio.h>
 
 /* ========================================================
