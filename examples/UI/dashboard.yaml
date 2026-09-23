@@ -1,0 +1,218 @@
+- Panel:
+    fill_ratio: 0.78
+    color: [40, 44, 52, 255]
+    flow: COLUMN
+    gap: [0, 15]
+    children:
+      # ---- ROW 1: Color Boxes ----
+      - Panel:
+          fill_ratio: 0.25
+          color: [50, 56, 68, 255]
+          flow: ROW
+          gap: [12, 0]
+          padding: [12, 12, 12, 12]
+          children:
+            - Panel:
+                interactable: true
+                fill_ratio: 1.0
+                color: [224, 108, 117, 255]
+                hover_color: AUTO
+                press_color: AUTO
+            - Panel:
+                interactable: true
+                fill_ratio: 1.0
+                color: [152, 195, 121, 255]
+                hover_color: AUTO
+                press_color: AUTO
+            - Panel:
+                interactable: true
+                fill_ratio: 1.0
+                color: [97, 175, 239, 255]
+                hover_color: AUTO
+                press_color: AUTO
+            - Panel:
+                interactable: true
+                fill_ratio: 1.0
+                color: [198, 120, 221, 255]
+                hover_color: AUTO
+                press_color: AUTO
+
+      # ---- ROW 2: Stat Cards ----
+      - Panel:
+          fill_ratio: 0.35
+          color: [40, 44, 52, 255]
+          flow: ROW
+          gap: [12, 0]
+          children:
+            # Card A: Active Users
+            - StatCard:
+                card_color: [152, 195, 121, 255]
+                card_title: "Active Users"
+                children:
+                  - Text:
+                      string: "2,847"
+                      font_size: 36.0
+                      color: [40, 44, 52, 255]
+            # Card B: Revenue
+            - StatCard:
+                card_color: [229, 192, 123, 255]
+                card_title: "Revenue"
+                children:
+                  - Text:
+                      string: "$14,290"
+                      font_size: 36.0
+                      color: [40, 44, 52, 255]
+            # Card C: Uptime
+            - StatCard:
+                card_color: [86, 182, 194, 255]
+                card_title: "Uptime"
+                children:
+                  - Text:
+                      string: "99.97%"
+                      font_size: 36.0
+                      color: [40, 44, 52, 255]
+
+      # ---- ROW 3: Paragraph + Status Log ----
+      - Panel:
+          fill_ratio: 0.40
+          color: [40, 44, 52, 255]
+          flow: ROW
+          gap: [12, 0]
+          children:
+            # System Log panel
+            - Panel:
+                fill_ratio: 0.6
+                color: [50, 56, 68, 255]
+                flow: COLUMN
+                padding: [15, 15, 15, 15]
+                gap: [0, 10]
+                children:
+                  - Text:
+                      string: "System Log"
+                      font_size: 18.0
+                      color: [171, 178, 191, 255]
+                  - Text:
+                      fill_ratio: 1.0
+                      string: "Tether uses a pure Data-Oriented Entity Component System. Every UI element is an entity with components stored in dense, contiguous arrays. The two-pass layout solver measures bottom-up then arranges top-down for efficient, cache-friendly traversal."
+                      font_size: 14.0
+                      color: [140, 145, 155, 255]
+            # Live Status panel
+            - Panel:
+                fill_ratio: 0.4
+                color: [50, 56, 68, 255]
+                flow: COLUMN
+                padding: [15, 15, 15, 15]
+                gap: [0, 10]
+                children:
+                  - Text:
+                      string: "Live Status"
+                      font_size: 18.0
+                      color: [171, 178, 191, 255]
+                  - Panel:
+                      interactable: true
+                      color: [152, 195, 121, 60]
+                      hover_color: [152, 195, 121, 120]
+                      press_color: [152, 195, 121, 200]
+                      padding: [10, 10, 10, 10]
+                      children:
+                        - Text:
+                            string: "Server: Online"
+                            font_size: 14.0
+                            color: [152, 195, 121, 255]
+                  - Panel:
+                      interactable: true
+                      color: [224, 108, 117, 60]
+                      hover_color: [224, 108, 117, 120]
+                      press_color: [224, 108, 117, 200]
+                      padding: [10, 10, 10, 10]
+                      children:
+                        - Text:
+                            string: "[Alert]: High memory usage detected on node-3"
+                            font_size: 14.0
+                            color: [224, 108, 117, 255]
+                            dynamic: true
+
+      # ---- ROW 4: Playground ----
+      - Panel:
+          fill_ratio: 0.15
+          color: [50, 56, 68, 255]
+          flow: ROW
+          gap: [12, 0]
+          padding: [15, 15, 15, 15]
+          children:
+            # Hide button
+            - Panel:
+                id: "btn_hide"
+                interactable: true
+                fill_ratio: 1.0
+                color: [229, 192, 123, 255]
+                hover_color: AUTO
+                press_color: AUTO
+                padding: [10, 10, 10, 10]
+                children:
+                  - Text:
+                      string: "Click to Hide"
+                      font_size: 18.0
+                      color: [40, 44, 52, 255]
+            # Collapse button
+            - Panel:
+                id: "btn_collapse"
+                interactable: true
+                fill_ratio: 1.0
+                color: [224, 108, 117, 255]
+                hover_color: AUTO
+                press_color: AUTO
+                padding: [10, 10, 10, 10]
+                opacity: 0.7
+                children:
+                  - Text:
+                      string: "Click to Collapse"
+                      font_size: 18.0
+                      color: [40, 44, 52, 255]
+            # Align button
+            - Panel:
+                id: "btn_align"
+                interactable: true
+                fill_ratio: 1.0
+                color: [97, 175, 239, 255]
+                hover_color: AUTO
+                press_color: AUTO
+                padding: [10, 10, 10, 10]
+                children:
+                  - Text:
+                      id: "txt_align"
+                      string: "Align: CENTER"
+                      font_size: 18.0
+                      text_color: [40, 44, 52, 255]
+                      align_x: center
+                      align_y: center
+            # Open YAML Modal
+            - Panel:
+                id: "btn_open_yaml_modal"
+                interactable: true
+                fill_ratio: 1.0
+                color: [152, 195, 121, 255]
+                hover_color: AUTO
+                press_color: AUTO
+                padding: [10, 10, 10, 10]
+                children:
+                  - Text:
+                      string: "Open YAML Modal"
+                      font_size: 18.0
+                      color: [40, 44, 52, 255]
+            # Open C Modal
+            - Panel:
+                id: "btn_open_c_modal"
+                interactable: true
+                fill_ratio: 1.0
+                color: [97, 175, 239, 255]
+                hover_color: AUTO
+                press_color: AUTO
+                padding: [10, 10, 10, 10]
+                children:
+                  - Text:
+                      string: "Open C Modal"
+                      align_x: center
+                      align_y: center
+                      font_size: 18.0
+                      color: [40, 44, 52, 255]

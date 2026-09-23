@@ -3,7 +3,6 @@
 #include "tether/core/tether_components.h"
 #include "tether/core/tether_registry.h"
 #include "tether/ui/tether_widgets.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -387,6 +386,12 @@ static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Te
                 
                 if (strcmp(key_str, "Widget") == 0) {
                     continue; /* Handled in pre-pass */
+                }
+
+                if (strcmp(key_str, "Scene") == 0) {
+                    const char* scene_path = resolve_scalar(node->children[i], env);
+                    if (scene_path) return tether_yaml_load(scene_path, parent);
+                    return TETHER_INVALID_GUID;
                 }
                 
                 if (strcmp(key_str, "Slot") == 0) {
