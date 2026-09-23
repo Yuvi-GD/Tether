@@ -6,7 +6,8 @@
 #include "tether/core/tether_registry.h"
 #include <string.h>
 
-Tether_GUID create_my_c_modal(Tether_GUID parent) {
+Tether_GUID create_my_c_modal(Tether_GUID parent) 
+{
     /* 1. Create Background Overlay Panel */
     Tether_GUID overlay = tether_create_widget("Panel", parent);
     Tether_Layout* ol = (Tether_Layout*)tether_ecs_get_component(overlay, TETHER_COMPONENT_LAYOUT);
