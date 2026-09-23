@@ -97,6 +97,11 @@ void tether_ecs_register_component_static(uint32_t component_id, size_t element_
 /* Allocate a custom component ID dynamically for a third-party struct. Returns the assigned ID. */
 uint32_t tether_ecs_register_component_dynamic(size_t element_size);
 
+/* Set the exclusive limit of the statically assigned component IDs.
+   first ID available to runtime-allocated components.
+ */
+void tether_ecs_set_static_component_limit(uint32_t component_limit);
+
 /*
  * Add a component to an entity.
  * Returns a pointer to the uninitialized memory block in the dense array.

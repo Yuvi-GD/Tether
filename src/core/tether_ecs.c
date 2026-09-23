@@ -118,6 +118,12 @@ Tether_GUID tether_ecs_get_overlay_root(void) {
   return g_registry.overlay_root;
 }
 
+void tether_ecs_set_static_component_limit(uint32_t component_limit) {
+  if (component_limit > g_registry.next_custom_component_id) {
+    g_registry.next_custom_component_id = component_limit;
+  }
+}
+
 Tether_GUID tether_ecs_create_entity(void) {
   uint32_t index;
   if (g_registry.free_count > 0) {
