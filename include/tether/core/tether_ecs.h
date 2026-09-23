@@ -58,7 +58,6 @@ typedef struct Tether_DenseArray {
   uint32_t capacity;       /* Allocated capacity */
 } Tether_DenseArray;
 
-
 /* --- Global ECS Lifecycle --- */
 
 /* Initialize the global ECS registry. */

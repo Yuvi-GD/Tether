@@ -14,7 +14,7 @@
 #include "tether/backends/tether_rhi.h"
 #include "tether/backends/tether_hal.h"
 #include "tether/core/tether_input.h"
-#include "ui/tether_layout.h"
+#include "tether/engine/tether_render.h"
 
 /* Required for macOS (Metal integration) */
 #define wgpuTextureViewSetLabel(a, b) ((void)0)
@@ -177,7 +177,10 @@ static void init(void) {
 #endif
 
     /* Initialize Rasterizer with Sokol WebGPU Device & Instance */
-    tether_raster_init(sapp_width(), sapp_height(), _sapp.wgpu.device, _sapp.wgpu.instance);
+    tether_rhi_init(sapp_width(), sapp_height(), _sapp.wgpu.device, _sapp.wgpu.instance);
+    
+    /* Initialize Render Engine Scene Graph */
+    tether_render_init();
 }
 
 static void frame(void) {
@@ -191,13 +194,19 @@ static void frame(void) {
         return;
     }
 
-    tether_raster_resize(w, h);
-    
-    tether_layout_process_all((float)w, (float)h);
-    
-    tether_raster_draw();
+    static int last_w = 0, last_h = 0;
+    bool window_resized = (w != last_w || h != last_h);
 
-    WGPUTexture raster_tex = (WGPUTexture)tether_raster_get_texture();
+    if (window_resized) {
+        tether_rhi_resize(w, h);
+        last_w = w;
+        last_h = h;
+    }
+
+    /* Pass screen dimensions and whether the window resized as force_redraw */
+    tether_render_frame((float)w, (float)h, window_resized);
+
+    WGPUTexture raster_tex = (WGPUTexture)tether_rhi_get_texture();
     if (!raster_tex) return;
 
     /* Update sokol_gfx bindings if rasterizer created a new texture */
@@ -240,8 +249,8 @@ static void frame(void) {
 }
 
 static void cleanup(void) {
-    tether_raster_term();
     sg_shutdown();
+    tether_rhi_term();
 }
 
 static void input_event(const sapp_event* e) {

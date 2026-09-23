@@ -74,9 +74,15 @@ void tether_ecs_init_roots(void) {
   
   Tether_Hierarchy* hm = (Tether_Hierarchy*)tether_ecs_add_component(g_registry.main_root, TETHER_COMPONENT_HIERARCHY);
   if (hm) memset(hm, 0, sizeof(Tether_Hierarchy));
+  tether_ecs_add_component(g_registry.main_root, TETHER_COMPONENT_DIRTY_HIERARCHY);
+  tether_ecs_add_component(g_registry.main_root, TETHER_COMPONENT_DIRTY_LAYOUT);
+  tether_ecs_add_component(g_registry.main_root, TETHER_COMPONENT_DIRTY_VISUAL);
   
   Tether_Hierarchy* ho = (Tether_Hierarchy*)tether_ecs_add_component(g_registry.overlay_root, TETHER_COMPONENT_HIERARCHY);
   if (ho) memset(ho, 0, sizeof(Tether_Hierarchy));
+  tether_ecs_add_component(g_registry.overlay_root, TETHER_COMPONENT_DIRTY_HIERARCHY);
+  tether_ecs_add_component(g_registry.overlay_root, TETHER_COMPONENT_DIRTY_LAYOUT);
+  tether_ecs_add_component(g_registry.overlay_root, TETHER_COMPONENT_DIRTY_VISUAL);
 }
 
 void tether_ecs_term(void) {
@@ -177,9 +183,7 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
 
   /* Remove all components for this entity using swap-and-pop */
   for (uint32_t i = 0; i < g_registry.component_type_capacity; ++i) {
-    if (g_registry.dense_arrays[i].element_size > 0) {
       tether_ecs_remove_component(entity, i);
-    }
   }
 
   /* Increment generation to invalidate old GUIDs */
@@ -240,6 +244,8 @@ void tether_ecs_detach_entity(Tether_GUID entity) {
       if (p->child_count > 0) {
           p->child_count--;
       }
+      /* Flag parent for hierarchy sync so renderer updates the scene graph */
+      tether_ecs_add_component(h->parent, TETHER_COMPONENT_DIRTY_HIERARCHY);
   }
 
   // Stitch neighbors together O(1)
@@ -291,6 +297,8 @@ void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity) {
   }
 
   p->child_count++;
+  /* Flag new parent for hierarchy sync so renderer updates the scene graph */
+  tether_ecs_add_component(parent, TETHER_COMPONENT_DIRTY_HIERARCHY);
 }
 
 void tether_ecs_bring_to_front(Tether_GUID entity) {
@@ -324,8 +332,6 @@ void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
     return NULL;
 
   Tether_DenseArray *dense = &g_registry.dense_arrays[component_id];
-  if (dense->element_size == 0)
-    return NULL;
 
   uint32_t entity_index = tether_ecs_get_index(entity);
   ensure_sparse_capacity(component_id, entity_index + 1);
@@ -335,14 +341,19 @@ void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
   /* If it already has the component, return the existing one */
   if (sparse->dense_indices[entity_index] != TETHER_SPARSE_INVALID_INDEX) {
     uint32_t dense_idx = sparse->dense_indices[entity_index];
-    return (uint8_t *)dense->data + (dense_idx * dense->element_size);
+    if (dense->element_size > 0) {
+        return (uint8_t *)dense->data + (dense_idx * dense->element_size);
+    }
+    return (void*)1;
   }
 
   /* Add new component */
   if (dense->count >= dense->capacity) {
     dense->capacity =
         dense->capacity == 0 ? INITIAL_DENSE_CAPACITY : dense->capacity * 2;
-    dense->data = realloc(dense->data, dense->capacity * dense->element_size);
+    if (dense->element_size > 0) {
+        dense->data = realloc(dense->data, dense->capacity * dense->element_size);
+    }
     dense->entity_map = (Tether_GUID *)realloc(
         dense->entity_map, dense->capacity * sizeof(Tether_GUID));
   }
@@ -351,8 +362,13 @@ void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
   sparse->dense_indices[entity_index] = dense_idx;
   dense->entity_map[dense_idx] = entity;
 
-  void *ptr = (uint8_t *)dense->data + (dense_idx * dense->element_size);
-  memset(ptr, 0, dense->element_size);
+  void *ptr = NULL;
+  if (dense->element_size > 0) {
+      ptr = (uint8_t *)dense->data + (dense_idx * dense->element_size);
+      memset(ptr, 0, dense->element_size);
+  } else {
+      ptr = (void*)1;
+  }
   return ptr;
 }
 
@@ -370,6 +386,10 @@ void *tether_ecs_get_component(Tether_GUID entity, int component_id) {
 
   Tether_DenseArray *dense = &g_registry.dense_arrays[component_id];
   uint32_t dense_idx = sparse->dense_indices[entity_index];
+  
+  if (dense->element_size == 0) {
+      return (void*)1; /* Return a non-null dummy pointer for tag components */
+  }
   return (uint8_t *)dense->data + (dense_idx * dense->element_size);
 }
 
@@ -392,10 +412,11 @@ void tether_ecs_remove_component(Tether_GUID entity, int component_id) {
 
   /* Swap and pop if we are not removing the last element */
   if (dense_idx_to_remove != last_dense_idx) {
-    void *dst =
-        (uint8_t *)dense->data + (dense_idx_to_remove * dense->element_size);
-    void *src = (uint8_t *)dense->data + (last_dense_idx * dense->element_size);
-    memcpy(dst, src, dense->element_size);
+    if (dense->element_size > 0) {
+        void *dst = (uint8_t *)dense->data + (dense_idx_to_remove * dense->element_size);
+        void *src = (uint8_t *)dense->data + (last_dense_idx * dense->element_size);
+        memcpy(dst, src, dense->element_size);
+    }
 
     /* Update the entity map and the sparse map for the swapped entity */
     Tether_GUID swapped_entity = dense->entity_map[last_dense_idx];

@@ -18,30 +18,21 @@ void on_settings_clicked(Tether_GUID entity, Tether_EventType type, void* user_d
     Tether_GUID btn_hide = tether_ecs_find_by_id("btn_hide");
     if(btn_hide != TETHER_INVALID_GUID)
     {
-        Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(btn_hide, TETHER_COMPONENT_VISIBILITY);
-        if (vis) vis->state = TETHER_VISIBLE;
+        tether_widget_set_visibility(btn_hide, TETHER_VISIBLE);
         printf("[Sandbox] Settings clicked - Showing btn_hide!\n");
     }
 }
 
 void on_hide_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)
 {
-    Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
-    if (vis) 
-    {
-        vis->state = TETHER_HIDDEN;
-        printf("[Sandbox] btn_hide clicked - Hiding self!\n");
-    }
+    tether_widget_set_visibility(entity, TETHER_HIDDEN);
+    printf("[Sandbox] btn_hide clicked - Hiding self!\n");
 }
 
 void on_collapse_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)
 {
-    Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
-    if (vis) 
-    {
-        vis->state = TETHER_COLLAPSED;
-        printf("[Sandbox] btn_collapse clicked - Collapsing self!\n");
-    }
+    tether_widget_set_visibility(entity, TETHER_COLLAPSED);
+    printf("[Sandbox] btn_collapse clicked - Collapsing self!\n");
 }
 
 void on_align_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)

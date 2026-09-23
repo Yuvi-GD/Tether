@@ -16,7 +16,12 @@ extern "C" {
 #define TETHER_COMPONENT_HIERARCHY        2
 #define TETHER_COMPONENT_VISIBILITY       3
 #define TETHER_COMPONENT_LAYOUT           4
-#define TETHER_CORE_COMPONENTS_MAX        5
+#define TETHER_COMPONENT_DIRTY_LAYOUT     5
+#define TETHER_COMPONENT_DIRTY_VISUAL     6
+#define TETHER_COMPONENT_VOLATILE         7
+#define TETHER_COMPONENT_DIRTY_HIERARCHY  8
+
+#define TETHER_CORE_COMPONENTS_MAX        9
 
 /* --- SYSTEM UI COMPONENTS (Layer 3) --- */
 #define TETHER_COMPONENT_STYLE            (TETHER_CORE_COMPONENTS_MAX + 0)
@@ -137,6 +142,7 @@ typedef struct Tether_Style {
     Tether_Color border_color;
     float border_width;
     Tether_Edges border_radius;
+    void* render_handle;
 } Tether_Style;
 
 typedef struct Tether_Hierarchy {
@@ -146,6 +152,7 @@ typedef struct Tether_Hierarchy {
     uint64_t prev_sibling;
     uint64_t next_sibling;
     uint32_t child_count;
+    void* scene_handle; /* ThorVG Scene handle for Z-index tracking */
 } Tether_Hierarchy;
 
 typedef struct {
@@ -187,10 +194,12 @@ typedef struct {
     
     /* Computed state (updated by Text Measure System) */
     Tether_Vec2 intrinsic_size;
+    void* text_handle;
 } Tether_Text;
 
 typedef struct {
-    Tether_VisibilityState state;
+    Tether_VisibilityState local_state;
+    Tether_VisibilityState computed_state;
 } Tether_Visibility;
 
 typedef struct {
