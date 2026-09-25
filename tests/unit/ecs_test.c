@@ -1,5 +1,6 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
+#include "tether/core/tether_registry.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -11,9 +12,19 @@ typedef struct {
 } Transform;
 
 int main() {
+    setvbuf(stdout, NULL, _IONBF, 0);
     printf("--- Tether UI: ECS Kernel Test ---\n");
     tether_ecs_init();
+    tether_registry_init();
+    
+    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy));
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_HIERARCHY, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_LAYOUT, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_VISUAL, 0);
+    
+    printf("Calling tether_ecs_init_roots...\n");
     tether_ecs_init_roots();
+    printf("Roots initialized.\n");
     
     tether_ecs_register_component_static(COMPONENT_TRANSFORM, sizeof(Transform));
     

@@ -23,6 +23,9 @@ void sandbox_init(void)
     
     /* Bind all modal events dynamically via the separated file */
     sandbox_bind_events();
+
+    /* Load font */
+    tether_font_register("Roboto-Regular", "../../examples/Font/Roboto-Regular.ttf");
 }
 
 int main()
@@ -41,8 +44,6 @@ int main()
         
         .on_init = sandbox_init
     };
-    
-    tether_font_register("Roboto-Regular", "../../examples/Font/Roboto-Regular.ttf");
     
     tether_run(&config);
     return 0;

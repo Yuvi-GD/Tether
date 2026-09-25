@@ -10,6 +10,7 @@ void tether_rhi_resize(uint32_t width, uint32_t height);
 void tether_rhi_term(void);
 const void* tether_rhi_get_texture(void);
 void  tether_rhi_draw(void);
+void tether_rhi_load_font(const char* path);
 
 /* Granular Property Sync API */
 void* tether_rhi_create_rect(void);
