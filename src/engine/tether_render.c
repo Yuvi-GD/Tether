@@ -1,8 +1,11 @@
-#include "tether/engine/tether_render.h"
+#include "tether/backends/tether_rhi.h"
+
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
-#include "tether/backends/tether_rhi.h"
-#include "ui/tether_layout.h"
+
+#include "tether/engine/tether_render.h"
+#include "tether/engine/tether_layout.h"
+
 
 static void* main_scene = NULL;
 

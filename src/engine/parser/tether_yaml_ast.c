@@ -1,8 +1,10 @@
 #include "tether/engine/parser/tether_yaml_ast.h"
+
 #include <yaml.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 
 static Tether_ASTNode* create_node(Tether_ASTNodeType type) {
     Tether_ASTNode* node = (Tether_ASTNode*)calloc(1, sizeof(Tether_ASTNode));

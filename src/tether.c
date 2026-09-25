@@ -1,9 +1,9 @@
 #include "tether/tether.h"
+#include "tether/backends/tether_hal.h"
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
-#include "tether/backends/tether_hal.h"
-#include "tether/engine/parser/tether_yaml.h"
 #include "tether/core/tether_registry.h"
+#include "tether/engine/parser/tether_yaml.h"
 #include "tether/ui/tether_widgets.h"
 
 void tether_run(Tether_App_Config* config) {

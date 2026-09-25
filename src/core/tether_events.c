@@ -1,6 +1,8 @@
 #include "tether/core/tether_events.h"
+
 #include <stdlib.h>
 #include <stdio.h>
+
 
 typedef struct {
     Tether_GUID entity;

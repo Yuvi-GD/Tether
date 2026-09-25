@@ -36,9 +36,9 @@ enum {
     TETHER_COMPONENT_TEXT_LABEL,
     TETHER_COMPONENT_TEXT_PARAGRAPH,
     TETHER_COMPONENT_TEXT_DYNAMIC,
-    TETHER_COMPONENT_CLIP_MASK,
     TETHER_COMPONENT_IMAGE,
     TETHER_COMPONENT_INTERACTABLE,
+    TETHER_COMPONENT_CLIP_MASK,
     TETHER_COMPONENT_IS_LEAF,
     TETHER_COMPONENT_ID,
 
@@ -117,7 +117,7 @@ typedef struct Tether_Color {
 } Tether_Color;
 
 /* ========================================================================== */
-/* 4. ECS COMPONENTS                                                          */
+/* 4. ECS NATIVE COMPONENTS                                                   */
 /* ========================================================================== */
 typedef struct Tether_SlotTransform {
     float x;
@@ -137,14 +137,6 @@ typedef struct Tether_RenderTransform {
     float opacity; /* Default 1.0 */
 } Tether_RenderTransform;
 
-typedef struct Tether_Style {
-    Tether_Color bg_color;
-    Tether_Color border_color;
-    float border_width;
-    Tether_Edges border_radius;
-    void* render_handle;
-} Tether_Style;
-
 typedef struct Tether_Hierarchy {
     uint64_t parent;
     uint64_t first_child;
@@ -154,6 +146,11 @@ typedef struct Tether_Hierarchy {
     uint32_t child_count;
     void* scene_handle; /* ThorVG Scene handle for Z-index tracking */
 } Tether_Hierarchy;
+
+typedef struct {
+    Tether_VisibilityState local_state;
+    Tether_VisibilityState computed_state;
+} Tether_Visibility;
 
 typedef struct {
     Tether_Flow flow;          /* COLUMN, ROW, or NONE */
@@ -166,6 +163,10 @@ typedef struct {
     float measured_width;
     float measured_height;
 } Tether_Layout;
+
+/* ========================================================================== */
+/* 4. SYSTEM ECS COMPONENTS                                                   */
+/* ========================================================================== */
 
 typedef struct Tether_AnchorSlot {
     Tether_Vec2 anchor_min;
@@ -183,6 +184,14 @@ typedef struct Tether_FlexSlot {
     Tether_Align align_self_y;
 } Tether_FlexSlot;
 
+typedef struct Tether_Style {
+    Tether_Color bg_color;
+    Tether_Color border_color;
+    float border_width;
+    Tether_Edges border_radius;
+    void* render_handle;
+} Tether_Style;
+
 typedef struct {
     float font_size;
     uint32_t font_id;
@@ -196,11 +205,6 @@ typedef struct {
     Tether_Vec2 intrinsic_size;
     void* text_handle;
 } Tether_Text;
-
-typedef struct {
-    Tether_VisibilityState local_state;
-    Tether_VisibilityState computed_state;
-} Tether_Visibility;
 
 typedef struct {
     char data[32];
@@ -220,10 +224,6 @@ typedef struct {
     uint32_t capacity;
 } Tether_TextDynamic;
 
-typedef struct Tether_ClipMask {
-    uint8_t active;
-} Tether_ClipMask;
-
 typedef struct Tether_Image {
     char asset_path[128];
 } Tether_Image;
@@ -240,6 +240,10 @@ typedef struct Tether_Interactable {
     Tether_ColorMode press_color_mode;
     Tether_Color press_color;
 } Tether_Interactable;
+
+typedef struct Tether_ClipMask {
+    uint8_t active;
+} Tether_ClipMask;
 
 typedef struct {
     char id[32];
