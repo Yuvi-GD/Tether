@@ -36,7 +36,7 @@ void on_open_yaml_modal(Tether_GUID entity, Tether_EventType type, void* user_da
     if (modal_root != TETHER_INVALID_GUID) {
         printf("[Sandbox] Opened YAML Modal dynamically!\n");
         /* 2. Bind the close button dynamically */
-        Tether_GUID close_btn = tether_ecs_find_by_id("btn_close_yaml_modal");
+        Tether_GUID close_btn = tether_registry_find_entity("btn_close_yaml_modal");
         if (close_btn != TETHER_INVALID_GUID) {
             tether_bind_event(close_btn, TETHER_EVENT_CLICK, on_close_yaml_modal, (void*)(uintptr_t)modal_root);
         }
@@ -47,7 +47,7 @@ void on_open_yaml_modal(Tether_GUID entity, Tether_EventType type, void* user_da
 
 void on_settings_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)
 {
-    Tether_GUID btn_hide = tether_ecs_find_by_id("btn_hide");
+    Tether_GUID btn_hide = tether_registry_find_entity("btn_hide");
     if(btn_hide != TETHER_INVALID_GUID)
     {
         tether_widget_set_visibility(btn_hide, TETHER_VISIBLE);
@@ -69,7 +69,7 @@ void on_collapse_clicked(Tether_GUID entity, Tether_EventType type, void* user_d
 
 void on_align_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)
 {
-    Tether_GUID txt = tether_ecs_find_by_id("txt_align");
+    Tether_GUID txt = tether_registry_find_entity("txt_align");
     if (txt != TETHER_INVALID_GUID)
     {
         Tether_Text* t = (Tether_Text*)tether_ecs_get_component(txt, TETHER_COMPONENT_TEXT);
@@ -97,17 +97,17 @@ void on_align_clicked(Tether_GUID entity, Tether_EventType type, void* user_data
 
 void sandbox_bind_events(void) {
     /* Bind to static sidebar buttons from index.yaml */
-    Tether_GUID btn_c_modal = tether_ecs_find_by_id("btn_open_c_modal");
+    Tether_GUID btn_c_modal = tether_registry_find_entity("btn_open_c_modal");
     if (btn_c_modal != TETHER_INVALID_GUID) {
         tether_bind_event(btn_c_modal, TETHER_EVENT_CLICK, on_open_c_modal, NULL);
     }
     
-    Tether_GUID btn_yaml_modal = tether_ecs_find_by_id("btn_open_yaml_modal");
+    Tether_GUID btn_yaml_modal = tether_registry_find_entity("btn_open_yaml_modal");
     if (btn_yaml_modal != TETHER_INVALID_GUID) {
         tether_bind_event(btn_yaml_modal, TETHER_EVENT_CLICK, on_open_yaml_modal, NULL);
     }
 
-        Tether_GUID settings_btn = tether_ecs_find_by_id("SettingsBtn");
+        Tether_GUID settings_btn = tether_registry_find_entity("SettingsBtn");
     if (settings_btn != TETHER_INVALID_GUID)
     {
         /* We only bind CLICK here to demo C-event bindings. */
@@ -119,16 +119,16 @@ void sandbox_bind_events(void) {
         printf("[Sandbox] Warning: Could not find SettingsBtn\n");
     }
     
-    Tether_GUID btn_hide = tether_ecs_find_by_id("btn_hide");
+    Tether_GUID btn_hide = tether_registry_find_entity("btn_hide");
     if (btn_hide != TETHER_INVALID_GUID)
     {
         tether_bind_event(btn_hide, TETHER_EVENT_CLICK, on_hide_clicked, NULL);
     }
     
-    Tether_GUID btn_collapse = tether_ecs_find_by_id("btn_collapse");
+    Tether_GUID btn_collapse = tether_registry_find_entity("btn_collapse");
     if (btn_collapse != TETHER_INVALID_GUID) tether_bind_event(btn_collapse, TETHER_EVENT_CLICK, on_collapse_clicked, NULL);
     
-    Tether_GUID btn_align = tether_ecs_find_by_id("btn_align");
+    Tether_GUID btn_align = tether_registry_find_entity("btn_align");
     if (btn_align != TETHER_INVALID_GUID)
     {
         tether_bind_event(btn_align, TETHER_EVENT_CLICK, on_align_clicked, NULL);

@@ -11,10 +11,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "tether/backends/tether_rhi.h"
 #include "tether/backends/tether_hal.h"
-#include "tether/core/tether_input.h"
-#include "tether/engine/tether_render.h"
 
 /* Required for macOS (Metal integration) */
 #define wgpuTextureViewSetLabel(a, b) ((void)0)
@@ -81,6 +78,7 @@ static inline void tether_wgpuSurfacePresent(WGPUSurface surface) {
 #include "sokol_gfx.h"
 #include "sokol_glue.h"
 #include "sokol_log.h"
+#include "tether/engine/tether_engine.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -176,11 +174,8 @@ static void init(void) {
     }
 #endif
 
-    /* Initialize Rasterizer with Sokol WebGPU Device & Instance */
-    tether_rhi_init(sapp_width(), sapp_height(), _sapp.wgpu.device, _sapp.wgpu.instance);
-    
-    /* Initialize Render Engine Scene Graph */
-    tether_render_init();
+    /* Delegate to Engine. HAL doesn't know about RHI. */
+    tether_engine_on_hal_init(sapp_width(), sapp_height(), _sapp.wgpu.device, _sapp.wgpu.instance);
 }
 
 static void frame(void) {
@@ -194,19 +189,8 @@ static void frame(void) {
         return;
     }
 
-    static int last_w = 0, last_h = 0;
-    bool window_resized = (w != last_w || h != last_h);
-
-    if (window_resized) {
-        tether_rhi_resize(w, h);
-        last_w = w;
-        last_h = h;
-    }
-
-    /* Pass screen dimensions and whether the window resized as force_redraw */
-    tether_render_frame((float)w, (float)h, window_resized);
-
-    WGPUTexture raster_tex = (WGPUTexture)tether_rhi_get_texture();
+    /* Engine ticks and returns the final rendered texture for HAL to display */
+    void* raster_tex = tether_engine_on_hal_frame(w, h);
     if (!raster_tex) return;
 
     /* Update sokol_gfx bindings if rasterizer created a new texture */
@@ -220,7 +204,7 @@ static void frame(void) {
             .height = h,
             .pixel_format = SG_PIXELFORMAT_BGRA8,
             .sample_count = 1,
-            .wgpu_texture = (const void*)raster_tex,
+            .wgpu_texture = raster_tex,
         };
         offscreen_img = sg_make_image(&img_desc);
 
@@ -249,8 +233,9 @@ static void frame(void) {
 }
 
 static void cleanup(void) {
+    tether_engine_on_hal_cleanup();
     sg_shutdown();
-    tether_rhi_term();
+    tether_engine_on_hal_post_cleanup();
 }
 
 static void input_event(const sapp_event* e) {
@@ -269,7 +254,7 @@ static void input_event(const sapp_event* e) {
         else if (e->mouse_button == SAPP_MOUSEBUTTON_MIDDLE) pe.button = TETHER_MOUSE_BUTTON_MIDDLE;
         else pe.button = TETHER_MOUSE_BUTTON_NONE;
         
-        tether_input_process_event(&pe);
+        tether_engine_on_hal_input(&pe);
     }
 }
 

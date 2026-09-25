@@ -40,7 +40,6 @@ enum {
     TETHER_COMPONENT_INTERACTABLE,
     TETHER_COMPONENT_CLIP_MASK,
     TETHER_COMPONENT_IS_LEAF,
-    TETHER_COMPONENT_ID,
 
     TETHER_SYSTEM_COMPONENTS_MAX
 };
@@ -244,10 +243,6 @@ typedef struct Tether_Interactable {
 typedef struct Tether_ClipMask {
     uint8_t active;
 } Tether_ClipMask;
-
-typedef struct {
-    char id[32];
-} Tether_Id;
 
 #ifdef __cplusplus
 }

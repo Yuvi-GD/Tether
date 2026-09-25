@@ -174,6 +174,7 @@ add_executable(tether_sandbox
     src/core/tether_registry.c
     src/core/tether_input.c
     src/core/tether_events.c
+    src/utils/tether_hashmap.c
     src/backends/sokol_hal.c
     src/backends/thorvg_rhi.c
     src/engine/tether_render.c
@@ -187,6 +188,8 @@ add_executable(tether_sandbox
 add_executable(tether_ecs_test
     tests/unit/ecs_test.c
     src/core/tether_ecs.c
+    src/core/tether_registry.c
+    src/utils/tether_hashmap.c
 )
 
 # ============================================================

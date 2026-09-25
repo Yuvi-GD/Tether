@@ -4,6 +4,7 @@
 #include "tether/core/tether_components.h"
 #include "tether/core/tether_registry.h"
 #include "tether/engine/parser/tether_yaml.h"
+#include "tether/engine/tether_engine.h"
 #include "tether/ui/tether_widgets.h"
 
 void tether_run(Tether_App_Config* config) {
@@ -33,11 +34,15 @@ void tether_run(Tether_App_Config* config) {
     tether_ecs_register_component_static(TETHER_COMPONENT_IMAGE, sizeof(Tether_Image));
     tether_ecs_register_component_static(TETHER_COMPONENT_INTERACTABLE, sizeof(Tether_Interactable));
     tether_ecs_register_component_static(TETHER_COMPONENT_IS_LEAF, 0);
-    tether_ecs_register_component_static(TETHER_COMPONENT_ID, sizeof(Tether_Id));
     
     tether_ecs_init_roots();
     
     tether_registry_init();
+    
+    Tether_EngineConfig engine_config = {
+        .on_init = config->on_init
+    };
+    tether_engine_init(&engine_config);
     
     tether_register_widget("Panel", tether_widget_create_panel);
     tether_register_widget("Text", tether_widget_create_text);
@@ -47,13 +52,10 @@ void tether_run(Tether_App_Config* config) {
         tether_yaml_load(config->initial_yaml, TETHER_INVALID_GUID);
     }
     
-    if (config->on_init) {
-        config->on_init();
-    }
-
     /* Hand control over to the Hardware Abstraction Layer to start the OS window loop */
     tether_hal_run(config);
-    
+
+    tether_engine_term();
     tether_registry_term();
     tether_ecs_term();
 }

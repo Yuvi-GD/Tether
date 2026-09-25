@@ -11,6 +11,7 @@
 #include "tether/backends/tether_rhi.h"
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
+#include "tether/core/tether_registry.h"
 
 static Tvg_Canvas tvg_canvas = NULL;
 static WGPUDevice cached_device = NULL;
@@ -28,20 +29,17 @@ void tether_rhi_init(uint32_t width, uint32_t height, const void* device, const 
         printf(">>> ERROR: WebGPU Engine Init Failed!\n");
     }
     
-    /* Load fonts from the registry */
-    for (uint32_t i = 1; i <= 31; ++i) {
-        const char* path = tether_font_get_path(i);
-        if (path) {
-            if (tvg_font_load(path) != TVG_RESULT_SUCCESS) {
-                printf(">>> ERROR: Failed to load font: %s\n", path);
-            }
-        }
-    }
-
     tvg_canvas = tvg_wgcanvas_create(TVG_ENGINE_OPTION_NONE);
 
     /* Allocate initial texture */
     tether_rhi_resize(width, height);
+}
+
+void tether_rhi_load_font(const char* path) {
+    if (!path) return;
+    if (tvg_font_load(path) != TVG_RESULT_SUCCESS) {
+        printf("[ThorVG RHI] ERROR: Failed to load font: %s\n", path);
+    }
 }
 
 void tether_rhi_resize(uint32_t width, uint32_t height) {

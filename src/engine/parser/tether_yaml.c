@@ -282,11 +282,9 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             }
         }
         else if (strcmp(key, "id") == 0) {
-            Tether_Id* id_comp = (Tether_Id*)tether_ecs_get_component(ent, TETHER_COMPONENT_ID);
             const char* val = resolve_scalar(val_node, env);
-            if (id_comp && val) {
-                strncpy(id_comp->id, val, 31);
-                id_comp->id[31] = '\0';
+            if (val) {
+                tether_registry_alias_entity(ent, val);
             }
         }
         else if (strcmp(key, "hit_behavior") == 0) {

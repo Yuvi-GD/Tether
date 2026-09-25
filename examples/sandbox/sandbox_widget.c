@@ -17,8 +17,7 @@ Tether_GUID create_my_c_modal(Tether_GUID parent)
         ol->content_align_y = TETHER_ALIGN_CENTER;
     }
     
-    Tether_Id* oid = (Tether_Id*)tether_ecs_add_component(overlay, TETHER_COMPONENT_ID);
-    if (oid) strncpy(oid->id, "c_modal_overlay", sizeof(oid->id) - 1);
+    tether_registry_alias_entity(overlay, "c_modal_overlay");
 
     Tether_Interactable* oi = (Tether_Interactable*)tether_ecs_get_component(overlay, TETHER_COMPONENT_INTERACTABLE);
     if (oi) oi->hit_behavior = TETHER_HIT_BLOCK; /* Block clicks to background */

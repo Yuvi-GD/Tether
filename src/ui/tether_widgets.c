@@ -50,9 +50,6 @@ static Tether_GUID tether_widget_create_base(Tether_GUID parent) {
     node->size_box.x = 0; node->size_box.y = 0;
     node->wrap = 0;
     
-    Tether_Id* id_comp = (Tether_Id*)tether_ecs_add_component(entity, TETHER_COMPONENT_ID);
-    if (id_comp) id_comp->id[0] = '\0';
-
     tether_ecs_add_component(entity, TETHER_COMPONENT_VOLATILE);
     
     Tether_Interactable* i = (Tether_Interactable*)tether_ecs_add_component(entity, TETHER_COMPONENT_INTERACTABLE);

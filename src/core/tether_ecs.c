@@ -1,5 +1,6 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
+#include "tether/core/tether_registry.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -24,12 +25,6 @@ typedef struct {
   Tether_DenseArray *dense_arrays;
   uint32_t next_custom_component_id;
 
-  struct {
-      char names[32][64];
-      char paths[32][256];
-    uint32_t count;
-  } font_registry;
-  
   Tether_GUID main_root;
   Tether_GUID overlay_root;
 } Tether_Registry;
@@ -71,7 +66,10 @@ void tether_ecs_init(void) {
 void tether_ecs_init_roots(void) {
   /* Allocate the global roots */
   g_registry.main_root = tether_ecs_create_entity();
+  tether_registry_alias_entity(g_registry.main_root, "main_root");
+  
   g_registry.overlay_root = tether_ecs_create_entity();
+  tether_registry_alias_entity(g_registry.overlay_root, "overlay_root");
   
   Tether_Hierarchy* hm = (Tether_Hierarchy*)tether_ecs_add_component(g_registry.main_root, TETHER_COMPONENT_HIERARCHY);
   if (hm) memset(hm, 0, sizeof(Tether_Hierarchy));
@@ -461,98 +459,45 @@ const char* tether_ecs_get_text_string(Tether_GUID entity) {
     return NULL;
 }
 
-  bool tether_ecs_set_text_string(Tether_GUID entity, const char* string) {
-    if (!tether_ecs_is_valid(entity) || !string) return false;
+bool tether_ecs_set_text_string(Tether_GUID entity, const char* string) {
+  if (!tether_ecs_is_valid(entity) || !string) return false;
 
-    size_t length = strlen(string);
-    Tether_TextDynamic* dynamic = (Tether_TextDynamic*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-    if (dynamic && dynamic->data) {
-      free(dynamic->data);
-      dynamic->data = NULL;
-    }
-
-    tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_WORD);
-    tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_LABEL);
-    tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
-    tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-
-    if (length <= 31) {
-      Tether_TextWord* text = (Tether_TextWord*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_WORD);
-      if (!text) return false;
-      memcpy(text->data, string, length + 1);
-    } else if (length <= 127) {
-      Tether_TextLabel* text = (Tether_TextLabel*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_LABEL);
-      if (!text) return false;
-      memcpy(text->data, string, length + 1);
-    } else if (length <= 511) {
-      Tether_TextParagraph* text = (Tether_TextParagraph*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
-      if (!text) return false;
-      memcpy(text->data, string, length + 1);
-    } else {
-      Tether_TextDynamic* text = (Tether_TextDynamic*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-      if (!text) return false;
-      text->capacity = (uint32_t)(length + 1) * 2;
-      text->data = (char*)malloc(text->capacity);
-      if (!text->data) {
-        tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-        return false;
-      }
-      memcpy(text->data, string, length + 1);
-      text->length = (uint32_t)length;
-    }
-
-    return true;
+  size_t length = strlen(string);
+  Tether_TextDynamic* dynamic = (Tether_TextDynamic*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+  if (dynamic && dynamic->data) {
+    free(dynamic->data);
+    dynamic->data = NULL;
   }
 
-Tether_GUID tether_ecs_find_by_id(const char* id) {
-    if (!id || id[0] == '\0') return TETHER_INVALID_GUID;
-    
-    Tether_DenseArray* ids = tether_ecs_get_dense_array(TETHER_COMPONENT_ID);
-    if (!ids) return TETHER_INVALID_GUID;
-    
-    for (uint32_t i = 0; i < ids->count; i++) {
-        Tether_Id* node = (Tether_Id*)((uint8_t*)ids->data + (i * ids->element_size));
-        if (strcmp(node->id, id) == 0) {
-            return ids->entity_map[i];
-        }
+  tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_WORD);
+  tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_LABEL);
+  tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
+  tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+
+  if (length <= 31) {
+    Tether_TextWord* text = (Tether_TextWord*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_WORD);
+    if (!text) return false;
+    memcpy(text->data, string, length + 1);
+  } else if (length <= 127) {
+    Tether_TextLabel* text = (Tether_TextLabel*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_LABEL);
+    if (!text) return false;
+    memcpy(text->data, string, length + 1);
+  } else if (length <= 511) {
+    Tether_TextParagraph* text = (Tether_TextParagraph*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
+    if (!text) return false;
+    memcpy(text->data, string, length + 1);
+  } else {
+    Tether_TextDynamic* text = (Tether_TextDynamic*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+    if (!text) return false;
+    text->capacity = (uint32_t)(length + 1) * 2;
+    text->data = (char*)malloc(text->capacity);
+    if (!text->data) {
+      tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
+      return false;
     }
-    return TETHER_INVALID_GUID;
-}
+    memcpy(text->data, string, length + 1);
+    text->length = (uint32_t)length;
+  }
 
-/* --- Font Registry API --- */
-
-uint32_t tether_font_register(const char* name, const char* path) {
-    if (!name || !path) return 0;
-    
-    /* Check if already registered */
-    for (uint32_t i = 1; i <= g_registry.font_registry.count; ++i) {
-        if (strcmp(g_registry.font_registry.names[i], name) == 0) {
-            return i;
-        }
-    }
-    
-    if (g_registry.font_registry.count >= 31) {
-        return 0; /* Full */
-    }
-    
-    g_registry.font_registry.count++;
-    uint32_t id = g_registry.font_registry.count;
-    
-    strncpy(g_registry.font_registry.names[id], name, 63);
-    g_registry.font_registry.names[id][63] = '\0';
-    
-    strncpy(g_registry.font_registry.paths[id], path, 255);
-    g_registry.font_registry.paths[id][255] = '\0';
-    
-    return id;
-}
-
-const char* tether_font_get_path(uint32_t font_id) {
-    if (font_id == 0 || font_id > g_registry.font_registry.count) return NULL;
-    return g_registry.font_registry.paths[font_id];
-}
-
-const char* tether_font_get_name(uint32_t font_id) {
-    if (font_id == 0 || font_id > g_registry.font_registry.count) return NULL;
-    return g_registry.font_registry.names[font_id];
+  return true;
 }

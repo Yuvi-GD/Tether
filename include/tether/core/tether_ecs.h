@@ -87,7 +87,11 @@ Tether_GUID tether_ecs_create_entity(void);
 /* Destroy an entity, immediately cascading the destroy to all its children. */
 void tether_ecs_destroy_entity(Tether_GUID entity);
 
-/* Search the ECS for a LayoutNode matching the specific string ID */
+/*
+ * Backwards-compatible string ID lookup.
+ * This resolves through the registry layer and is kept for compatibility
+ * while the user-facing ID system migrates to registry-backed lookups.
+ */
 Tether_GUID tether_ecs_find_by_id(const char* id);
 
 /* Check if an entity is still alive. */
@@ -158,16 +162,6 @@ const char* tether_ecs_get_text_string(Tether_GUID entity);
 /* Stores text in the smallest component that can hold it. */
 bool tether_ecs_set_text_string(Tether_GUID entity, const char* string);
 
-/* --- Font Registry API --- */
-
-/* Registers a font file path and assigns it an ID (or returns existing ID if already registered). */
-uint32_t tether_font_register(const char* name, const char* path);
-
-/* Gets the file path of a registered font by its ID. Returns NULL if invalid. */
-const char* tether_font_get_path(uint32_t font_id);
-
-/* Gets the name of a registered font by its ID. Returns NULL if invalid. */
-const char* tether_font_get_name(uint32_t font_id);
 
 #ifdef __cplusplus
 }
