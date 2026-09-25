@@ -1,7 +1,7 @@
-#include "tether/core/tether_input.h"
 #include "tether/core/tether_ecs.h"
-#include "tether/core/tether_components.h"
+#include "tether/core/tether_input.h"
 #include "tether/core/tether_events.h"
+#include "tether/core/tether_components.h"
 
 
 static Tether_GUID g_hovered = TETHER_INVALID_GUID;

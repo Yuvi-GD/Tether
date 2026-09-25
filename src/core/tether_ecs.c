@@ -1,7 +1,9 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
+
 #include <stdlib.h>
 #include <string.h>
+
 
 #define INITIAL_ENTITY_CAPACITY 1024
 #define INITIAL_DENSE_CAPACITY 64
@@ -20,14 +22,13 @@ typedef struct {
   uint32_t component_type_capacity;
   Tether_SparseMap *sparse_maps;
   Tether_DenseArray *dense_arrays;
+  uint32_t next_custom_component_id;
 
   struct {
       char names[32][64];
       char paths[32][256];
     uint32_t count;
   } font_registry;
-
-  uint32_t next_custom_component_id;
   
   Tether_GUID main_root;
   Tether_GUID overlay_root;

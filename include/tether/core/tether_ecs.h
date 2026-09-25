@@ -58,7 +58,9 @@ typedef struct Tether_DenseArray {
   uint32_t capacity;       /* Allocated capacity */
 } Tether_DenseArray;
 
+// ============================================================
 /* --- Global ECS Lifecycle --- */
+// ============================================================
 
 /* Initialize the global ECS registry. */
 void tether_ecs_init(void);
@@ -75,7 +77,9 @@ Tether_GUID tether_ecs_get_main_root(void);
 /* Get the global overlay root entity for tooltips and dropdowns. */
 Tether_GUID tether_ecs_get_overlay_root(void);
 
+// ============================================================
 /* --- Entity Lifecycle --- */
+// ============================================================
 
 /* Create a new entity and return its GUID. */
 Tether_GUID tether_ecs_create_entity(void);
@@ -89,7 +93,9 @@ Tether_GUID tether_ecs_find_by_id(const char* id);
 /* Check if an entity is still alive. */
 bool tether_ecs_is_valid(Tether_GUID entity);
 
+// ============================================================
 /* --- Component Management --- */
+// ============================================================
 
 /* Register a component array for a specific compile-time component type ID. */
 void tether_ecs_register_component_static(uint32_t component_id, size_t element_size);
@@ -97,9 +103,10 @@ void tether_ecs_register_component_static(uint32_t component_id, size_t element_
 /* Allocate a custom component ID dynamically for a third-party struct. Returns the assigned ID. */
 uint32_t tether_ecs_register_component_dynamic(size_t element_size);
 
-/* Set the exclusive limit of the statically assigned component IDs.
-   first ID available to runtime-allocated components.
- */
+/*
+ * Set the exclusive limit of the statically assigned component IDs.
+ * This determines the first ID available to runtime-allocated components.
+*/
 void tether_ecs_set_static_component_limit(uint32_t component_limit);
 
 /*
@@ -117,7 +124,9 @@ void *tether_ecs_get_component(Tether_GUID entity, int component_id);
 /* Remove a component from an entity using Swap-and-Pop. */
 void tether_ecs_remove_component(Tether_GUID entity, int component_id);
 
+// ============================================================
 /* --- Hierarchy API --- */
+// ============================================================
 
 /*
  * Safely detach an entity from its parent (stitches siblings together).
@@ -134,7 +143,9 @@ void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity);
  */
 void tether_ecs_bring_to_front(Tether_GUID entity);
 
+// ============================================================
 /* --- Internal API (Exposed for testing/advanced usage) --- */
+// ============================================================
 
 /* Exposes the dense array for raw linear iteration (maximum cache locality) */
 Tether_DenseArray *tether_ecs_get_dense_array(int component_id);

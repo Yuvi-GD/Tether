@@ -1,6 +1,7 @@
-#include "tether/ui/tether_widgets.h"
 #include "tether/core/tether_components.h"
 #include "tether/engine/tether_render.h"
+#include "tether/ui/tether_widgets.h"
+
 
 void tether_widget_add_to_parent(Tether_GUID entity, Tether_GUID parent) {
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);

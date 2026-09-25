@@ -179,7 +179,8 @@ add_executable(tether_sandbox
     src/engine/tether_render.c
     src/engine/parser/tether_yaml.c
     src/engine/parser/tether_yaml_ast.c
-    src/ui/tether_layout.c
+    src/engine/tether_engine.c
+    src/engine/tether_layout.c
     src/ui/tether_widgets.c
 )
 

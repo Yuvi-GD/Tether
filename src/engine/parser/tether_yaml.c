@@ -1,10 +1,14 @@
-#include "tether/engine/parser/tether_yaml.h"
-#include "tether/engine/parser/tether_yaml_ast.h"
 #include "tether/core/tether_components.h"
 #include "tether/core/tether_registry.h"
+
+#include "tether/engine/parser/tether_yaml.h"
+#include "tether/engine/parser/tether_yaml_ast.h"
+
 #include "tether/ui/tether_widgets.h"
+
 #include <stdlib.h>
 #include <string.h>
+
 
 static const char* resolve_scalar(Tether_ASTNode* node, Tether_ASTEnvironment* env) {
     if (!node) return NULL;
