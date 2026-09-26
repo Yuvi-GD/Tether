@@ -42,6 +42,13 @@ int main()
         .renderer = TETHER_RENDERER_WEBGPU,
         .target_fps = 0, /* VSync */
         
+        /* Cap offscreen render resolution. 0 means no cap. 
+         * Note: ThorVG WebGPU backend uses ~350 bytes per pixel of canvas size.
+         * 1920x1080 = ~700MB. 1280x720 = ~300MB. 
+         * We cap it here to aggressively keep RAM low. The HAL will upscale it. */
+        .max_render_width = 0,
+        .max_render_height = 0,
+        
         .on_init = sandbox_init
     };
     

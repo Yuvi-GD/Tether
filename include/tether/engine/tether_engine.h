@@ -11,6 +11,9 @@ extern "C" {
 /* Engine configuration */
 typedef struct {
     void (*on_init)(void);
+    void (*on_frame)(void);
+    uint32_t max_render_width;
+    uint32_t max_render_height;
 } Tether_EngineConfig;
 
 void tether_engine_init(Tether_EngineConfig* config);
@@ -28,6 +31,12 @@ void tether_engine_on_hal_post_cleanup(void);
 
 /* Triggers a layout and render pass for the next frame */
 void tether_engine_queue_redraw(void);
+
+/* Returns true if the last frame actually produced GPU work */
+bool tether_engine_did_draw(void);
+
+/* Returns the actual offscreen texture dimensions (may be capped) */
+void tether_engine_get_texture_size(uint32_t* out_w, uint32_t* out_h);
 
 void tether_engine_term(void);
 

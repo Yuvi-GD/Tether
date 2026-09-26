@@ -38,7 +38,7 @@ enum {
     TETHER_COMPONENT_TEXT_DYNAMIC,
     TETHER_COMPONENT_IMAGE,
     TETHER_COMPONENT_INTERACTABLE,
-    TETHER_COMPONENT_CLIP_MASK,
+    TETHER_COMPONENT_OVERFLOW,
     TETHER_COMPONENT_IS_LEAF,
 
     TETHER_SYSTEM_COMPONENTS_MAX
@@ -84,6 +84,13 @@ typedef enum {
     TETHER_COLOR_MODE_AUTO   = 1, /* Derive lighter/darker from bg_color automatically */
     TETHER_COLOR_MODE_MANUAL = 2  /* Use explicit hover_color / press_color */
 } Tether_ColorMode;
+
+typedef enum {
+    TETHER_OVERFLOW_CLIP = 0,
+    TETHER_OVERFLOW_VISIBLE = 1,
+    TETHER_OVERFLOW_WRAP = 2,
+    TETHER_OVERFLOW_SCROLL = 3
+} Tether_OverflowMode;
 
 /* ========================================================================== */
 /* 3. HELPER STRUCTS (Not Final ECS Components)                               */
@@ -240,9 +247,11 @@ typedef struct Tether_Interactable {
     Tether_Color press_color;
 } Tether_Interactable;
 
-typedef struct Tether_ClipMask {
-    uint8_t active;
-} Tether_ClipMask;
+typedef struct Tether_Overflow {
+    Tether_OverflowMode x;
+    Tether_OverflowMode y;
+    void* clip_handle; /* RHI-specific handle (e.g. rect shape for masking) */
+} Tether_Overflow;
 
 #ifdef __cplusplus
 }

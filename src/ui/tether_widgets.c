@@ -103,6 +103,13 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
         s->border_radius.bottom = 0.0f; s->border_radius.left = 0.0f;
     }
     
+    Tether_Overflow* of = (Tether_Overflow*)tether_ecs_add_component(entity, TETHER_COMPONENT_OVERFLOW);
+    if (of) {
+        of->x = TETHER_OVERFLOW_CLIP;
+        of->y = TETHER_OVERFLOW_CLIP;
+        of->clip_handle = NULL;
+    }
+    
     return entity;
 }
 

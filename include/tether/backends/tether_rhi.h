@@ -5,12 +5,13 @@
 #include "tether/core/tether_components.h"
 
 /* Lifecycle (Called by HAL) */
-void tether_rhi_init(uint32_t width, uint32_t height, const void* device, const void* instance);
+void tether_rhi_init(uint32_t width, uint32_t height, uint32_t max_w, uint32_t max_h, const void* device, const void* instance);
 void tether_rhi_resize(uint32_t width, uint32_t height);
 void tether_rhi_term(void);
 const void* tether_rhi_get_texture(void);
 void  tether_rhi_draw(void);
 void tether_rhi_load_font(const char* path);
+void tether_rhi_get_texture_size(uint32_t* out_w, uint32_t* out_h);
 
 /* Granular Property Sync API */
 void* tether_rhi_create_rect(void);
@@ -29,6 +30,9 @@ void tether_rhi_scale(void* render_handle, float factor_x, float factor_y);
 void tether_rhi_rotate(void* render_handle, float degrees);
 void tether_rhi_set_opacity(void* handle, uint8_t opacity);
 void tether_rhi_set_visible(void* handle, int visible);
+void tether_rhi_set_stroke_color(void* render_handle, Tether_Color color);
+void tether_rhi_set_stroke_width(void* render_handle, float width);
+void tether_rhi_set_clip_rect(void* render_handle, void* clip_rect_handle);
 void tether_rhi_get_text_bounds(void* handle, float* tx, float* ty, float* w, float* h);
 
 /* Specific Geometry Setters */

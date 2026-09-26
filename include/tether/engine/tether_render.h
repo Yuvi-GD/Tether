@@ -21,8 +21,9 @@ void tether_render_unrealize(Tether_GUID entity);
  * The main Render Engine synchronization function.
  * This function iterates over the ECS Dirty Arrays and pushes updates
  * to the RHI layer using the granular property setters.
+ * Returns true if a draw was actually issued (GPU work was submitted).
  */
-void tether_render_frame(float screen_w, float screen_h, bool force_redraw);
+bool tether_render_frame(float screen_w, float screen_h, bool force_redraw);
 
 #ifdef __cplusplus
 }

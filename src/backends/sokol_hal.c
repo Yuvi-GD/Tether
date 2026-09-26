@@ -193,15 +193,19 @@ static void frame(void) {
     void* raster_tex = tether_engine_on_hal_frame(w, h);
     if (!raster_tex) return;
 
+
     /* Update sokol_gfx bindings if rasterizer created a new texture */
     if (raster_tex != current_wgpu_texture) {
         if (offscreen_view.id != SG_INVALID_ID) sg_destroy_view(offscreen_view);
         if (offscreen_img.id != SG_INVALID_ID) sg_destroy_image(offscreen_img);
 
+        uint32_t tex_w = 0, tex_h = 0;
+        tether_engine_get_texture_size(&tex_w, &tex_h);
+
         sg_image_desc img_desc = {
             .type = SG_IMAGETYPE_2D,
-            .width = w,
-            .height = h,
+            .width = (int)tex_w,
+            .height = (int)tex_h,
             .pixel_format = SG_PIXELFORMAT_BGRA8,
             .sample_count = 1,
             .wgpu_texture = raster_tex,

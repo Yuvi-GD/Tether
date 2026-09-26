@@ -1,6 +1,8 @@
 #ifndef TETHER_H
 #define TETHER_H
 
+#include <stdint.h>
+
 typedef enum {
     TETHER_MEMORY_HIGH_WATER_MARK = 0, /* Default: Keep allocated memory for maximum speed */
     TETHER_MEMORY_AGGRESSIVE_SHRINK    /* Strict: Shrink memory back to OS when entities are deleted */
@@ -22,8 +24,14 @@ typedef struct {
     Tether_Renderer_Backend renderer;
     int target_fps; /* 0 means sync to monitor refresh rate (VSync) */
     
+    /* Optional: Cap ThorVG offscreen render resolution to save VRAM on 4K+ displays.
+     * 0 means no cap (native resolution). */
+    uint32_t max_render_width;
+    uint32_t max_render_height;
+    
     /* Lifecycle Callbacks */
     void (*on_init)(void);
+    void (*on_frame)(void);
 } Tether_App_Config;
 
 /* The core engine promise */
