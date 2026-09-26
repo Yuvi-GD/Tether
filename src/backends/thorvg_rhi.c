@@ -20,9 +20,14 @@ static WGPUTexture offscreen_texture = NULL;
 static uint32_t offscreen_w = 0;
 static uint32_t offscreen_h = 0;
 
-void tether_rhi_init(uint32_t width, uint32_t height, const void* device, const void* instance) {
+static uint32_t rhi_max_w = 0;
+static uint32_t rhi_max_h = 0;
+
+void tether_rhi_init(uint32_t width, uint32_t height, uint32_t max_w, uint32_t max_h, const void* device, const void* instance) {
     cached_device = (WGPUDevice)device;
     cached_instance = (WGPUInstance)instance;
+    rhi_max_w = max_w;
+    rhi_max_h = max_h;
 
     /* Initialize WebGPU Engine */
     if (tvg_engine_init(TVG_ENGINE_WG) != TVG_RESULT_SUCCESS) {
@@ -44,7 +49,23 @@ void tether_rhi_load_font(const char* path) {
 
 void tether_rhi_resize(uint32_t width, uint32_t height) {
     if (width == 0 || height == 0) return;
-    if (offscreen_texture && offscreen_w == width && offscreen_h == height) return;
+    
+    /* Cap render resolution while maintaining aspect ratio */
+    uint32_t render_w = width;
+    uint32_t render_h = height;
+    if (rhi_max_w > 0 && rhi_max_h > 0) {
+        if (render_w > rhi_max_w || render_h > rhi_max_h) {
+            float scale_x = (float)rhi_max_w / (float)render_w;
+            float scale_y = (float)rhi_max_h / (float)render_h;
+            float scale = scale_x < scale_y ? scale_x : scale_y;
+            render_w = (uint32_t)(render_w * scale);
+            render_h = (uint32_t)(render_h * scale);
+            if (render_w == 0) render_w = 1;
+            if (render_h == 0) render_h = 1;
+        }
+    }
+    
+    if (offscreen_texture && offscreen_w == render_w && offscreen_h == render_h) return;
 
     if (offscreen_texture) {
         wgpuTextureRelease(offscreen_texture);
@@ -55,7 +76,7 @@ void tether_rhi_resize(uint32_t width, uint32_t height) {
         .label = "TetherOffscreenTarget",
         .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding,
         .dimension = WGPUTextureDimension_2D,
-        .size = { width, height, 1 },
+        .size = { render_w, render_h, 1 },
         .format = WGPUTextureFormat_BGRA8Unorm,
         .mipLevelCount = 1,
         .sampleCount = 1,
@@ -63,8 +84,8 @@ void tether_rhi_resize(uint32_t width, uint32_t height) {
         .viewFormats = NULL,
     };
     offscreen_texture = wgpuDeviceCreateTexture(cached_device, &desc);
-    offscreen_w = width;
-    offscreen_h = height;
+    offscreen_w = render_w;
+    offscreen_h = render_h;
     
     /* Update ThorVG offscreen target */
     if (tvg_wgcanvas_set_target(
@@ -72,7 +93,7 @@ void tether_rhi_resize(uint32_t width, uint32_t height) {
         (void*)cached_device,
         (void*)cached_instance, 
         (void*)offscreen_texture,
-        width, height,
+        render_w, render_h,
         TVG_COLORSPACE_ABGR8888S, 1
     ) != TVG_RESULT_SUCCESS) {
         printf(">>> ERROR: ThorVG failed to set WebGPU Target!\n");
@@ -88,7 +109,8 @@ void tether_rhi_draw(void) {
         Tvg_Result draw_res = tvg_canvas_draw(tvg_canvas, true); 
         
         if (draw_res == TVG_RESULT_SUCCESS) {
-            /* Wait for ThorVG to finish rendering into offscreen_texture */
+            /* Flush and submit ThorVG commands to the WebGPU queue.
+             * (For ThorVG, sync is required to finalize the render task) */
             tvg_canvas_sync(tvg_canvas);
         } else {
             printf(">>> ERROR: ThorVG failed to draw! Code: %d\n", draw_res);
@@ -100,6 +122,11 @@ void tether_rhi_draw(void) {
 
 const void* tether_rhi_get_texture(void) {
     return (const void*)offscreen_texture;
+}
+
+void tether_rhi_get_texture_size(uint32_t* out_w, uint32_t* out_h) {
+    if (out_w) *out_w = offscreen_w;
+    if (out_h) *out_h = offscreen_h;
 }
 
 void tether_rhi_term(void) {
@@ -229,6 +256,21 @@ void tether_rhi_set_rect_geometry(void* render_handle, float w, float h, float r
 void tether_rhi_set_fill_color(void* render_handle, Tether_Color color) {
     if (!render_handle) return;
     tvg_shape_set_fill_color((Tvg_Paint)render_handle, color.r, color.g, color.b, color.a);
+}
+
+void tether_rhi_set_stroke_color(void* render_handle, Tether_Color color) {
+    if (!render_handle) return;
+    tvg_shape_set_stroke_color((Tvg_Paint)render_handle, color.r, color.g, color.b, color.a);
+}
+
+void tether_rhi_set_stroke_width(void* render_handle, float width) {
+    if (!render_handle) return;
+    tvg_shape_set_stroke_width((Tvg_Paint)render_handle, width);
+}
+
+void tether_rhi_set_clip_rect(void* render_handle, void* clip_rect_handle) {
+    if (!render_handle) return;
+    tvg_paint_set_clip((Tvg_Paint)render_handle, (Tvg_Paint)clip_rect_handle);
 }
 
 void tether_rhi_set_text_string(void* render_handle, const char* str) {

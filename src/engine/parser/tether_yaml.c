@@ -134,6 +134,42 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
                 }
             }
         }
+        else if (strcmp(key, "border_color") == 0) {
+            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+            if (s && val_node->type == TETHER_AST_SEQUENCE) {
+                Tether_Color c = {0, 0, 0, 255};
+                if (val_node->child_count > 0) c.r = atoi(resolve_scalar(val_node->children[0], env));
+                if (val_node->child_count > 1) c.g = atoi(resolve_scalar(val_node->children[1], env));
+                if (val_node->child_count > 2) c.b = atoi(resolve_scalar(val_node->children[2], env));
+                if (val_node->child_count > 3) c.a = atoi(resolve_scalar(val_node->children[3], env));
+                s->border_color = c;
+            }
+        }
+        else if (strcmp(key, "border_width") == 0) {
+            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+            if (s && val_node->type == TETHER_AST_SCALAR) {
+                s->border_width = atof(resolve_scalar(val_node, env));
+            }
+        }
+        else if (strcmp(key, "border_radius") == 0) {
+            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+            if (s && val_node->type == TETHER_AST_SCALAR) {
+                float r = atof(resolve_scalar(val_node, env));
+                s->border_radius = (Tether_Edges){r, r, r, r};
+            }
+        }
+        else if (strcmp(key, "overflow") == 0) {
+            Tether_Overflow* of = (Tether_Overflow*)tether_ecs_get_component(ent, TETHER_COMPONENT_OVERFLOW);
+            if (of && val_node->type == TETHER_AST_SCALAR) {
+                const char* val = resolve_scalar(val_node, env);
+                Tether_OverflowMode mode = TETHER_OVERFLOW_CLIP;
+                if (strcmp(val, "VISIBLE") == 0) mode = TETHER_OVERFLOW_VISIBLE;
+                else if (strcmp(val, "WRAP") == 0) mode = TETHER_OVERFLOW_WRAP;
+                else if (strcmp(val, "SCROLL") == 0) mode = TETHER_OVERFLOW_SCROLL;
+                of->x = mode;
+                of->y = mode;
+            }
+        }
         else if (strcmp(key, "hover_color") == 0) {
             Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
             if (val_node->type == TETHER_AST_SCALAR && strcmp(resolve_scalar(val_node, env), "AUTO") == 0) {

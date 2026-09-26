@@ -16,24 +16,28 @@
                 interactable: true
                 fill_ratio: 1.0
                 color: [224, 108, 117, 255]
+                border_radius: 10.0
                 hover_color: AUTO
                 press_color: AUTO
             - Panel:
                 interactable: true
                 fill_ratio: 1.0
                 color: [152, 195, 121, 255]
+                border_radius: 10.0
                 hover_color: AUTO
                 press_color: AUTO
             - Panel:
                 interactable: true
                 fill_ratio: 1.0
                 color: [97, 175, 239, 255]
+                border_radius: 10.0
                 hover_color: AUTO
                 press_color: AUTO
             - Panel:
                 interactable: true
                 fill_ratio: 1.0
                 color: [198, 120, 221, 255]
+                border_radius: 10.0
                 hover_color: AUTO
                 press_color: AUTO
 
@@ -146,6 +150,9 @@
                 interactable: true
                 fill_ratio: 1.0
                 color: [229, 192, 123, 255]
+                border_color: [255, 255, 255, 120]
+                border_width: 3.0
+                border_radius: 16.0
                 hover_color: AUTO
                 press_color: AUTO
                 padding: [10, 10, 10, 10]

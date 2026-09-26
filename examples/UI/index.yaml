@@ -54,6 +54,9 @@
                     hover_color: AUTO
                     press_color: AUTO
                     padding: [8, 8, 8, 8]
+                    border_radius: 10
+                    border_width: 5
+                    border_color: [30, 32, 36, 255]
                     children:
                       - Text:
                           fill_ratio: 1.0

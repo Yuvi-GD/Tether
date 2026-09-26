@@ -2,15 +2,30 @@
 
 Tether is a high-performance, zero-allocation universal user interface engine. It serves as a micro-kernel for UI, designed to scale seamlessly from bare-metal microcontrollers to high-performance WebGPU desktop applications. 
 
-Currently, the project is in early active development. The foundation is being laid out, and the core architecture is being built piece by piece.
+## The Vision & The Problem We Solve
 
-## The Vision
+Modern UI frameworks carry massive overhead. They rely on heavy DOM trees, garbage collection, bloated native OOP classes, and expensive styling recalculations. Tether takes a fundamentally different approach to rendering user interfaces:
 
-Most modern UI frameworks carry massive overhead. They rely on heavy DOM trees, garbage collection, and bloated native OOP classes. Tether takes a different approach:
+* **Zero-Allocation ECS:** The runtime engine never dynamically allocates memory or creates garbage collection churn during layout or rendering loops. It utilizes a Data-Oriented Entity Component System (ECS) with perfectly packed arrays.
+* **The 4-Pipeline Deployment:** Features a JIT YAML Parser for rapid designer iteration, and an AOT Bytecode Interpreter (`.tbc` files) for absolute execution speed on constrained devices.
+* **100% Pure C:** The entire engine is written in pure C. It avoids C++ inheritance overhead, ensuring flawless cross-platform compilation, ABI stability, and extreme cache-locality.
 
-* **Zero-Allocation ECS:** The runtime engine never dynamically allocates memory or creates garbage collection churn during layout loops. It utilizes a Data-Oriented Entity Component System (ECS) with perfectly packed arrays.
-* **The 4-Pipeline Deployment:** It features a JIT YAML Parser for rapid designer iteration, and an AOT Bytecode Interpreter (`.tbc` files) for absolute execution speed on microcontrollers and Apple hardware.
-* **100% Pure C:** The entire engine is written in pure C. It avoids C++ inheritance overhead, ensuring flawless cross-platform compilation and extreme cache-locality.
+Currently, the project is in **early active development**. We have established the core ECS registry, a flexible WebGPU/ThorVG backend, and a reactive dirty-flag layout solver. We are actively optimizing the engine to guarantee absolute minimum resource footprint.
+
+## Documentation & Architecture
+
+For a deep dive into Tether's design principles, subsystem lifecycle, and memory management, please explore the `docs/` directory.
+* See [docs/Tether_Final_Architecture.md](docs/Tether_Final_Architecture.md) for the core blueprint of the engine.
+
+## ⚠️ Current Architecture Warning: ThorVG VRAM Usage
+
+While Tether's CPU architecture is designed for zero-bloat, **our current WebGPU rendering backend relies heavily on ThorVG**, which introduces massive VRAM footprint issues at high resolutions.
+
+ThorVG is a generalized vector graphics library. When used as the primary UI renderer (e.g., rendering rounded rectangles and borders), its experimental WebGPU backend tessellates every path and allocates massive internal staging and multisample buffers. It consumes roughly **~350 bytes of RAM/VRAM per pixel** of the target canvas. This means running the UI natively at 4K resolution can consume over 3GB of RAM!
+
+**The Roadmap Fix:** We are actively pivoting the architecture to beat modern browsers. In future updates, basic UI primitives (Rectangles, Borders, Text) will bypass ThorVG entirely and be rendered natively via ultra-fast, zero-tessellation `sokol_gfx` quad shaders. ThorVG will be demoted to an "SVG Rasterizer," used only to draw complex vector icons into localized offscreen textures. Until this is implemented, the sandbox aggressively caps the offscreen render resolution (e.g., to 720p) to maintain a low memory footprint.
+-  And many more Render support to comes in future like (Raylib, Skia, SDL, etc..)
+-  And many more Input support to comes in future like (Touch, Controller, Gamepad, etc..)
 
 ## Project Structure
 
@@ -18,12 +33,18 @@ The codebase is organized into core engine files (`src/tether.c`) and specialize
 * **Hardware Abstraction Layer (HAL):** Implementations for windowing, OS event polling, and swapchain management.
 * **Rasterizer:** Implementations for 2D vector graphics and pixel rendering.
 
-The primary cross-platform sandbox uses `sokol_app` for the HAL and `ThorVG` for the WebGPU rasterizer.
+## Acknowledgments & Thanks
+
+Tether stands on the shoulders of incredible open-source libraries. A massive thank you to the creators of:
+* **[Sokol](https://github.com/floooh/sokol):** For providing the flawless, header-only Hardware Abstraction Layer (HAL) for WebGPU and OS Windowing.
+* **[ThorVG](https://github.com/thorvg/thorvg):** For the powerful vector graphics rendering backend.
+* **[wgpu-native](https://github.com/gfx-rs/wgpu-native):** For the reliable WebGPU implementations across native platforms.
+* **[libyaml](https://github.com/yaml/libyaml):** For parsing our declarative UI.
+* **[stb_ds](https://github.com/nothings/stb):** For the robust, single-file C hash maps and dynamic arrays used throughout our registry.
 
 ## Build System Overview
 
 Tether uses a multi-tiered build system by design:
-
 * **Sokol:** Header-only library with zero build configuration.
 * **ThorVG:** Built using Meson to seamlessly integrate with upstream updates.
 * **wgpu-native:** Pre-built binary downloaded automatically.

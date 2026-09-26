@@ -83,6 +83,12 @@ void tether_render_unrealize(Tether_GUID entity) {
         tether_rhi_paint_free(text->text_handle);
         text->text_handle = NULL;
     }
+    
+    Tether_Overflow* of = (Tether_Overflow*)tether_ecs_get_component(entity, TETHER_COMPONENT_OVERFLOW);
+    if (of && of->clip_handle) {
+        tether_rhi_paint_free(of->clip_handle);
+        of->clip_handle = NULL;
+    }
 }
 
 static void apply_visual_rules(Tether_GUID id) {
@@ -93,6 +99,7 @@ static void apply_visual_rules(Tether_GUID id) {
     Tether_Layout* layout = (Tether_Layout*)tether_ecs_get_component(id, TETHER_COMPONENT_LAYOUT);
     Tether_Style* style = (Tether_Style*)tether_ecs_get_component(id, TETHER_COMPONENT_STYLE);
     Tether_Text* text = (Tether_Text*)tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
+    Tether_Overflow* overflow = (Tether_Overflow*)tether_ecs_get_component(id, TETHER_COMPONENT_OVERFLOW);
 
     int is_hidden = vis && (vis->computed_state == TETHER_HIDDEN || vis->computed_state == TETHER_COLLAPSED);
 
@@ -132,6 +139,11 @@ static void apply_visual_rules(Tether_GUID id) {
             
             Tether_Color active_color = resolve_color(id, style->bg_color);
             tether_rhi_set_fill_color(style->render_handle, active_color);
+            
+            if (style->border_width > 0.0f) {
+                tether_rhi_set_stroke_color(style->render_handle, style->border_color);
+                tether_rhi_set_stroke_width(style->render_handle, style->border_width);
+            }
             
             uint8_t final_opacity = active_color.a;
             if (rt) final_opacity = (uint8_t)(final_opacity * rt->opacity);
@@ -199,6 +211,43 @@ static void apply_visual_rules(Tether_GUID id) {
             tether_rhi_set_opacity(text->text_handle, final_opacity);
         }
     }
+
+    /* --- OVERFLOW COMPONENT RULE --- */
+    if (overflow && h && h->scene_handle) {
+        if (overflow->x == TETHER_OVERFLOW_CLIP || overflow->y == TETHER_OVERFLOW_CLIP) {
+            if (!overflow->clip_handle) overflow->clip_handle = tether_rhi_create_rect();
+            
+            if (st) {
+                float rx = style ? style->border_radius.top : 0.0f;
+                float ry = style ? style->border_radius.top : 0.0f;
+                tether_rhi_set_rect_geometry(overflow->clip_handle, st->width, st->height, rx, ry);
+                
+                float final_x = st->x;
+                float final_y = st->y;
+                float scale_x = 1.0f;
+                float scale_y = 1.0f;
+                float rot = 0.0f;
+                
+                if (rt) {
+                    final_x += rt->translation_x;
+                    final_y += rt->translation_y;
+                    scale_x = rt->scale_x;
+                    scale_y = rt->scale_y;
+                    rot = rt->rotation_deg;
+                }
+                
+                tether_rhi_translate(overflow->clip_handle, final_x, final_y);
+                tether_rhi_scale(overflow->clip_handle, scale_x, scale_y);
+                tether_rhi_rotate(overflow->clip_handle, rot);
+            }
+            
+            tether_rhi_set_clip_rect(h->scene_handle, overflow->clip_handle);
+        } else if (overflow->clip_handle) {
+            tether_rhi_paint_free(overflow->clip_handle);
+            overflow->clip_handle = NULL;
+            tether_rhi_set_clip_rect(h->scene_handle, NULL);
+        }
+    }
 }
 
 static void sync_hierarchy_node(Tether_GUID id) {
@@ -254,13 +303,13 @@ void tether_render_init(void) {
     }
 }
 
-void tether_render_frame(float screen_w, float screen_h, bool force_redraw) {
+bool tether_render_frame(float screen_w, float screen_h, bool force_redraw) {
     Tether_DenseArray* dirty_layout = tether_ecs_get_dense_array(TETHER_COMPONENT_DIRTY_LAYOUT);
     Tether_DenseArray* dirty_hierarchy = tether_ecs_get_dense_array(TETHER_COMPONENT_DIRTY_HIERARCHY);
     Tether_DenseArray* dirty_visual = tether_ecs_get_dense_array(TETHER_COMPONENT_DIRTY_VISUAL);
 
     /* 1. Process Layout Dirty Entities */
-    if (dirty_layout && dirty_layout->count > 0) {
+    if (force_redraw || (dirty_layout && dirty_layout->count > 0)) {
         tether_layout_process_all(screen_w, screen_h);
         force_redraw = true;
     }
@@ -312,7 +361,9 @@ void tether_render_frame(float screen_w, float screen_h, bool force_redraw) {
 
     if (force_redraw) {
         tether_rhi_draw();
+        return true;
     }
+    return false;
 }
 
 void tether_render_realize(Tether_GUID id) {

@@ -183,13 +183,18 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
 
     if (!t) return 0.0f;
+    
+    float old_x = t->x;
+    float old_y = t->y;
+    float old_w = t->width;
+    float old_h = t->height;
 
     if (vis && vis->computed_state == TETHER_COLLAPSED) {
         t->x = 0.0f;
         t->y = 0.0f;
         t->width = 0.0f;
         t->height = 0.0f;
-        return 0.0f;
+        goto done;
     }
 
     t->x = parent_x;
@@ -241,11 +246,11 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                 t->height = wrapped_h;
             }
         }
-        return t->height;
+        goto done;
     }
 
     /* CONTAINER NODE */
-    if (!node || !h || h->child_count == 0) return t->height;
+    if (!node || !h || h->child_count == 0) goto done;
 
     float inner_x = t->x + node->padding.left;
     float inner_y = t->y + node->padding.top;
@@ -447,6 +452,11 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
     
     if (is_auto_height) {
         t->height = actual_content_h + node->padding.top + node->padding.bottom;
+    }
+    
+done:
+    if (t->x != old_x || t->y != old_y || t->width != old_w || t->height != old_h) {
+        tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_VISUAL);
     }
     
     return t->height;
