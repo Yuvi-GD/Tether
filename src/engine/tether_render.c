@@ -64,29 +64,29 @@ void tether_render_unrealize(Tether_GUID entity) {
             if (h->parent != 0) {
                 Tether_Hierarchy* p = (Tether_Hierarchy*)tether_ecs_get_component(h->parent, TETHER_COMPONENT_HIERARCHY);
                 if (p && p->scene_handle) {
-                    tether_rhi_scene_remove(p->scene_handle, h->scene_handle);
+                    g_rhi->scene_remove(p->scene_handle, h->scene_handle);
                 }
             }
-            tether_rhi_paint_free(h->scene_handle);
+            g_rhi->paint_free(h->scene_handle);
             h->scene_handle = NULL;
         }
     }
 
     Tether_Style* style = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
     if (style && style->render_handle) {
-        tether_rhi_paint_free(style->render_handle);
+        g_rhi->paint_free(style->render_handle);
         style->render_handle = NULL;
     }
 
     Tether_Text* text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
     if (text && text->text_handle) {
-        tether_rhi_paint_free(text->text_handle);
+        g_rhi->paint_free(text->text_handle);
         text->text_handle = NULL;
     }
     
     Tether_Overflow* of = (Tether_Overflow*)tether_ecs_get_component(entity, TETHER_COMPONENT_OVERFLOW);
     if (of && of->clip_handle) {
-        tether_rhi_paint_free(of->clip_handle);
+        g_rhi->paint_free(of->clip_handle);
         of->clip_handle = NULL;
     }
 }
@@ -105,18 +105,18 @@ static void apply_visual_rules(Tether_GUID id) {
 
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(id, TETHER_COMPONENT_HIERARCHY);
     if (h && h->scene_handle) {
-        tether_rhi_set_visible(h->scene_handle, !is_hidden);
+        g_rhi->set_visible(h->scene_handle, !is_hidden);
     }
 
     /* --- STYLE COMPONENT RULE --- */
     if (style) {
-        tether_rhi_set_visible(style->render_handle, !is_hidden);
+        g_rhi->set_visible(style->render_handle, !is_hidden);
         
         if (!is_hidden) {
             if (st) {
                 float rx = style->border_radius.top; 
                 float ry = style->border_radius.top;
-                tether_rhi_set_rect_geometry(style->render_handle, st->width, st->height, rx, ry);
+                g_rhi->set_rect_geometry(style->render_handle, st->width, st->height, rx, ry);
                 
                 float final_x = st->x;
                 float final_y = st->y;
@@ -132,42 +132,42 @@ static void apply_visual_rules(Tether_GUID id) {
                     rot = rt->rotation_deg;
                 }
                 
-                tether_rhi_translate(style->render_handle, final_x, final_y);
-                tether_rhi_scale(style->render_handle, scale_x, scale_y);
-                tether_rhi_rotate(style->render_handle, rot);
+                g_rhi->translate(style->render_handle, final_x, final_y);
+                g_rhi->scale(style->render_handle, scale_x, scale_y);
+                g_rhi->rotate(style->render_handle, rot);
             }
             
             Tether_Color active_color = resolve_color(id, style->bg_color);
-            tether_rhi_set_fill_color(style->render_handle, active_color);
+            g_rhi->set_fill_color(style->render_handle, active_color);
             
             if (style->border_width > 0.0f) {
-                tether_rhi_set_stroke_color(style->render_handle, style->border_color);
-                tether_rhi_set_stroke_width(style->render_handle, style->border_width);
+                g_rhi->set_stroke_color(style->render_handle, style->border_color);
+                g_rhi->set_stroke_width(style->render_handle, style->border_width);
             }
             
             uint8_t final_opacity = active_color.a;
             if (rt) final_opacity = (uint8_t)(final_opacity * rt->opacity);
-            tether_rhi_set_opacity(style->render_handle, final_opacity);
+            g_rhi->set_opacity(style->render_handle, final_opacity);
         }
     }
 
     /* --- TEXT COMPONENT RULE --- */
     if (text) {
-        tether_rhi_set_visible(text->text_handle, !is_hidden);
+        g_rhi->set_visible(text->text_handle, !is_hidden);
         
         if (!is_hidden) {
             const char* str = tether_ecs_get_text_string(id);
             if (str && str[0] != '\0') {
-                tether_rhi_set_text_string(text->text_handle, str);
-                tether_rhi_set_text_font(text->text_handle, text->font_id, text->font_style, text->font_size);
-                tether_rhi_set_text_color(text->text_handle, text->color);
+                g_rhi->set_text_string(text->text_handle, str);
+                g_rhi->set_text_font(text->text_handle, text->font_id, text->font_style, text->font_size);
+                g_rhi->set_text_color(text->text_handle, text->color);
                 
                 if (st && layout && layout->wrap) {
-                    tether_rhi_set_text_wrap(text->text_handle, st->width);
+                    g_rhi->set_text_wrap(text->text_handle, st->width);
                 } else if (st && text->wrap_width > 0.0f) {
-                    tether_rhi_set_text_wrap(text->text_handle, text->wrap_width);
+                    g_rhi->set_text_wrap(text->text_handle, text->wrap_width);
                 } else {
-                    tether_rhi_set_text_wrap(text->text_handle, 0.0f);
+                    g_rhi->set_text_wrap(text->text_handle, 0.0f);
                 }
             }
             
@@ -175,10 +175,10 @@ static void apply_visual_rules(Tether_GUID id) {
                 float tx = st->x;
                 float ty = st->y;
                 
-                tether_rhi_translate(text->text_handle, 0.0f, 0.0f);
+                g_rhi->translate(text->text_handle, 0.0f, 0.0f);
                 float tw = 0.0f, th = 0.0f;
                 float t_x = 0.0f, t_y = 0.0f;
-                tether_rhi_get_text_bounds(text->text_handle, &t_x, &t_y, &tw, &th);
+                g_rhi->get_text_bounds(text->text_handle, &t_x, &t_y, &tw, &th);
                 
                 if (text->align_x == TETHER_ALIGN_CENTER) tx += (st->width - tw) * 0.5f;
                 else if (text->align_x == TETHER_ALIGN_END) tx += (st->width - tw);
@@ -201,26 +201,26 @@ static void apply_visual_rules(Tether_GUID id) {
                     rot = rt->rotation_deg;
                 }
                 
-                tether_rhi_translate(text->text_handle, tx, ty);
-                tether_rhi_scale(text->text_handle, scale_x, scale_y);
-                tether_rhi_rotate(text->text_handle, rot);
+                g_rhi->translate(text->text_handle, tx, ty);
+                g_rhi->scale(text->text_handle, scale_x, scale_y);
+                g_rhi->rotate(text->text_handle, rot);
             }
             
             uint8_t final_opacity = text->color.a;
             if (rt) final_opacity = (uint8_t)(final_opacity * rt->opacity);
-            tether_rhi_set_opacity(text->text_handle, final_opacity);
+            g_rhi->set_opacity(text->text_handle, final_opacity);
         }
     }
 
     /* --- OVERFLOW COMPONENT RULE --- */
     if (overflow && h && h->scene_handle) {
         if (overflow->x == TETHER_OVERFLOW_CLIP || overflow->y == TETHER_OVERFLOW_CLIP) {
-            if (!overflow->clip_handle) overflow->clip_handle = tether_rhi_create_rect();
+            if (!overflow->clip_handle) overflow->clip_handle = g_rhi->create_rect();
             
             if (st) {
                 float rx = style ? style->border_radius.top : 0.0f;
                 float ry = style ? style->border_radius.top : 0.0f;
-                tether_rhi_set_rect_geometry(overflow->clip_handle, st->width, st->height, rx, ry);
+                g_rhi->set_rect_geometry(overflow->clip_handle, st->width, st->height, rx, ry);
                 
                 float final_x = st->x;
                 float final_y = st->y;
@@ -236,16 +236,16 @@ static void apply_visual_rules(Tether_GUID id) {
                     rot = rt->rotation_deg;
                 }
                 
-                tether_rhi_translate(overflow->clip_handle, final_x, final_y);
-                tether_rhi_scale(overflow->clip_handle, scale_x, scale_y);
-                tether_rhi_rotate(overflow->clip_handle, rot);
+                g_rhi->translate(overflow->clip_handle, final_x, final_y);
+                g_rhi->scale(overflow->clip_handle, scale_x, scale_y);
+                g_rhi->rotate(overflow->clip_handle, rot);
             }
             
-            tether_rhi_set_clip_rect(h->scene_handle, overflow->clip_handle);
+            g_rhi->set_clip_rect(h->scene_handle, overflow->clip_handle);
         } else if (overflow->clip_handle) {
-            tether_rhi_paint_free(overflow->clip_handle);
+            g_rhi->paint_free(overflow->clip_handle);
             overflow->clip_handle = NULL;
-            tether_rhi_set_clip_rect(h->scene_handle, NULL);
+            g_rhi->set_clip_rect(h->scene_handle, NULL);
         }
     }
 }
@@ -255,12 +255,12 @@ static void sync_hierarchy_node(Tether_GUID id) {
     if (!h) return;
     
     if (!h->scene_handle) {
-        h->scene_handle = tether_rhi_create_scene();
+        h->scene_handle = g_rhi->create_scene();
     }
     
     /* Now that we have proper ref-counting on paints, we can safely clear the scene.
        Any active children will still be held by ECS, and any orphaned children will be cleanly destroyed. */
-    tether_rhi_scene_clear(h->scene_handle);
+    g_rhi->scene_clear(h->scene_handle);
     
     /* Re-add them in Z-order */
     Tether_GUID child = h->first_child;
@@ -270,9 +270,9 @@ static void sync_hierarchy_node(Tether_GUID id) {
             Tether_Style* ch_style = (Tether_Style*)tether_ecs_get_component(child, TETHER_COMPONENT_STYLE);
             Tether_Text* ch_text = (Tether_Text*)tether_ecs_get_component(child, TETHER_COMPONENT_TEXT);
             
-            if (ch_style) tether_rhi_scene_push(h->scene_handle, ch_style->render_handle);
-            if (ch_text) tether_rhi_scene_push(h->scene_handle, ch_text->text_handle);
-            if (ch->scene_handle) tether_rhi_scene_push(h->scene_handle, ch->scene_handle);
+            if (ch_style) g_rhi->scene_push(h->scene_handle, ch_style->render_handle);
+            if (ch_text) g_rhi->scene_push(h->scene_handle, ch_text->text_handle);
+            if (ch->scene_handle) g_rhi->scene_push(h->scene_handle, ch->scene_handle);
             
             child = ch->next_sibling;
         } else {
@@ -283,8 +283,8 @@ static void sync_hierarchy_node(Tether_GUID id) {
 
 void tether_render_init(void) {
     if (!main_scene) {
-        main_scene = tether_rhi_create_scene();
-        tether_rhi_add_to_canvas(main_scene);
+        main_scene = g_rhi->create_scene();
+        g_rhi->add_to_canvas(main_scene);
     }
     
     Tether_GUID main_root = tether_ecs_get_main_root();
@@ -292,14 +292,14 @@ void tether_render_init(void) {
     
     Tether_Hierarchy* h_main = (Tether_Hierarchy*)tether_ecs_get_component(main_root, TETHER_COMPONENT_HIERARCHY);
     if (h_main) {
-        if (!h_main->scene_handle) h_main->scene_handle = tether_rhi_create_scene();
-        tether_rhi_scene_push(main_scene, h_main->scene_handle);
+        if (!h_main->scene_handle) h_main->scene_handle = g_rhi->create_scene();
+        g_rhi->scene_push(main_scene, h_main->scene_handle);
     }
     
     Tether_Hierarchy* h_overlay = (Tether_Hierarchy*)tether_ecs_get_component(overlay_root, TETHER_COMPONENT_HIERARCHY);
     if (h_overlay) {
-        if (!h_overlay->scene_handle) h_overlay->scene_handle = tether_rhi_create_scene();
-        tether_rhi_scene_push(main_scene, h_overlay->scene_handle);
+        if (!h_overlay->scene_handle) h_overlay->scene_handle = g_rhi->create_scene();
+        g_rhi->scene_push(main_scene, h_overlay->scene_handle);
     }
 }
 
@@ -360,7 +360,7 @@ bool tether_render_frame(float screen_w, float screen_h, bool force_redraw) {
     }
 
     if (force_redraw) {
-        tether_rhi_draw();
+        g_rhi->draw();
         return true;
     }
     return false;
@@ -371,17 +371,17 @@ void tether_render_realize(Tether_GUID id) {
 
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(id, TETHER_COMPONENT_HIERARCHY);
     if (h && !h->scene_handle) {
-        h->scene_handle = tether_rhi_create_scene();
+        h->scene_handle = g_rhi->create_scene();
     }
     
     Tether_Style* style = (Tether_Style*)tether_ecs_get_component(id, TETHER_COMPONENT_STYLE);
     if (style && !style->render_handle) {
-        style->render_handle = tether_rhi_create_rect();
+        style->render_handle = g_rhi->create_rect();
     }
     
     Tether_Text* text = (Tether_Text*)tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
     if (text && !text->text_handle) {
-        text->text_handle = tether_rhi_create_text();
+        text->text_handle = g_rhi->create_text();
     }
     
     tether_ecs_add_component(id, TETHER_COMPONENT_DIRTY_VISUAL);

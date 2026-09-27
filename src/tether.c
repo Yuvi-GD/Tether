@@ -3,7 +3,6 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
 #include "tether/core/tether_registry.h"
-#include "tether/engine/parser/tether_yaml.h"
 #include "tether/engine/tether_engine.h"
 #include "tether/ui/tether_widgets.h"
 
@@ -12,7 +11,8 @@ void tether_run(Tether_App_Config* config) {
         .on_init = config->on_init,
         .on_frame = config->on_frame,
         .max_render_width = config->max_render_width,
-        .max_render_height = config->max_render_height
+        .max_render_height = config->max_render_height,
+        .initial_yaml = config->initial_yaml
     };
     tether_engine_init(&engine_config);
 
@@ -33,11 +33,7 @@ void tether_run(Tether_App_Config* config) {
     tether_register_widget("Text", tether_widget_create_text);
     tether_register_widget("Button", tether_widget_create_button);
     
-    if (config->initial_yaml) {
-        tether_yaml_load(config->initial_yaml, TETHER_INVALID_GUID);
-    }
-    
-    /* Hand control over to the Hardware Abstraction Layer to start the OS window loop */
+    /* Hand control over to the Hardware Abstraction Layer to start the OS window loop*/
     tether_hal_run(config);
 
     tether_engine_term();
