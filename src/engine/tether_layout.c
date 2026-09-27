@@ -60,7 +60,7 @@ static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, fl
         /* Text: measure unbounded single-line to get natural content size */
         const char* str = tether_ecs_get_text_string(child);
         if (str && str[0] != '\0') {
-            tether_rhi_measure_text(str, text->font_id, text->font_style, text->font_size, text->wrap_width, &w, &h);
+            g_rhi->measure_text(str, text->font_id, text->font_style, text->font_size, text->wrap_width, &w, &h);
             text->intrinsic_size.x = w;
             text->intrinsic_size.y = h;
             if (child_node) {
@@ -241,7 +241,7 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                 node->wrap = 0;
             }
             
-            tether_rhi_measure_text(str, text->font_id, text->font_style, text->font_size, max_w, &wrapped_w, &wrapped_h);
+            g_rhi->measure_text(str, text->font_id, text->font_style, text->font_size, max_w, &wrapped_w, &wrapped_h);
             if (is_auto_height) {
                 t->height = wrapped_h;
             }

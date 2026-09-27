@@ -14,6 +14,7 @@ typedef struct {
     void (*on_frame)(void);
     uint32_t max_render_width;
     uint32_t max_render_height;
+    const char* initial_yaml;
 } Tether_EngineConfig;
 
 void tether_engine_init(Tether_EngineConfig* config);

@@ -23,7 +23,9 @@ static uint32_t offscreen_h = 0;
 static uint32_t rhi_max_w = 0;
 static uint32_t rhi_max_h = 0;
 
-void tether_rhi_init(uint32_t width, uint32_t height, uint32_t max_w, uint32_t max_h, const void* device, const void* instance) {
+static void thorvg_rhi_resize(uint32_t width, uint32_t height);
+
+static void thorvg_rhi_init(uint32_t width, uint32_t height, uint32_t max_w, uint32_t max_h, const void* device, const void* instance) {
     cached_device = (WGPUDevice)device;
     cached_instance = (WGPUInstance)instance;
     rhi_max_w = max_w;
@@ -37,17 +39,17 @@ void tether_rhi_init(uint32_t width, uint32_t height, uint32_t max_w, uint32_t m
     tvg_canvas = tvg_wgcanvas_create(TVG_ENGINE_OPTION_NONE);
 
     /* Allocate initial texture */
-    tether_rhi_resize(width, height);
+    thorvg_rhi_resize(width, height);
 }
 
-void tether_rhi_load_font(const char* path) {
+static void thorvg_rhi_load_font(const char* path) {
     if (!path) return;
     if (tvg_font_load(path) != TVG_RESULT_SUCCESS) {
         printf("[ThorVG RHI] ERROR: Failed to load font: %s\n", path);
     }
 }
 
-void tether_rhi_resize(uint32_t width, uint32_t height) {
+static void thorvg_rhi_resize(uint32_t width, uint32_t height) {
     if (width == 0 || height == 0) return;
     
     /* Cap render resolution while maintaining aspect ratio */
@@ -100,7 +102,7 @@ void tether_rhi_resize(uint32_t width, uint32_t height) {
     }
 }
 
-void tether_rhi_draw(void) {
+static void thorvg_rhi_draw(void) {
     /* Update ThorVG scene graph */
     Tvg_Result update_res = tvg_canvas_update(tvg_canvas);
     
@@ -120,30 +122,22 @@ void tether_rhi_draw(void) {
     }
 }
 
-const void* tether_rhi_get_texture(void) {
+static const void* thorvg_rhi_get_texture(void) {
     return (const void*)offscreen_texture;
 }
 
-void tether_rhi_get_texture_size(uint32_t* out_w, uint32_t* out_h) {
+static void thorvg_rhi_get_texture_size(uint32_t* out_w, uint32_t* out_h) {
     if (out_w) *out_w = offscreen_w;
     if (out_h) *out_h = offscreen_h;
 }
 
-void tether_rhi_term(void) {
-    /* 
-     * NOTE: We deliberately skip tvg_canvas_destroy() and tvg_engine_term() 
-     * here. In ThorVG's WebGPU backend, destroying the canvas or engine 
-     * immediately upon window close can cause a thread deadlock/freeze 
-     * if the WebGPU swapchain is in a specific state. 
-     * Since this is only called at application shutdown, the OS will 
-     * automatically reclaim the memory.
-     */
+static void thorvg_rhi_term(void) {
     if (offscreen_texture) {
         wgpuTextureRelease(offscreen_texture);
     }
 }
 
-void tether_rhi_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h) {
+static void thorvg_rhi_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h) {
     if (!text || !out_w || !out_h) return;
 
     Tvg_Paint text_node = tvg_text_new();
@@ -169,12 +163,12 @@ void tether_rhi_measure_text(const char* text, uint32_t font_id, int font_style,
     tvg_paint_rel(text_node); /* Clean up the temporary paint node properly */
 
 }
-void tether_rhi_get_text_bounds(void* handle, float* tx, float* ty, float* w, float* h) {
+static void thorvg_rhi_get_text_bounds(void* handle, float* tx, float* ty, float* w, float* h) {
     if (!handle) return;
     tvg_paint_get_aabb((Tvg_Paint)handle, tx, ty, w, h);
 }
 
-void tether_rhi_set_visible(void* handle, int visible) {
+static void thorvg_rhi_set_visible(void* handle, int visible) {
     if (!handle) return;
     tvg_paint_set_visible((Tvg_Paint)handle, visible ? true : false);
 }
@@ -183,116 +177,116 @@ void tether_rhi_set_visible(void* handle, int visible) {
  * RHI Abstraction Contract Implementations (Granular Setters)
  * ============================================================================ */
 
-void* tether_rhi_create_rect(void) {
+static void* thorvg_rhi_create_rect(void) {
     Tvg_Paint shape = tvg_shape_new();
     tvg_paint_ref(shape);
     return (void*)shape;
 }
 
-void* tether_rhi_create_text(void) {
+static void* thorvg_rhi_create_text(void) {
     Tvg_Paint text = tvg_text_new();
     tvg_paint_ref(text);
     return (void*)text;
 }
 
-void* tether_rhi_create_scene(void) {
+static void* thorvg_rhi_create_scene(void) {
     Tvg_Paint scene = tvg_scene_new();
     tvg_paint_ref(scene);
     return (void*)scene;
 }
 
-void tether_rhi_scene_push(void* scene_handle, void* child_handle) {
+static void thorvg_rhi_scene_push(void* scene_handle, void* child_handle) {
     if (!scene_handle || !child_handle) return;
     tvg_scene_add((Tvg_Paint)scene_handle, (Tvg_Paint)child_handle);
 }
 
-void tether_rhi_scene_remove(void* scene_handle, void* child_handle) {
+static void thorvg_rhi_scene_remove(void* scene_handle, void* child_handle) {
     if (!scene_handle || !child_handle) return;
     tvg_scene_remove((Tvg_Paint)scene_handle, (Tvg_Paint)child_handle);
 }
 
-void tether_rhi_scene_clear(void* scene_handle) {
+static void thorvg_rhi_scene_clear(void* scene_handle) {
     if (!scene_handle) return;
     tvg_scene_remove((Tvg_Paint)scene_handle, NULL);
 }
 
-void tether_rhi_paint_free(void* handle) {
+static void thorvg_rhi_paint_free(void* handle) {
     if (!handle) return;
     tvg_paint_unref((Tvg_Paint)handle, true);
 }
 
-void tether_rhi_add_to_canvas(void* render_handle) {
+static void thorvg_rhi_add_to_canvas(void* render_handle) {
     if (!render_handle) return;
     tvg_canvas_add(tvg_canvas, (Tvg_Paint)render_handle);
 }
 
-void tether_rhi_translate(void* render_handle, float x, float y) {
+static void thorvg_rhi_translate(void* render_handle, float x, float y) {
     if (!render_handle) return;
     tvg_paint_translate((Tvg_Paint)render_handle, x, y);
 }
 
-void tether_rhi_scale(void* render_handle, float factor_x, float factor_y) {
+static void thorvg_rhi_scale(void* render_handle, float factor_x, float factor_y) {
     if (!render_handle) return;
     tvg_paint_scale((Tvg_Paint)render_handle, factor_x); /* ThorVG C-API only supports uniform scale */
 }
 
-void tether_rhi_rotate(void* render_handle, float degrees) {
+static void thorvg_rhi_rotate(void* render_handle, float degrees) {
     if (!render_handle) return;
     tvg_paint_rotate((Tvg_Paint)render_handle, degrees);
 }
 
-void tether_rhi_set_opacity(void* render_handle, uint8_t alpha) {
+static void thorvg_rhi_set_opacity(void* render_handle, uint8_t alpha) {
     if (!render_handle) return;
     tvg_paint_set_opacity((Tvg_Paint)render_handle, alpha);
 }
 
-void tether_rhi_set_rect_geometry(void* render_handle, float w, float h, float rx, float ry) {
+static void thorvg_rhi_set_rect_geometry(void* render_handle, float w, float h, float rx, float ry) {
     if (!render_handle) return;
     Tvg_Paint paint = (Tvg_Paint)render_handle;
     tvg_shape_reset(paint);
     tvg_shape_append_rect(paint, 0, 0, w, h, rx, ry, true);
 }
 
-void tether_rhi_set_fill_color(void* render_handle, Tether_Color color) {
+static void thorvg_rhi_set_fill_color(void* render_handle, Tether_Color color) {
     if (!render_handle) return;
     tvg_shape_set_fill_color((Tvg_Paint)render_handle, color.r, color.g, color.b, color.a);
 }
 
-void tether_rhi_set_stroke_color(void* render_handle, Tether_Color color) {
+static void thorvg_rhi_set_stroke_color(void* render_handle, Tether_Color color) {
     if (!render_handle) return;
     tvg_shape_set_stroke_color((Tvg_Paint)render_handle, color.r, color.g, color.b, color.a);
 }
 
-void tether_rhi_set_stroke_width(void* render_handle, float width) {
+static void thorvg_rhi_set_stroke_width(void* render_handle, float width) {
     if (!render_handle) return;
     tvg_shape_set_stroke_width((Tvg_Paint)render_handle, width);
 }
 
-void tether_rhi_set_clip_rect(void* render_handle, void* clip_rect_handle) {
+static void thorvg_rhi_set_clip_rect(void* render_handle, void* clip_rect_handle) {
     if (!render_handle) return;
     tvg_paint_set_clip((Tvg_Paint)render_handle, (Tvg_Paint)clip_rect_handle);
 }
 
-void tether_rhi_set_text_string(void* render_handle, const char* str) {
+static void thorvg_rhi_set_text_string(void* render_handle, const char* str) {
     if (!render_handle || !str) return;
     const char* current_str = tvg_text_get_text((Tvg_Paint)render_handle);
     if (current_str && strcmp(current_str, str) == 0) return;
     tvg_text_set_text((Tvg_Paint)render_handle, str);
 }
 
-void tether_rhi_set_text_font(void* render_handle, uint32_t font_id, int font_style, float font_size) {
+static void thorvg_rhi_set_text_font(void* render_handle, uint32_t font_id, int font_style, float font_size) {
     if (!render_handle) return;
     const char* font_name = tether_font_get_name(font_id);
     tvg_text_set_font((Tvg_Paint)render_handle, font_name ? font_name : "Roboto-Regular");
     tvg_text_set_size((Tvg_Paint)render_handle, font_size);
 }
 
-void tether_rhi_set_text_color(void* render_handle, Tether_Color color) {
+static void thorvg_rhi_set_text_color(void* render_handle, Tether_Color color) {
     if (!render_handle) return;
     tvg_text_set_color((Tvg_Paint)render_handle, color.r, color.g, color.b);
 }
 
-void tether_rhi_set_text_wrap(void* render_handle, float max_width) {
+static void thorvg_rhi_set_text_wrap(void* render_handle, float max_width) {
     if (!render_handle) return;
     if (max_width > 0.0f) {
         tvg_text_layout((Tvg_Paint)render_handle, max_width, 0.0f);
@@ -301,4 +295,50 @@ void tether_rhi_set_text_wrap(void* render_handle, float max_width) {
         tvg_text_layout((Tvg_Paint)render_handle, 0.0f, 0.0f);
         tvg_text_wrap_mode((Tvg_Paint)render_handle, TVG_TEXT_WRAP_NONE);
     }
+}
+
+/* ============================================================================
+ * V-Table Population
+ * ============================================================================ */
+
+static Tether_RHI_API thorvg_api = {
+    .init = thorvg_rhi_init,
+    .resize = thorvg_rhi_resize,
+    .term = thorvg_rhi_term,
+    .get_texture = thorvg_rhi_get_texture,
+    .draw = thorvg_rhi_draw,
+    .load_font = thorvg_rhi_load_font,
+    .get_texture_size = thorvg_rhi_get_texture_size,
+    
+    .create_rect = thorvg_rhi_create_rect,
+    .create_text = thorvg_rhi_create_text,
+    .create_scene = thorvg_rhi_create_scene,
+    
+    .scene_push = thorvg_rhi_scene_push,
+    .scene_remove = thorvg_rhi_scene_remove,
+    .scene_clear = thorvg_rhi_scene_clear,
+    .add_to_canvas = thorvg_rhi_add_to_canvas,
+    .paint_free = thorvg_rhi_paint_free,
+    
+    .translate = thorvg_rhi_translate,
+    .scale = thorvg_rhi_scale,
+    .rotate = thorvg_rhi_rotate,
+    .set_opacity = thorvg_rhi_set_opacity,
+    .set_visible = thorvg_rhi_set_visible,
+    .set_stroke_color = thorvg_rhi_set_stroke_color,
+    .set_stroke_width = thorvg_rhi_set_stroke_width,
+    .set_clip_rect = thorvg_rhi_set_clip_rect,
+    .get_text_bounds = thorvg_rhi_get_text_bounds,
+    
+    .set_rect_geometry = thorvg_rhi_set_rect_geometry,
+    .set_fill_color = thorvg_rhi_set_fill_color,
+    .set_text_string = thorvg_rhi_set_text_string,
+    .set_text_font = thorvg_rhi_set_text_font,
+    .set_text_color = thorvg_rhi_set_text_color,
+    .set_text_wrap = thorvg_rhi_set_text_wrap,
+    .measure_text = thorvg_rhi_measure_text,
+};
+
+Tether_RHI_API* thorvg_rhi_get_api(void) {
+    return &thorvg_api;
 }
