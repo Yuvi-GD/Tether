@@ -193,27 +193,14 @@ static void frame(void) {
     void* raster_tex = tether_engine_on_hal_frame(w, h);
     if (!raster_tex) return;
 
-
     /* Update sokol_gfx bindings if rasterizer created a new texture */
     if (raster_tex != current_wgpu_texture) {
         if (offscreen_view.id != SG_INVALID_ID) sg_destroy_view(offscreen_view);
-        if (offscreen_img.id != SG_INVALID_ID) sg_destroy_image(offscreen_img);
 
-        uint32_t tex_w = 0, tex_h = 0;
-        tether_engine_get_texture_size(&tex_w, &tex_h);
-
-        sg_image_desc img_desc = {
-            .type = SG_IMAGETYPE_2D,
-            .width = (int)tex_w,
-            .height = (int)tex_h,
-            .pixel_format = SG_PIXELFORMAT_BGRA8,
-            .sample_count = 1,
-            .wgpu_texture = raster_tex,
-        };
-        offscreen_img = sg_make_image(&img_desc);
+        sg_image img = (sg_image) { .id = (uint32_t)(uintptr_t)raster_tex };
 
         sg_view_desc view_desc = {
-            .texture = { .image = offscreen_img }
+            .texture = { .image = img }
         };
         offscreen_view = sg_make_view(&view_desc);
         blit_bind.views[0] = offscreen_view;
@@ -237,6 +224,19 @@ static void frame(void) {
 }
 
 static void cleanup(void) {
+    /* CRITICAL: Destroy HAL-owned sokol objects that wrap ThorVG's WebGPU
+       texture BEFORE tether_engine_on_hal_cleanup frees ThorVG's texture.
+       If we don't, sg_shutdown later tries to destroy offscreen_view while
+       the underlying WGPUTexture is already freed → use-after-free crash. */
+    if (offscreen_view.id != SG_INVALID_ID) {
+        sg_destroy_view(offscreen_view);
+        offscreen_view = (sg_view){0};
+    }
+    if (blit_pip.id != SG_INVALID_ID) {
+        sg_destroy_pipeline(blit_pip);
+        blit_pip = (sg_pipeline){0};
+    }
+
     tether_engine_on_hal_cleanup();
     sg_shutdown();
     tether_engine_on_hal_post_cleanup();

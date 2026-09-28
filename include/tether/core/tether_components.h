@@ -150,7 +150,6 @@ typedef struct Tether_Hierarchy {
     uint64_t prev_sibling;
     uint64_t next_sibling;
     uint32_t child_count;
-    void* scene_handle; /* ThorVG Scene handle for Z-index tracking */
 } Tether_Hierarchy;
 
 typedef struct {
@@ -195,7 +194,7 @@ typedef struct Tether_Style {
     Tether_Color border_color;
     float border_width;
     Tether_Edges border_radius;
-    void* render_handle;
+    void* render_handle; /* Opaque handle to the backend shape (Sokol RenderNode) */
 } Tether_Style;
 
 typedef struct {

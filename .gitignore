@@ -31,6 +31,7 @@ third_party/thorvg/builddir/
 *.out
 *.app
 *.pdb
+!third_party/sokol-tools/sokol-shdc.exe
 
 # ============================================================
 # IDE and Editor Folders
