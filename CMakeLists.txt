@@ -163,7 +163,30 @@ message(STATUS "[Tether] Adding libyaml from third_party...")
 add_subdirectory(${THIRD_PARTY_DIR}/libyaml)
 
 # ============================================================
-# Step 5: Define Executable Targets
+# Step 5: Shader Compilation via sokol-shdc
+# ============================================================
+find_program(SOKOL_SHDC NAMES sokol-shdc sokol-shdc.exe HINTS "${THIRD_PARTY_DIR}/sokol-tools" "${THIRD_PARTY_DIR}/sokol")
+set(SHADER_DIR "${CMAKE_SOURCE_DIR}/src/backends/shaders")
+set(UI_RECT_SHDC "${SHADER_DIR}/ui_rect.shdc")
+set(UI_RECT_HEADER "${SHADER_DIR}/ui_rect.glsl.h")
+
+if(SOKOL_SHDC)
+    message(STATUS "[Tether] Found sokol-shdc: ${SOKOL_SHDC}")
+    add_custom_command(
+        OUTPUT "${UI_RECT_HEADER}"
+        COMMAND "${SOKOL_SHDC}" -i "${UI_RECT_SHDC}" -o "${UI_RECT_HEADER}" -l glsl430:hlsl5:metal_macos:wgsl -b
+        DEPENDS "${UI_RECT_SHDC}"
+        COMMENT "Compiling shader ${UI_RECT_SHDC}"
+    )
+    add_custom_target(compile_shaders DEPENDS "${UI_RECT_HEADER}")
+else()
+    message(WARNING "[Tether] sokol-shdc not found in PATH or third_party/sokol. Shaders will not be recompiled.")
+    # Fallback to empty target if not found so add_dependencies doesn't fail
+    add_custom_target(compile_shaders)
+endif()
+
+# ============================================================
+# Step 6: Define Executable Targets
 # ============================================================
 add_executable(tether_sandbox
     examples/sandbox/sandbox_main.c
@@ -177,6 +200,7 @@ add_executable(tether_sandbox
     src/utils/tether_hashmap.c
     src/backends/sokol_hal.c
     src/backends/thorvg_rhi.c
+    src/backends/sokol_rhi.c
     src/engine/tether_render.c
     src/engine/parser/tether_yaml.c
     src/engine/parser/tether_yaml_ast.c
@@ -193,7 +217,7 @@ add_executable(tether_ecs_test
 )
 
 # ============================================================
-# Step 6: Include Paths
+# Step 7: Include Paths
 # ============================================================
 target_include_directories(tether_sandbox PRIVATE
     "${CMAKE_SOURCE_DIR}/include"
@@ -204,7 +228,10 @@ target_include_directories(tether_sandbox PRIVATE
     "${THORVG_DIR}/src/bindings/capi"
     "${THORVG_BUILDDIR}"
     "${WGPU_DIR}/include"
+    "${SHADER_DIR}"
 )
+
+add_dependencies(tether_sandbox compile_shaders)
 
 target_include_directories(tether_ecs_test PRIVATE
     "${CMAKE_SOURCE_DIR}/include"
@@ -212,7 +239,7 @@ target_include_directories(tether_ecs_test PRIVATE
 )
 
 # ============================================================
-# Step 7: Link Libraries
+# Step 8: Link Libraries
 # ============================================================
 target_link_directories(tether_sandbox PRIVATE
     "${WGPU_DIR}/lib"
@@ -242,7 +269,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 # ============================================================
-# Step 8: Runtime Library Copying
+# Step 9: Runtime Library Copying
 # ============================================================
 set(RUNTIME_LIBS_TO_COPY "")
 

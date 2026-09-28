@@ -17,6 +17,7 @@ static Tvg_Canvas tvg_canvas = NULL;
 static WGPUDevice cached_device = NULL;
 static WGPUInstance cached_instance = NULL;
 static WGPUTexture offscreen_texture = NULL;
+static Tvg_Paint root_scene = NULL;
 static uint32_t offscreen_w = 0;
 static uint32_t offscreen_h = 0;
 
@@ -37,6 +38,9 @@ static void thorvg_rhi_init(uint32_t width, uint32_t height, uint32_t max_w, uin
     }
     
     tvg_canvas = tvg_wgcanvas_create(TVG_ENGINE_OPTION_NONE);
+    
+    root_scene = tvg_scene_new();
+    tvg_canvas_add(tvg_canvas, root_scene);
 
     /* Allocate initial texture */
     thorvg_rhi_resize(width, height);
@@ -132,9 +136,18 @@ static void thorvg_rhi_get_texture_size(uint32_t* out_w, uint32_t* out_h) {
 }
 
 static void thorvg_rhi_term(void) {
+    /* The canvas owns its internal scene, which in turn owns root_scene.
+       Destroy the canvas first rather than unrefing a scene still in its tree. */
+    if (tvg_canvas) {
+        tvg_canvas_destroy(tvg_canvas);
+        tvg_canvas = NULL;
+    }
+    root_scene = NULL;
     if (offscreen_texture) {
         wgpuTextureRelease(offscreen_texture);
+        offscreen_texture = NULL;
     }
+    tvg_engine_term();
 }
 
 static void thorvg_rhi_measure_text(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h) {
@@ -186,6 +199,9 @@ static void* thorvg_rhi_create_rect(void) {
 static void* thorvg_rhi_create_text(void) {
     Tvg_Paint text = tvg_text_new();
     tvg_paint_ref(text);
+    if (root_scene) {
+        tvg_scene_add(root_scene, text);
+    }
     return (void*)text;
 }
 
@@ -212,6 +228,9 @@ static void thorvg_rhi_scene_clear(void* scene_handle) {
 
 static void thorvg_rhi_paint_free(void* handle) {
     if (!handle) return;
+    if (root_scene) {
+        tvg_scene_remove(root_scene, (Tvg_Paint)handle);
+    }
     tvg_paint_unref((Tvg_Paint)handle, true);
 }
 
@@ -297,48 +316,40 @@ static void thorvg_rhi_set_text_wrap(void* render_handle, float max_width) {
     }
 }
 
+static void thorvg_rhi_set_z_index(void* handle, int z_index) {
+    // Stub: ThorVG Z-index was based on scene graph order
+}
+
 /* ============================================================================
  * V-Table Population
  * ============================================================================ */
 
-static Tether_RHI_API thorvg_api = {
+static Tether_System_API thorvg_system_api = {
     .init = thorvg_rhi_init,
     .resize = thorvg_rhi_resize,
     .term = thorvg_rhi_term,
     .get_texture = thorvg_rhi_get_texture,
-    .draw = thorvg_rhi_draw,
-    .load_font = thorvg_rhi_load_font,
     .get_texture_size = thorvg_rhi_get_texture_size,
-    
-    .create_rect = thorvg_rhi_create_rect,
+    .draw = thorvg_rhi_draw,
+};
+
+static Tether_Text_API thorvg_text_api = {
+    .load_font = thorvg_rhi_load_font,
     .create_text = thorvg_rhi_create_text,
-    .create_scene = thorvg_rhi_create_scene,
-    
-    .scene_push = thorvg_rhi_scene_push,
-    .scene_remove = thorvg_rhi_scene_remove,
-    .scene_clear = thorvg_rhi_scene_clear,
-    .add_to_canvas = thorvg_rhi_add_to_canvas,
-    .paint_free = thorvg_rhi_paint_free,
-    
-    .translate = thorvg_rhi_translate,
-    .scale = thorvg_rhi_scale,
-    .rotate = thorvg_rhi_rotate,
-    .set_opacity = thorvg_rhi_set_opacity,
-    .set_visible = thorvg_rhi_set_visible,
-    .set_stroke_color = thorvg_rhi_set_stroke_color,
-    .set_stroke_width = thorvg_rhi_set_stroke_width,
-    .set_clip_rect = thorvg_rhi_set_clip_rect,
-    .get_text_bounds = thorvg_rhi_get_text_bounds,
-    
-    .set_rect_geometry = thorvg_rhi_set_rect_geometry,
-    .set_fill_color = thorvg_rhi_set_fill_color,
     .set_text_string = thorvg_rhi_set_text_string,
     .set_text_font = thorvg_rhi_set_text_font,
     .set_text_color = thorvg_rhi_set_text_color,
     .set_text_wrap = thorvg_rhi_set_text_wrap,
+    .set_visible = thorvg_rhi_set_visible,
+    .set_opacity = thorvg_rhi_set_opacity,
+    .translate = thorvg_rhi_translate,
+    .scale = thorvg_rhi_scale,
+    .rotate = thorvg_rhi_rotate,
+    .set_z_index = thorvg_rhi_set_z_index,
+    .get_text_bounds = thorvg_rhi_get_text_bounds,
     .measure_text = thorvg_rhi_measure_text,
+    .destroy = thorvg_rhi_paint_free,
 };
 
-Tether_RHI_API* thorvg_rhi_get_api(void) {
-    return &thorvg_api;
-}
+Tether_System_API* thorvg_system_get_api(void) { return &thorvg_system_api; }
+Tether_Text_API* thorvg_text_get_api(void) { return &thorvg_text_api; }

@@ -11,6 +11,9 @@ extern "C" {
 /* Initializes the Render Engine (Creates Main Scene & Registers Roots) */
 void tether_render_init(void);
 
+/* Cleans up the Render Engine (Destroys Main Scene & Unregisters Roots) */
+void tether_render_term(void);
+
 /* Allocates RHI memory for an entity (and children) */
 void tether_render_realize(Tether_GUID entity);
 
