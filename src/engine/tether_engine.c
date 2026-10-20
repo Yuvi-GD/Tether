@@ -7,15 +7,9 @@
 #include "tether/engine/parser/tether_yaml.h"
 #include <stddef.h>
 
-extern Tether_System_API* thorvg_system_get_api(void);
-extern Tether_Text_API* thorvg_text_get_api(void);
-extern Tether_Shape_API* sokol_shape_get_api(void);
-
 static bool g_redraw_requested = true;
 static bool g_frame_drawn = false;
 static Tether_EngineConfig g_engine_config = {0};
-
-Tether_RHI g_rhi = {0};
 
 void tether_engine_init(Tether_EngineConfig* config) {
     if (config) {
@@ -39,19 +33,9 @@ void tether_engine_init(Tether_EngineConfig* config) {
     tether_registry_init();  
 }
 
-extern Tether_System_API* sokol_system_get_api(void);
-
 void tether_engine_on_hal_init(int width, int height, const void* device, const void* instance) {
-    /* Claim RHI and Render subsystems */
-    g_rhi.system = sokol_system_get_api();
-    g_rhi.text = thorvg_text_get_api();
-    g_rhi.shape = sokol_shape_get_api();
-    
-    // ThorVG needs initialization for text offscreen target
-    extern Tether_System_API* thorvg_system_get_api(void);
-    thorvg_system_get_api()->init((uint32_t)width, (uint32_t)height, g_engine_config.max_render_width, g_engine_config.max_render_height, device, instance);
-
     g_rhi.system->init((uint32_t)width, (uint32_t)height, g_engine_config.max_render_width, g_engine_config.max_render_height, device, instance);
+
     tether_render_init();
 
     /* Load initial YAML after RHI is ready (g_rhi must be valid for tether_render_realize) */
@@ -64,9 +48,10 @@ void tether_engine_on_hal_init(int width, int height, const void* device, const 
     }
     
     /* Load fonts into RHI after user registration */
-    for (uint32_t i = 1; i <= 31; ++i) {
+    for (uint32_t i = 0; i < 32; ++i) {
+        const char* name = tether_font_get_name(i);
         const char* path = tether_font_get_path(i);
-        if (path) g_rhi.text->load_font(path);
+        if (path) g_rhi.text->load_font(name ? name : "default", path);
     }
 }
 
@@ -77,8 +62,6 @@ void* tether_engine_on_hal_frame(int width, int height) {
         s_last_w = width;
         s_last_h = height;
         g_rhi.system->resize(width, height);
-        // ThorVG needs to resize its offscreen target as well (a bit hacky, but it works for now)
-        thorvg_system_get_api()->resize((uint32_t)width, (uint32_t)height);
     }
     
     uint32_t tex_w = 0, tex_h = 0;
@@ -88,10 +71,11 @@ void* tether_engine_on_hal_frame(int width, int height) {
         g_engine_config.on_frame();
     }
     
+    // Only render if needed (resized, input received, or components are dirty)
     g_frame_drawn = tether_render_frame((float)tex_w, (float)tex_h, resized || g_redraw_requested);
     g_redraw_requested = false;
     
-    return (void*)g_rhi.system->get_texture();
+    return NULL;
 }
 
 bool tether_engine_did_draw(void) {
@@ -109,22 +93,20 @@ void tether_engine_on_hal_input(const Tether_Pointer_Event* event) {
     scaled_event.y = (event->y * (float)tex_h) / (float)s_last_h;
     
     tether_input_process_event(&scaled_event);
+    tether_engine_queue_redraw();
 }
 
 void tether_engine_on_hal_cleanup(void) {
 
+    Tether_DenseArray* nodes = tether_ecs_get_dense_array(TETHER_COMPONENT_SLOT_TRANSFORM);
+    printf("length of TOTAL ENTITIES %lu\n", nodes->count);
     /* Terminate Renderer*/
     tether_render_term();
 
     /* Teardown engine-specific resources before HAL and RHI shut down. */
     tether_registry_term();
     tether_ecs_term();
-
-    /* ThorVG MUST be terminated BEFORE WebGPU is destroyed by sg_shutdown */
-    extern Tether_System_API* thorvg_system_get_api(void);
-    thorvg_system_get_api()->term();
     
-    /* Sokol RHI must clean up its resources BEFORE sg_shutdown is called by HAL */
     g_rhi.system->term();
 }
 

@@ -945,6 +945,157 @@ tether_run(config)
 
 ---
 
+## 4. Render Engine Interaction & Optimization Architecture
+
+To achieve sustained 60–240 FPS with sub-millisecond CPU frame times under continuous (`VOLATILE`) UI evaluation, the interaction between the ECS Kernel, the Layout Engine, and the Rendering Hardware Interface (RHI) is designed around three foundational optimization pillars.
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               OPTIMIZATION TRIAD                                       │
+├────────────────────────────┬────────────────────────────┬──────────────────────────────┤
+│    1. Branchless Fast SDF   │   2. Text Shaping Cache    │      3. Unified Z-Bands       │
+│  (GPU Rasterization Math)  │ (Layout-Render Separation) │   (Batch State Coalescence)  │
+├────────────────────────────┼────────────────────────────┼──────────────────────────────┤
+│ • Zero `discard` stalls    │ • Set string via ECS API   │ • 64-bit Radix Sort keys     │
+│ • Full Early-Z & Hi-Z      │ • Layout measures & wraps  │ • Group non-overlapping quads│
+│ • Quad-uniform fast paths  │ • Zero render-loop shaping │ • 1 draw call for all shapes │
+│ • Straight-line SIMD math  │ • SlotTransform stores size│ • 1 draw call for all text   │
+└────────────────────────────┴────────────────────────────┴──────────────────────────────┘
+```
+
+---
+
+### 4.1 Branchless Fast Signed Distance Field (SDF) Rasterization
+
+#### The Problem with Shader `discard` and Branchy SDF
+In early UI shaders, rounded rectangles often rely on `discard` instructions to clip pixels outside the rounded corner arcs or use complex nested `if/else` ladders to separate borders from interiors. In modern GPU architectures:
+1. **Disables Early-Z and Hierarchical-Z (Hi-Z):** Fixed-function rasterizers cannot perform early depth/stencil rejection because the hardware cannot determine whether a fragment will survive until the fragment shader finishes executing.
+2. **SIMD Warp Serialization:** GPU threads execute in lockstep 32- or 64-wide SIMD warps (or wavefronts). When a fragment calls `discard`, the hardware thread is simply masked off (predicated); the warp itself must still execute all remaining instructions until every thread terminates.
+3. **Warp Divergence:** Divergent branches (e.g., branch A for flat interior, branch B for border, branch C for corner arcs) across adjacent $2 \times 2$ pixel quads force the GPU to execute **all branches serially** for all masked threads, drastically degrading ALU utilization.
+4. **Why Hardware Scissor Wins for Clipping:** Hardware scissor rects operate at the fixed-function rasterizer stage *before* fragment shading begins. Zero fragments are generated outside scissor bounds, whereas shader-level clipping executes fragment shaders only to discard them.
+
+#### Mathematical Formulation
+The distance $d(p)$ from any point $p$ to a rounded rectangle with half-extents $b$ and corner radius $r$ is defined as:
+$$q = |p| - b + r$$
+$$d(p) = \min(\max(q_x, q_y), 0.0) + \| \max(q, 0.0) \| - r$$
+
+Where:
+- $q_x \le 0 \land q_y \le 0$: Point lies in the inscribed central rectangle.
+- $q_x \le 0 \oplus q_y \le 0$: Point lies in the straight edge cross-slabs (pure 1D distance to edge).
+- $q_x > 0 \land q_y > 0$: Point lies in one of the 4 corner regions of radius $r$.
+
+#### Branchless Edge Anti-Aliasing (No `discard`)
+Instead of discarding transparent fragments, the shader evaluates a continuous 1-pixel sub-pixel edge transition using hardware smoothstep:
+$$\alpha_{\text{smooth}} = 1.0 - \text{smoothstep}(-0.5, 0.5, d(p))$$
+
+When a fragment is completely outside the shape ($d(p) > 0.5$), $\alpha_{\text{smooth}}$ evaluates to $0.0$. Under standard pre-multiplied or alpha blending:
+$$\text{Dst}_{\text{color}} = \text{Dst}_{\text{color}} \cdot (1.0 - \alpha) + \text{Src}_{\text{color}} \cdot \alpha$$
+When $\alpha = 0.0$, the equation simplifies to $\text{Dst}_{\text{color}} = \text{Dst}_{\text{color}}$ (a bitwise no-op on the framebuffer). This eliminates `discard` entirely, allowing the GPU rasterizer to run at full speed.
+
+#### Quad-Uniform Early Exit
+For sharp rectangles without borders (`radius <= 0.0 && border <= 0.0`), the condition is identical across all four vertices of the quad. Because every fragment within the quad evaluates the exact same condition, the entire warp takes the early branch together with **zero thread divergence**:
+```glsl
+// Fast path: sharp rectangle with no border (uniform across quad)
+if (v_radius_border.x <= 0.0 && v_radius_border.y <= 0.0) {
+    frag_color = v_fill_color;
+    return;
+}
+```
+
+#### Roadmap: Per-Corner Radius Control
+To support distinct radii per corner ($r_{\text{top-left}}, r_{\text{top-right}}, r_{\text{bottom-right}}, r_{\text{bottom-left}}$), the shader will partition $q$ using sign masks without branches:
+$$\text{index} = (\text{step}(0.0, p_x)) + 2.0 \cdot (\text{step}(0.0, p_y))$$
+This allows indexing into a 4-component radius vector (`v_radii[index]`) in pure vector registers.
+
+---
+
+### 4.2 Text Caching and Layout/Render Separation
+
+Tether strictly separates string lifecycle, layout calculation, and GPU quad submission.
+
+```
+┌─────────────────────────────────┐
+│ 1. ECS Kernel (tether_ecs.c)    │
+│    tether_ecs_set_text_string() │ ── Updates string buffer & resets intrinsic_size to 0
+└────────────────┬────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────┐
+│ 2. Layout Engine (tether_layout)│
+│    tether_layout_process_all()  │ ── Pass 1: Measures single-line intrinsic_size once
+│                                 │ ── Pass 2: Resolves container wrap width (cw)
+│                                 │ ── Invokes g_rhi.text->set_text() ONLY if wrap_w changed
+│                                 │ ── Writes final dimensions to Tether_SlotTransform
+└────────────────┬────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────┐
+│ 3. Render Engine (tether_render)│
+│    apply_visual_rules()         │ ── Pure presentation (g_rhi.text->set_pos, set_color)
+│                                 │ ── NEVER parses strings or reshapes glyphs
+└─────────────────────────────────┘
+```
+
+#### Lifecycle & Responsibility Separation
+1. **String Mutation (`tether_ecs.c`)**:
+   - `tether_ecs_set_text_string(entity, "...")` stores string data in the entity's contiguous array.
+   - Resets `text->intrinsic_size` to $(0, 0)$ and `text->cached_wrap_width` to $-1.0$.
+   - Flags `TETHER_COMPONENT_DIRTY_LAYOUT` and `TETHER_COMPONENT_DIRTY_VISUAL`.
+2. **Layout Engine & Word Wrapping (`tether_layout.c`)**:
+   - **Bottom-Up Pass**: Calls `g_rhi.text->measure_text` unbounded to compute the natural content size (`intrinsic_size`). This runs only once per text change.
+   - **Top-Down Arrange Pass**: In container nodes (e.g. Columns), child cross-axis width is bounded by container inner width:
+     $$w_{\text{avail}} = w_{\text{inner}} - \text{margin}_{\text{left}} - \text{margin}_{\text{right}}$$
+   - **Wrap Quad Shaping Cache**: Layout checks if the target wrap width has changed:
+     $$\text{needs\_reformat} = (w_{\text{target}} \ne \text{text}\to\text{cached\_wrap\_width})$$
+     If `needs_reformat` is true, font glyphs are shaped into the GPU vertex table once via `g_rhi.text->set_text(...)`. On subsequent frames (including consecutive `VOLATILE` frames), quad generation is completely skipped.
+3. **Elimination of Redundant Cache Structs**:
+   - The resolved visual bounding box is stored directly in `Tether_SlotTransform` (`t->width`, `t->height`).
+   - Single-line unbounded bounds live in `intrinsic_size`.
+   - Redundant structures (such as `cached_wrapped_size`) are eliminated from `Tether_Text`, saving component memory and ensuring cache-line alignment.
+4. **Render Loop Purity (`tether_render.c`)**:
+   - `apply_visual_rules` operates as a pure presentation system.
+   - It only updates vertex position offsets (`set_pos`), packed colors (`set_color`), and render transforms (`set_scale`, `set_rotation`).
+   - The render loop never queries font metrics or formats quads.
+
+---
+
+### 4.3 Z-Order Batching and State Coalescence (Z-Banding)
+
+#### The Draw Call Fragmentation Problem
+Chitra orders all 2D drawing primitives using a 64-bit visual sort key:
+```
+[ 30 bits: Draw Order | 16 bits: Clip ID | 5 bits: Pipeline ID | 13 bits: Texture ID ]
+```
+
+When visual state is evaluated, an 8-pass Least Significant Digit (LSD) Radix Sort sorts all active command slots across contiguous 16-byte structs. If every widget in the hierarchy increments `draw_order` monotonically:
+- Element 0: Card Panel $\to$ `draw_order = 0`, `pipeline = SHAPE`
+- Element 1: Card Text $\to$ `draw_order = 1`, `pipeline = TEXT`
+- Element 2: Card Panel $\to$ `draw_order = 2`, `pipeline = SHAPE`
+- Element 3: Card Text $\to$ `draw_order = 3`, `pipeline = TEXT`
+
+Because `draw_order` occupies the top 30 bits, the sorted order forces the pipeline to alternate between `SHAPE` and `TEXT` on every single element. In a dashboard with 50 cards, this produces 100 individual draw calls and 100 pipeline state binds (`sg_apply_pipeline`, `sg_apply_bindings`, `sg_draw`) per frame.
+
+#### The Architectural Solution: Unified Z-Bands
+To maximize GPU batching, Tether groups non-overlapping elements at the same hierarchy depth into unified **Z-Bands**:
+
+```
+Z-Band 0 (Backgrounds):  [ Card 1 Shape ] [ Card 2 Shape ] [ Card 3 Shape ] [ Card 4 Shape ]
+                         └──────────────────────┬───────────────────────────────────┘
+                                                ▼ Coalesced into 1 SHAPE Draw Call
+Z-Band 1 (Content):      [ Card 1 Text  ] [ Card 2 Text  ] [ Card 3 Text  ] [ Card 4 Text  ]
+                         └──────────────────────┬───────────────────────────────────┘
+                                                ▼ Coalesced into 1 TEXT Draw Call (Font Atlas)
+```
+
+1. **Intra-Layer Coalescence**: All sibling background panels share the same `draw_order` band. Because `sort_key` places `Pipeline ID` and `Texture ID` below `draw_order`, all shapes within the band sort contiguously and emit as a **single instanced draw call**.
+2. **Text Batching**: All text elements in that layer share the subsequent Z-band. Because they share the single unified Font Atlas texture, all text across all cards renders in a **single text draw call**.
+3. **Overlay Isolation**: The Overlay Root (modals, dropdowns, tooltips) begins at an offset Z-band (`OVERLAY_BAND_BASE`). Overlays are guaranteed to render on top of all base UI elements without interleaving.
+4. **Hierarchy Lifecycle Sync**:
+   - Calling `tether_widget_add_to_parent()` or altering visibility attaches `TETHER_COMPONENT_DIRTY_HIERARCHY`.
+   - During `tether_render_frame()`, `sync_hierarchy_recursive()` assigns Z-bands and hardware scissor clip IDs, ensuring all newly created widgets receive correct draw orders before the batcher runs.
+
+---
+
 ## What Needs to Change in the Codebase
 
 The current codebase does not yet reflect this architecture. Here are the concrete refactoring tasks:

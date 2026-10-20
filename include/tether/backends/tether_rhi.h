@@ -2,60 +2,94 @@
 #define TETHER_RHI_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "tether/core/tether_components.h"
 
-/* System API (Init/Term/Core loop) */
+/* ============================================================================
+ * Tether Rendering Hardware Interface (RHI)
+ *
+ * This is the ONLY interface the engine (tether_render.c, tether_layout.c)
+ * is allowed to call. Concrete backends (Chitra, etc.) fill in the function
+ * pointers and assign g_rhi before the engine starts.
+ * ============================================================================ */
+
+/* -------------------------------------------------------------------------- */
+/* System API — lifecycle, frame control, clipping                            */
+/* -------------------------------------------------------------------------- */
 typedef struct {
     void (*init)(uint32_t width, uint32_t height, uint32_t max_w, uint32_t max_h, const void* device, const void* instance);
     void (*resize)(uint32_t width, uint32_t height);
     void (*term)(void);
-    const void* (*get_texture)(void);
+
+    /* Returns the current render texture / swapchain size in pixels. */
     void (*get_texture_size)(uint32_t* out_w, uint32_t* out_h);
-    void (*draw)(void);
-    void (*draw_fullscreen_texture)(const void* texture);
+
+    /* Signals the backend that retained state has changed and must be rendered. */
+    void (*mark_dirty)(void);
+
+    /* Scissor clip region management */
+    uint16_t (*register_clip)(int x, int y, int w, int h);
+    void     (*update_clip)(uint32_t handle, int x, int y, int w, int h);
+    uint16_t (*clip_intersect)(uint16_t parent_clip, int x, int y, int w, int h);
+    uint16_t (*clip_intersect_to)(uint16_t existing_clip_id, uint16_t parent_clip, int x, int y, int w, int h);
+
+    /* Element compositing properties */
+    void     (*set_draw_order)(uint32_t handle, uint32_t draw_order);
+    void     (*set_clip)(uint32_t handle, uint16_t clip_id);
+    uint16_t (*get_clip_id)(uint32_t handle);
+    void     (*release_clip)(uint32_t handle);
+
+    bool (*is_alive)(uint32_t handle);
+    void (*set_alive)(uint32_t handle, bool alive);
 } Tether_System_API;
 
-/* Shape API (Handled by Sokol) */
+/* -------------------------------------------------------------------------- */
+/* Shape API — retained SDF rounded rectangles, borders                       */
+/* -------------------------------------------------------------------------- */
 typedef struct {
-    void* (*create_rect)(void);
-    void (*set_rect_geometry)(void* render_handle, float w, float h, float rx, float ry);
-    void (*set_fill_color)(void* render_handle, Tether_Color color);
-    void (*set_visible)(void* handle, int visible);
-    void (*set_opacity)(void* handle, uint8_t opacity);
-    void (*translate)(void* render_handle, float x, float y);
-    void (*scale)(void* render_handle, float factor_x, float factor_y);
-    void (*rotate)(void* render_handle, float degrees);
-    void (*set_z_index)(void* render_handle, int z_index);
-    void (*destroy)(void* render_handle);
+    uint32_t (*create)(void);
+    void     (*destroy)(uint32_t handle);
+    bool     (*is_alive)(uint32_t handle);
+
+    bool     (*set_bounds)(uint32_t handle, float x, float y, float w, float h);
+    bool     (*set_radius)(uint32_t handle, float radius);
+    bool     (*set_border)(uint32_t handle, float border_width);
+    bool     (*set_color)(uint32_t handle, uint32_t fill_color, uint32_t border_color);
+    bool     (*set_fill_color)(uint32_t handle, uint32_t fill_color);
+    bool     (*set_border_color)(uint32_t handle, uint32_t border_color);
+    bool     (*set_opacity)(uint32_t handle, float opacity);
+    bool     (*set_rotation)(uint32_t handle, float origin_x, float origin_y, float angle_rad);
 } Tether_Shape_API;
 
-/* Text API (Temporarily ThorVG) */
+/* -------------------------------------------------------------------------- */
+/* Text API — font loading, measuring, retained text element                  */
+/* -------------------------------------------------------------------------- */
 typedef struct {
-    void (*load_font)(const char* path);
-    void* (*create_text)(void);
-    void (*set_text_string)(void* render_handle, const char* str);
-    void (*set_text_font)(void* render_handle, uint32_t font_id, int font_style, float font_size);
-    void (*set_text_color)(void* render_handle, Tether_Color color);
-    void (*set_text_wrap)(void* render_handle, float max_width);
-    void (*set_visible)(void* handle, int visible);
-    void (*set_opacity)(void* handle, uint8_t opacity);
-    void (*translate)(void* render_handle, float x, float y);
-    void (*scale)(void* render_handle, float factor_x, float factor_y);
-    void (*rotate)(void* render_handle, float degrees);
-    void (*set_z_index)(void* render_handle, int z_index);
-    void (*get_text_bounds)(void* handle, float* tx, float* ty, float* w, float* h);
-    void (*measure_text)(const char* text, uint32_t font_id, int font_style, float font_size, float max_width, float* out_w, float* out_h);
-    void (*destroy)(void* render_handle);
+    int      (*load_font)(const char* name, const char* path);
+    void     (*unload_font)(int font_id);
+    void     (*measure_text)(const char* text, uint32_t font_id, float size, float wrap_width, float* out_w, float* out_h);
+
+    uint32_t (*create)(void);
+    void     (*destroy)(uint32_t handle);
+    bool     (*is_alive)(uint32_t handle);
+
+    bool     (*set_text)(uint32_t handle, uint32_t font_id, float size, const char* text, float wrap_width, float x, float y);
+    bool     (*set_color)(uint32_t handle, uint32_t color);
+    bool     (*set_pos)(uint32_t handle, float x, float y);
+    bool     (*set_opacity)(uint32_t handle, float opacity);
+    bool     (*set_rotation)(uint32_t handle, float origin_x, float origin_y, float angle_rad);
+    bool     (*set_scale)(uint32_t handle, float origin_x, float origin_y, float scale_x, float scale_y);
+    bool     (*get_bounds)(uint32_t handle, float* out_w, float* out_h);
 } Tether_Text_API;
 
 /* Master RHI Interface */
 typedef struct {
     Tether_System_API* system;
-    Tether_Shape_API* shape;
-    Tether_Text_API* text;
+    Tether_Shape_API*  shape;
+    Tether_Text_API*   text;
 } Tether_RHI;
 
-/* Global RHI Instance exposed to the engine */
+/* Global RHI instance — set by the active backend before engine init. */
 extern Tether_RHI g_rhi;
 
-#endif
+#endif /* TETHER_RHI_H */

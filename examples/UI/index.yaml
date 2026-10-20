@@ -8,7 +8,7 @@
           hover_color: AUTO
           press_color: AUTO
           flow: COLUMN
-          padding: [15, 15, 15, 15]
+          padding: 15
           gap: [0, 8]
           children:
             - Text:
@@ -18,16 +18,17 @@
             - Slot: "children"
 
 - Panel:
+  id: "AppRoot"
   flow: NONE
   color: [30, 32, 36, 255]
   children:
     - Panel: # Main App Window
-        anchor_min: [0.0, 0.0]
-        anchor_max: [1.0, 1.0]
-        offset: [20, 20, 20, 20]
+        anchor_min: 0.0
+        anchor_max: 1.0
+        offset: 20
         color: [40, 44, 52, 255]
         flow: COLUMN
-        padding: [20, 20, 20, 20]
+        padding: 20
         gap: [0, 15]
         children:
           # ============================================================
@@ -36,7 +37,7 @@
           - Panel:
               color: [50, 56, 68, 255]
               flow: ROW
-              padding: [15, 15, 15, 15]
+              padding: 15
               gap: [15, 0]
               children:
                 - Text:
@@ -46,21 +47,20 @@
                 - Panel: # Spacer
                     fill_ratio: 0.1
                     color: [0, 0, 0, 0]
-                - Panel: # Settings Button
-                    id: "SettingsBtn"
+                - Panel: # Refresh Button
+                    id: "RefreshBtn"
                     interactable: true
-                    size_box: [130, 40]
                     color: [97, 175, 239, 255]
                     hover_color: AUTO
                     press_color: AUTO
-                    padding: [8, 8, 8, 8]
+                    padding: 8
                     border_radius: 10
                     border_width: 5
                     border_color: [30, 32, 36, 255]
                     children:
                       - Text:
                           fill_ratio: 1.0
-                          string: "Settings"
+                          string: "Refresh"
                           font_size: 20.0
                           color: [30, 32, 36, 255]
 
@@ -78,7 +78,7 @@
                     fill_ratio: 0.22
                     color: [50, 56, 68, 255]
                     flow: COLUMN
-                    padding: [15, 15, 15, 15]
+                    padding: 15
                     gap: [0, 10]
                     children:
                       - Text:
@@ -93,7 +93,7 @@
                           color: [97, 175, 239, 255]
                           hover_color: AUTO
                           press_color: AUTO
-                          padding: [12, 12, 12, 12]
+                          padding: 12
                           children:
                             - Text:
                                 string: "Dashboard"
@@ -104,7 +104,7 @@
                           color: [62, 68, 81, 255]
                           hover_color: AUTO
                           press_color: AUTO
-                          padding: [12, 12, 12, 12]
+                          padding: 12
                           children:
                             - Text:
                                 string: "Analytics"
@@ -115,23 +115,24 @@
                           color: [62, 68, 81, 255]
                           hover_color: AUTO
                           press_color: AUTO
-                          padding: [12, 12, 12, 12]
+                          padding: 12
                           children:
                             - Text:
                                 string: "Reports"
                                 font_size: 18.0
                                 color: [200, 200, 210, 255]
-                      - Panel: # Nav: Settings
+                      - Panel: # Nav: Toggle
+                          id: "ShowHideBtn"
                           interactable: true
                           color: [62, 68, 81, 255]
                           hover_color: AUTO
                           press_color: AUTO
-                          padding: [12, 12, 12, 12]
+                          padding: 12
                           children:
                             - Text:
-                                string: "Settings"
+                                string: "Show Feature"
                                 font_size: 18.0
                                 color: [200, 200, 210, 255]
 
                 # --- Main View ---
-                - Scene: "../../examples/UI/dashboard.yaml"
+                - Scene: "UI/dashboard.yaml"

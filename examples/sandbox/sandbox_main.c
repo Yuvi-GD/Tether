@@ -25,7 +25,7 @@ void sandbox_init(void)
     sandbox_bind_events();
 
     /* Load font */
-    tether_font_register("Roboto-Regular", "../../examples/Font/Roboto-Regular.ttf");
+    tether_font_register("Roboto-Regular", "Font/Roboto-Regular.ttf");
 }
 
 int main()
@@ -35,7 +35,7 @@ int main()
         .width = 1024,
         .height = 768,
         .title = "Tether UI Sandbox",
-        .initial_yaml = "../../examples/UI/index.yaml",
+        .initial_yaml = "UI/index.yaml",
         
         /* Explicitly define our engine behavior */
         .memory_strategy = TETHER_MEMORY_HIGH_WATER_MARK,

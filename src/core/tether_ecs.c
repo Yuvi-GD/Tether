@@ -31,6 +31,24 @@ typedef struct {
 
 static Tether_Registry g_registry = {0};
 
+static void ensure_sparse_capacity(int component_id,
+                                   uint32_t required_capacity) {
+  Tether_SparseMap *sparse = &g_registry.sparse_maps[component_id];
+  if (required_capacity > sparse->capacity) {
+    uint32_t old_cap = sparse->capacity;
+    sparse->capacity = required_capacity;
+    sparse->dense_indices = (uint32_t *)realloc(
+        sparse->dense_indices, sparse->capacity * sizeof(uint32_t));
+    for (uint32_t i = old_cap; i < sparse->capacity; ++i) {
+      sparse->dense_indices[i] = TETHER_SPARSE_INVALID_INDEX;
+    }
+  }
+}
+
+/* ========================================================================== */
+/*                       Global Entity Lifecycle                              */
+/* ========================================================================== */
+
 void tether_ecs_init(void) {
   g_registry.entity_capacity = INITIAL_ENTITY_CAPACITY;
   g_registry.generations =
@@ -117,11 +135,15 @@ Tether_GUID tether_ecs_get_overlay_root(void) {
   return g_registry.overlay_root;
 }
 
-void tether_ecs_set_static_component_limit(uint32_t component_limit) {
-  if (component_limit > g_registry.next_custom_component_id) {
-    g_registry.next_custom_component_id = component_limit;
-  }
+Tether_DenseArray *tether_ecs_get_dense_array(int component_id) {
+  if (component_id < 0 || (uint32_t)component_id >= g_registry.component_type_capacity)
+    return NULL;
+  return &g_registry.dense_arrays[component_id];
 }
+
+/* ========================================================================== */
+/*                              Entity Lifecycle                              */
+/* ========================================================================== */
 
 Tether_GUID tether_ecs_create_entity(void) {
   uint32_t index;
@@ -203,6 +225,16 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
   g_registry.free_indices[g_registry.free_count++] = index;
 }
 
+/* ========================================================================== */
+/*                          Component Management                              */
+/* ========================================================================== */
+
+void tether_ecs_set_static_component_limit(uint32_t component_limit) {
+  if (component_limit > g_registry.next_custom_component_id) {
+    g_registry.next_custom_component_id = component_limit;
+  }
+}
+
 void tether_ecs_register_component_static(uint32_t component_id, size_t element_size) {
   if (component_id < 0) return;
   
@@ -230,105 +262,6 @@ uint32_t tether_ecs_register_component_dynamic(size_t element_size) {
   uint32_t id = g_registry.next_custom_component_id++;
   tether_ecs_register_component_static(id, element_size);
   return id;
-}
-
-void tether_ecs_detach_entity(Tether_GUID entity) {
-  if (!tether_ecs_is_valid(entity)) return;
-
-  Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-  if (!h || h->parent == 0) return; // Not attached to anything
-
-  Tether_Hierarchy* p = (Tether_Hierarchy*)tether_ecs_get_component(h->parent, TETHER_COMPONENT_HIERARCHY);
-  if (p) {
-      if (p->first_child == entity) {
-          p->first_child = h->next_sibling;
-      }
-      if (p->last_child == entity) {
-          p->last_child = h->prev_sibling;
-      }
-      if (p->child_count > 0) {
-          p->child_count--;
-      }
-      /* Flag parent for hierarchy sync so renderer updates the scene graph */
-      tether_ecs_add_component(h->parent, TETHER_COMPONENT_DIRTY_HIERARCHY);
-  }
-
-  // Stitch neighbors together O(1)
-  if (h->prev_sibling != 0) {
-      Tether_Hierarchy* prev = (Tether_Hierarchy*)tether_ecs_get_component(h->prev_sibling, TETHER_COMPONENT_HIERARCHY);
-      if (prev) prev->next_sibling = h->next_sibling;
-  }
-  if (h->next_sibling != 0) {
-      Tether_Hierarchy* next = (Tether_Hierarchy*)tether_ecs_get_component(h->next_sibling, TETHER_COMPONENT_HIERARCHY);
-      if (next) next->prev_sibling = h->prev_sibling;
-  }
-
-  // Clear own references
-  h->parent = 0;
-  h->prev_sibling = 0;
-  h->next_sibling = 0;
-}
-
-void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity) {
-    if (!tether_ecs_is_valid(parent) || !tether_ecs_is_valid(entity)) return;
-
-    if (tether_ecs_get_component(parent, TETHER_COMPONENT_IS_LEAF)) return;
-
-    /* Make sure it's completely detached from any old parent first! */
-  tether_ecs_detach_entity(entity);
-
-  Tether_Hierarchy* p = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);
-  Tether_Hierarchy* c = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-  
-  if (!p || !c) return; // Programmer MUST add components explicitly!
-
-  c->parent = parent;
-  c->prev_sibling = 0;
-  c->next_sibling = 0;
-
-  if (p->first_child == 0) {
-      p->first_child = entity;
-      p->last_child = entity;
-  } else {
-      // O(1) Instant Append using last_child!
-      Tether_GUID old_last = p->last_child;
-      Tether_Hierarchy* old_last_h = (Tether_Hierarchy*)tether_ecs_get_component(old_last, TETHER_COMPONENT_HIERARCHY);
-      
-      if (old_last_h) {
-          old_last_h->next_sibling = entity;
-          c->prev_sibling = old_last;
-      }
-      p->last_child = entity;
-  }
-
-  p->child_count++;
-  /* Flag new parent for hierarchy sync so renderer updates the scene graph */
-  tether_ecs_add_component(parent, TETHER_COMPONENT_DIRTY_HIERARCHY);
-}
-
-void tether_ecs_bring_to_front(Tether_GUID entity) {
-    if (!tether_ecs_is_valid(entity)) return;
-
-    Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    if (!h || h->parent == 0) return; // Not attached
-
-    Tether_GUID parent = h->parent;
-    tether_ecs_detach_entity(entity);
-    tether_ecs_attach_entity(parent, entity);
-}
-
-static void ensure_sparse_capacity(int component_id,
-                                   uint32_t required_capacity) {
-  Tether_SparseMap *sparse = &g_registry.sparse_maps[component_id];
-  if (required_capacity > sparse->capacity) {
-    uint32_t old_cap = sparse->capacity;
-    sparse->capacity = required_capacity;
-    sparse->dense_indices = (uint32_t *)realloc(
-        sparse->dense_indices, sparse->capacity * sizeof(uint32_t));
-    for (uint32_t i = old_cap; i < sparse->capacity; ++i) {
-      sparse->dense_indices[i] = TETHER_SPARSE_INVALID_INDEX;
-    }
-  }
 }
 
 void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
@@ -436,11 +369,98 @@ void tether_ecs_remove_component(Tether_GUID entity, int component_id) {
   dense->count--;
 }
 
-Tether_DenseArray *tether_ecs_get_dense_array(int component_id) {
-  if (component_id < 0 || (uint32_t)component_id >= g_registry.component_type_capacity)
-    return NULL;
-  return &g_registry.dense_arrays[component_id];
+/* ========================================================================== */
+/*                            Hierarchy API                                   */
+/* ========================================================================== */
+
+void tether_ecs_detach_entity(Tether_GUID entity) {
+  if (!tether_ecs_is_valid(entity)) return;
+
+  Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
+  if (!h || h->parent == 0) return; // Not attached to anything
+
+  Tether_Hierarchy* p = (Tether_Hierarchy*)tether_ecs_get_component(h->parent, TETHER_COMPONENT_HIERARCHY);
+  if (p) {
+      if (p->first_child == entity) {
+          p->first_child = h->next_sibling;
+      }
+      if (p->last_child == entity) {
+          p->last_child = h->prev_sibling;
+      }
+      if (p->child_count > 0) {
+          p->child_count--;
+      }
+      /* Flag parent for hierarchy sync so renderer updates the scene graph */
+      tether_ecs_add_component(h->parent, TETHER_COMPONENT_DIRTY_HIERARCHY);
+  }
+
+  // Stitch neighbors together O(1)
+  if (h->prev_sibling != 0) {
+      Tether_Hierarchy* prev = (Tether_Hierarchy*)tether_ecs_get_component(h->prev_sibling, TETHER_COMPONENT_HIERARCHY);
+      if (prev) prev->next_sibling = h->next_sibling;
+  }
+  if (h->next_sibling != 0) {
+      Tether_Hierarchy* next = (Tether_Hierarchy*)tether_ecs_get_component(h->next_sibling, TETHER_COMPONENT_HIERARCHY);
+      if (next) next->prev_sibling = h->prev_sibling;
+  }
+
+  // Clear own references
+  h->parent = 0;
+  h->prev_sibling = 0;
+  h->next_sibling = 0;
 }
+
+void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity) {
+    if (!tether_ecs_is_valid(parent) || !tether_ecs_is_valid(entity)) return;
+
+    if (tether_ecs_get_component(parent, TETHER_COMPONENT_IS_LEAF)) return;
+
+    /* Make sure it's completely detached from any old parent first! */
+  tether_ecs_detach_entity(entity);
+
+  Tether_Hierarchy* p = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);
+  Tether_Hierarchy* c = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
+  
+  if (!p || !c) return; // Programmer MUST add components explicitly!
+
+  c->parent = parent;
+  c->prev_sibling = 0;
+  c->next_sibling = 0;
+
+  if (p->first_child == 0) {
+      p->first_child = entity;
+      p->last_child = entity;
+  } else {
+      // O(1) Instant Append using last_child!
+      Tether_GUID old_last = p->last_child;
+      Tether_Hierarchy* old_last_h = (Tether_Hierarchy*)tether_ecs_get_component(old_last, TETHER_COMPONENT_HIERARCHY);
+      
+      if (old_last_h) {
+          old_last_h->next_sibling = entity;
+          c->prev_sibling = old_last;
+      }
+      p->last_child = entity;
+  }
+
+  p->child_count++;
+  /* Flag new parent for hierarchy sync so renderer updates the scene graph */
+  tether_ecs_add_component(parent, TETHER_COMPONENT_DIRTY_HIERARCHY);
+}
+
+void tether_ecs_bring_to_front(Tether_GUID entity) {
+    if (!tether_ecs_is_valid(entity)) return;
+
+    Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
+    if (!h || h->parent == 0) return; // Not attached
+
+    Tether_GUID parent = h->parent;
+    tether_ecs_detach_entity(entity);
+    tether_ecs_attach_entity(parent, entity);
+}
+
+/* ========================================================================== */
+/*                            Text Component API                              */
+/* ========================================================================== */
 
 const char* tether_ecs_get_text_string(Tether_GUID entity) {
     /* Fast check from smallest to largest */
