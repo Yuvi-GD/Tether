@@ -9,6 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct {
+    char** names;
+    Tether_ASTNode** trees;
+    uint32_t count;
+    uint32_t capacity;
+} WidgetASTMap;
+
+static WidgetASTMap g_widget_asts = {0};
 
 static const char* resolve_scalar(Tether_ASTNode* node, Tether_ASTEnvironment* env) {
     if (!node) return NULL;
@@ -29,14 +37,134 @@ static Tether_ASTNode* resolve_node(Tether_ASTNode* node, Tether_ASTEnvironment*
     return node;
 }
 
-typedef struct {
-    char** names;
-    Tether_ASTNode** trees;
-    uint32_t count;
-    uint32_t capacity;
-} WidgetASTMap;
+static int resolve_vec2(Tether_ASTNode* node, Tether_ASTEnvironment* env, float* x, float* y) {
+    if (!node || !x || !y) return 0;
+    if (node->type == TETHER_AST_SCALAR) {
+        float val = (float)atof(resolve_scalar(node, env));
+        *x = val;
+        *y = val;
+        return 1;
+    } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
+        *x = (float)atof(resolve_scalar(node->children[0], env));
+        *y = (node->child_count > 1) ? (float)atof(resolve_scalar(node->children[1], env)) : *x;
+        return 1;
+    }
+    return 0;
+}
 
-static WidgetASTMap g_widget_asts = {0};
+static int resolve_vec3(Tether_ASTNode* node, Tether_ASTEnvironment* env, float* x, float* y, float* z) {
+    if (!node || !x || !y || !z) return 0;
+    if (node->type == TETHER_AST_SCALAR) {
+        float val = (float)atof(resolve_scalar(node, env));
+        *x = val; *y = val; *z = val;
+        return 1;
+    } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
+        *x = (float)atof(resolve_scalar(node->children[0], env));
+        *y = (node->child_count > 1) ? (float)atof(resolve_scalar(node->children[1], env)) : 0.0f;
+        *z = (node->child_count > 2) ? (float)atof(resolve_scalar(node->children[2], env)) : 0.0f;
+        return 1;
+    }
+    return 0;
+}
+
+static int resolve_vec4(Tether_ASTNode* node, Tether_ASTEnvironment* env, float* arr) {
+    if (!node || !arr) return 0;
+    if (node->type == TETHER_AST_SCALAR) {
+        float val = (float)atof(resolve_scalar(node, env));
+        arr[0] = val;
+        arr[1] = val;
+        arr[2] = val;
+        arr[3] = val;
+        return 1;
+    } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
+        if (node->child_count == 1) {
+            float val = (float)atof(resolve_scalar(node->children[0], env));
+            arr[0] = val; arr[1] = val; arr[2] = val; arr[3] = val;
+        } else if (node->child_count == 2) {
+            float v = (float)atof(resolve_scalar(node->children[0], env));
+            float h = (float)atof(resolve_scalar(node->children[1], env));
+            arr[0] = v; arr[1] = h; arr[2] = v; arr[3] = h;
+        } else if (node->child_count == 3) {
+            arr[0] = (float)atof(resolve_scalar(node->children[0], env));
+            arr[1] = (float)atof(resolve_scalar(node->children[1], env));
+            arr[2] = (float)atof(resolve_scalar(node->children[2], env));
+            arr[3] = 0.0f;
+        } else {
+            arr[0] = (float)atof(resolve_scalar(node->children[0], env));
+            arr[1] = (float)atof(resolve_scalar(node->children[1], env));
+            arr[2] = (float)atof(resolve_scalar(node->children[2], env));
+            arr[3] = (float)atof(resolve_scalar(node->children[3], env));
+        }
+        return 1;
+    }
+    return 0;
+}
+
+static int resolve_color(Tether_ASTNode* node, Tether_ASTEnvironment* env, Tether_Color* color) {
+    if (!node || !color) return 0;
+    if (node->type == TETHER_AST_SCALAR) {
+        const char* str = resolve_scalar(node, env);
+        if (str && str[0] == '#') {
+            uint32_t val = (uint32_t)strtoul(str + 1, NULL, 16);
+            size_t len = strlen(str + 1);
+            if (len == 6) {
+                color->r = (uint8_t)((val >> 16) & 0xFF);
+                color->g = (uint8_t)((val >> 8) & 0xFF);
+                color->b = (uint8_t)(val & 0xFF);
+                color->a = 255;
+                return 1;
+            } else if (len == 8) {
+                color->r = (uint8_t)((val >> 24) & 0xFF);
+                color->g = (uint8_t)((val >> 16) & 0xFF);
+                color->b = (uint8_t)((val >> 8) & 0xFF);
+                color->a = (uint8_t)(val & 0xFF);
+                return 1;
+            }
+        }
+    } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
+        if (node->child_count == 1) {
+            uint8_t val = (uint8_t)atoi(resolve_scalar(node->children[0], env));
+            color->r = val; color->g = val; color->b = val; color->a = 255;
+        } else if (node->child_count == 3) {
+            color->r = (uint8_t)atoi(resolve_scalar(node->children[0], env));
+            color->g = (uint8_t)atoi(resolve_scalar(node->children[1], env));
+            color->b = (uint8_t)atoi(resolve_scalar(node->children[2], env));
+            color->a = 255;
+        } else if (node->child_count >= 4) {
+            color->r = (uint8_t)atoi(resolve_scalar(node->children[0], env));
+            color->g = (uint8_t)atoi(resolve_scalar(node->children[1], env));
+            color->b = (uint8_t)atoi(resolve_scalar(node->children[2], env));
+            color->a = (uint8_t)atoi(resolve_scalar(node->children[3], env));
+        }
+        return 1;
+    }
+    return 0;
+}
+
+static int resolve_align_2d(Tether_ASTNode* node, Tether_ASTEnvironment* env, Tether_Align* align_x, Tether_Align* align_y) {
+    if (!node || !align_x || !align_y) return 0;
+    if (node->type == TETHER_AST_SCALAR) {
+        Tether_Align a = parse_align_value(resolve_scalar(node, env));
+        *align_x = a;
+        *align_y = a;
+        return 1;
+    } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
+        *align_x = parse_align_value(resolve_scalar(node->children[0], env));
+        *align_y = (node->child_count > 1) ? parse_align_value(resolve_scalar(node->children[1], env)) : *align_x;
+        return 1;
+    }
+    return 0;
+}
+
+static Tether_Align parse_align_value(const char* val) {
+    if (!val) return TETHER_ALIGN_START;
+    if (strcmp(val, "FILL") == 0 || strcmp(val, "fill") == 0) return TETHER_ALIGN_FILL;
+    if (strcmp(val, "CENTER") == 0 || strcmp(val, "center") == 0) return TETHER_ALIGN_CENTER;
+    if (strcmp(val, "END") == 0 || strcmp(val, "RIGHT") == 0 || strcmp(val, "BOTTOM") == 0 ||
+        strcmp(val, "end") == 0 || strcmp(val, "right") == 0 || strcmp(val, "bottom") == 0) return TETHER_ALIGN_END;
+    if (strcmp(val, "AUTO") == 0 || strcmp(val, "auto") == 0) return TETHER_ALIGN_AUTO;
+    return TETHER_ALIGN_START;
+}
 
 static void register_widget_ast(Tether_ASTNode* props) {
     if (!props || props->type != TETHER_AST_MAPPING) return;
@@ -55,6 +183,13 @@ static void register_widget_ast(Tether_ASTNode* props) {
     }
     
     if (name && tree) {
+        for (uint32_t i = 0; i < g_widget_asts.count; i++) {
+            if (strcmp(g_widget_asts.names[i], name) == 0) {
+                g_widget_asts.trees[i] = tree;
+                return;
+            }
+        }
+        
         if (g_widget_asts.count >= g_widget_asts.capacity) {
             g_widget_asts.capacity = g_widget_asts.capacity == 0 ? 16 : g_widget_asts.capacity * 2;
             g_widget_asts.names = (char**)realloc(g_widget_asts.names, g_widget_asts.capacity * sizeof(char*));
@@ -117,45 +252,33 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             }
         }
         else if (strcmp(key, "color") == 0) {
-            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+            Tether_Shape* s = (Tether_Shape*)tether_ecs_get_component(ent, TETHER_COMPONENT_SHAPE);
             Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
-            if (val_node->type == TETHER_AST_SEQUENCE) {
-                Tether_Color c = {0, 0, 0, 255};
-                if (val_node->child_count > 0) c.r = atoi(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) c.g = atoi(resolve_scalar(val_node->children[1], env));
-                if (val_node->child_count > 2) c.b = atoi(resolve_scalar(val_node->children[2], env));
-                if (val_node->child_count > 3) c.a = atoi(resolve_scalar(val_node->children[3], env));
-                
-                if (s) {
-                    s->bg_color = c;
-                }
-                if (t) {
-                    t->color = c;
-                }
+            Tether_Color c = {0, 0, 0, 255};
+            if (resolve_color(val_node, env, &c)) {
+                if (s) s->bg_color = c;
+                if (t) t->color = c;
             }
         }
         else if (strcmp(key, "border_color") == 0) {
-            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
-            if (s && val_node->type == TETHER_AST_SEQUENCE) {
+            Tether_Shape* s = (Tether_Shape*)tether_ecs_get_component(ent, TETHER_COMPONENT_SHAPE);
+            if (s) {
                 Tether_Color c = {0, 0, 0, 255};
-                if (val_node->child_count > 0) c.r = atoi(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) c.g = atoi(resolve_scalar(val_node->children[1], env));
-                if (val_node->child_count > 2) c.b = atoi(resolve_scalar(val_node->children[2], env));
-                if (val_node->child_count > 3) c.a = atoi(resolve_scalar(val_node->children[3], env));
-                s->border_color = c;
+                if (resolve_color(val_node, env, &c)) {
+                    s->border_color = c;
+                }
             }
         }
         else if (strcmp(key, "border_width") == 0) {
-            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
+            Tether_Shape* s = (Tether_Shape*)tether_ecs_get_component(ent, TETHER_COMPONENT_SHAPE);
             if (s && val_node->type == TETHER_AST_SCALAR) {
                 s->border_width = atof(resolve_scalar(val_node, env));
             }
         }
         else if (strcmp(key, "border_radius") == 0) {
-            Tether_Style* s = (Tether_Style*)tether_ecs_get_component(ent, TETHER_COMPONENT_STYLE);
-            if (s && val_node->type == TETHER_AST_SCALAR) {
-                float r = atof(resolve_scalar(val_node, env));
-                s->border_radius = (Tether_Edges){r, r, r, r};
+            Tether_Shape* s = (Tether_Shape*)tether_ecs_get_component(ent, TETHER_COMPONENT_SHAPE);
+            if (s) {
+                resolve_vec4(val_node, env, (float*)&s->border_radius);
             }
         }
         else if (strcmp(key, "overflow") == 0) {
@@ -172,26 +295,24 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
         }
         else if (strcmp(key, "hover_color") == 0) {
             Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
-            if (val_node->type == TETHER_AST_SCALAR && strcmp(resolve_scalar(val_node, env), "AUTO") == 0) {
-                i->hover_color_mode = TETHER_COLOR_MODE_AUTO;
-            } else if (val_node->type == TETHER_AST_SEQUENCE) {
-                i->hover_color_mode = TETHER_COLOR_MODE_MANUAL;
-                if (val_node->child_count > 0) i->hover_color.r = atoi(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) i->hover_color.g = atoi(resolve_scalar(val_node->children[1], env));
-                if (val_node->child_count > 2) i->hover_color.b = atoi(resolve_scalar(val_node->children[2], env));
-                if (val_node->child_count > 3) i->hover_color.a = atoi(resolve_scalar(val_node->children[3], env));
+            if (i) {
+                const char* val = resolve_scalar(val_node, env);
+                if (val && strcmp(val, "AUTO") == 0) {
+                    i->hover_color_mode = TETHER_COLOR_MODE_AUTO;
+                } else if (resolve_color(val_node, env, &i->hover_color)) {
+                    i->hover_color_mode = TETHER_COLOR_MODE_MANUAL;
+                }
             }
         }
         else if (strcmp(key, "press_color") == 0) {
             Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
-            if (val_node->type == TETHER_AST_SCALAR && strcmp(resolve_scalar(val_node, env), "AUTO") == 0) {
-                i->press_color_mode = TETHER_COLOR_MODE_AUTO;
-            } else if (val_node->type == TETHER_AST_SEQUENCE) {
-                i->press_color_mode = TETHER_COLOR_MODE_MANUAL;
-                if (val_node->child_count > 0) i->press_color.r = atoi(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) i->press_color.g = atoi(resolve_scalar(val_node->children[1], env));
-                if (val_node->child_count > 2) i->press_color.b = atoi(resolve_scalar(val_node->children[2], env));
-                if (val_node->child_count > 3) i->press_color.a = atoi(resolve_scalar(val_node->children[3], env));
+            if (i) {
+                const char* val = resolve_scalar(val_node, env);
+                if (val && strcmp(val, "AUTO") == 0) {
+                    i->press_color_mode = TETHER_COLOR_MODE_AUTO;
+                } else if (resolve_color(val_node, env, &i->press_color)) {
+                    i->press_color_mode = TETHER_COLOR_MODE_MANUAL;
+                }
             }
         }
         else if (strcmp(key, "flow") == 0) {
@@ -203,45 +324,17 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
                 else n->flow = TETHER_FLOW_NONE;
             }
         }
-        else if (strcmp(key, "content_align_x") == 0) {
+        else if (strcmp(key, "content_align") == 0) {
             Tether_Layout* n = (Tether_Layout*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT);
-            const char* val = resolve_scalar(val_node, env);
-            if (n && val) {
-                if (strcmp(val, "FILL") == 0) n->content_align_x = TETHER_ALIGN_FILL;
-                else if (strcmp(val, "CENTER") == 0) n->content_align_x = TETHER_ALIGN_CENTER;
-                else if (strcmp(val, "END") == 0 || strcmp(val, "RIGHT") == 0) n->content_align_x = TETHER_ALIGN_END;
-                else n->content_align_x = TETHER_ALIGN_START;
-            }
+            if (n) resolve_align_2d(val_node, env, &n->content_align_x, &n->content_align_y);
         }
-        else if (strcmp(key, "content_align_y") == 0) {
-            Tether_Layout* n = (Tether_Layout*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT);
-            const char* val = resolve_scalar(val_node, env);
-            if (n && val) {
-                if (strcmp(val, "FILL") == 0) n->content_align_y = TETHER_ALIGN_FILL;
-                else if (strcmp(val, "CENTER") == 0) n->content_align_y = TETHER_ALIGN_CENTER;
-                else if (strcmp(val, "END") == 0 || strcmp(val, "BOTTOM") == 0) n->content_align_y = TETHER_ALIGN_END;
-                else n->content_align_y = TETHER_ALIGN_START;
-            }
-        }
-        else if (strcmp(key, "align_self_x") == 0) {
+        else if (strcmp(key, "align_self") == 0) {
             Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_FLEX_SLOT);
-            const char* val = resolve_scalar(val_node, env);
-            if (f && val) {
-                if (strcmp(val, "FILL") == 0) f->align_self_x = TETHER_ALIGN_FILL;
-                else if (strcmp(val, "CENTER") == 0) f->align_self_x = TETHER_ALIGN_CENTER;
-                else if (strcmp(val, "END") == 0 || strcmp(val, "RIGHT") == 0) f->align_self_x = TETHER_ALIGN_END;
-                else f->align_self_x = TETHER_ALIGN_START;
-            }
+            if (f) resolve_align_2d(val_node, env, &f->align_self_x, &f->align_self_y);
         }
-        else if (strcmp(key, "align_self_y") == 0) {
-            Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_FLEX_SLOT);
-            const char* val = resolve_scalar(val_node, env);
-            if (f && val) {
-                if (strcmp(val, "FILL") == 0) f->align_self_y = TETHER_ALIGN_FILL;
-                else if (strcmp(val, "CENTER") == 0) f->align_self_y = TETHER_ALIGN_CENTER;
-                else if (strcmp(val, "END") == 0 || strcmp(val, "BOTTOM") == 0) f->align_self_y = TETHER_ALIGN_END;
-                else f->align_self_y = TETHER_ALIGN_START;
-            }
+        else if (strcmp(key, "text_align") == 0) {
+            Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
+            if (t) resolve_align_2d(val_node, env, &t->align_x, &t->align_y);
         }
         else if (strcmp(key, "fill_ratio") == 0) {
             Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_FLEX_SLOT);
@@ -249,58 +342,31 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
         }
         else if (strcmp(key, "anchor_min") == 0) {
             Tether_AnchorSlot* a = (Tether_AnchorSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_ANCHOR_SLOT);
-            if (a && val_node->type == TETHER_AST_SEQUENCE) {
-                if (val_node->child_count > 0) a->anchor_min.x = (float)atof(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) a->anchor_min.y = (float)atof(resolve_scalar(val_node->children[1], env));
-            }
+            if (a) resolve_vec2(val_node, env, &a->anchor_min.x, &a->anchor_min.y);
         }
         else if (strcmp(key, "anchor_max") == 0) {
             Tether_AnchorSlot* a = (Tether_AnchorSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_ANCHOR_SLOT);
-            if (a && val_node->type == TETHER_AST_SEQUENCE) {
-                if (val_node->child_count > 0) a->anchor_max.x = (float)atof(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) a->anchor_max.y = (float)atof(resolve_scalar(val_node->children[1], env));
-            }
+            if (a) resolve_vec2(val_node, env, &a->anchor_max.x, &a->anchor_max.y);
         }
         else if (strcmp(key, "offset") == 0) {
             Tether_AnchorSlot* a = (Tether_AnchorSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_ANCHOR_SLOT);
-            if (a && val_node->type == TETHER_AST_SEQUENCE) {
-                float* arr = (float*)&a->offset;
-                for (uint32_t j = 0; j < val_node->child_count && j < 4; j++) {
-                    arr[j] = (float)atof(resolve_scalar(val_node->children[j], env));
-                }
-            }
+            if (a) resolve_vec4(val_node, env, (float*)&a->offset);
         }
         else if (strcmp(key, "pivot") == 0) {
             Tether_AnchorSlot* a = (Tether_AnchorSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_ANCHOR_SLOT);
-            if (a && val_node->type == TETHER_AST_SEQUENCE) {
-                if (val_node->child_count > 0) a->pivot.x = (float)atof(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) a->pivot.y = (float)atof(resolve_scalar(val_node->children[1], env));
-            }
+            if (a) resolve_vec2(val_node, env, &a->pivot.x, &a->pivot.y);
         }
         else if (strcmp(key, "margin") == 0) {
             Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_FLEX_SLOT);
-            if (f && val_node->type == TETHER_AST_SEQUENCE) {
-                float* arr = (float*)&f->margin;
-                for (uint32_t j = 0; j < val_node->child_count && j < 4; j++) {
-                    arr[j] = (float)atof(resolve_scalar(val_node->children[j], env));
-                }
-            }
+            if (f) resolve_vec4(val_node, env, (float*)&f->margin);
         }
         else if (strcmp(key, "padding") == 0) {
             Tether_Layout* n = (Tether_Layout*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT);
-            if (n && val_node->type == TETHER_AST_SEQUENCE) {
-                float* arr = (float*)&n->padding;
-                for (uint32_t j = 0; j < val_node->child_count && j < 4; j++) {
-                    arr[j] = (float)atof(resolve_scalar(val_node->children[j], env));
-                }
-            }
+            if (n) resolve_vec4(val_node, env, (float*)&n->padding);
         }
         else if (strcmp(key, "gap") == 0) {
             Tether_Layout* n = (Tether_Layout*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT);
-            if (n && val_node->type == TETHER_AST_SEQUENCE) {
-                if (val_node->child_count > 0) n->gap.x = (float)atof(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) n->gap.y = (float)atof(resolve_scalar(val_node->children[1], env));
-            }
+            if (n) resolve_vec2(val_node, env, &n->gap.x, &n->gap.y);
         }
         else if (strcmp(key, "wrap") == 0) {
             Tether_Layout* n = (Tether_Layout*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT);
@@ -312,10 +378,7 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
         }
         else if (strcmp(key, "size_box") == 0) {
             Tether_Layout* n = (Tether_Layout*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT);
-            if (n && val_node->type == TETHER_AST_SEQUENCE) {
-                if (val_node->child_count > 0) n->size_box.x = (float)atof(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) n->size_box.y = (float)atof(resolve_scalar(val_node->children[1], env));
-            }
+            if (n) resolve_vec2(val_node, env, &n->size_box.x, &n->size_box.y);
         }
         else if (strcmp(key, "id") == 0) {
             const char* val = resolve_scalar(val_node, env);
@@ -340,26 +403,6 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
                 if (strcmp(val, "hidden") == 0) tether_widget_set_visibility(ent, TETHER_HIDDEN);
                 else if (strcmp(val, "collapsed") == 0) tether_widget_set_visibility(ent, TETHER_COLLAPSED);
                 else tether_widget_set_visibility(ent, TETHER_VISIBLE);
-            }
-        }
-        else if (strcmp(key, "align_x") == 0) {
-            Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
-            const char* val = resolve_scalar(val_node, env);
-            if (t && val) {
-                if (strcmp(val, "fill") == 0) t->align_x = TETHER_ALIGN_FILL;
-                else if (strcmp(val, "center") == 0) t->align_x = TETHER_ALIGN_CENTER;
-                else if (strcmp(val, "end") == 0 || strcmp(val, "right") == 0) t->align_x = TETHER_ALIGN_END;
-                else t->align_x = TETHER_ALIGN_START;
-            }
-        }
-        else if (strcmp(key, "align_y") == 0) {
-            Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
-            const char* val = resolve_scalar(val_node, env);
-            if (t && val) {
-                if (strcmp(val, "fill") == 0) t->align_y = TETHER_ALIGN_FILL;
-                else if (strcmp(val, "center") == 0) t->align_y = TETHER_ALIGN_CENTER;
-                else if (strcmp(val, "end") == 0 || strcmp(val, "bottom") == 0) t->align_y = TETHER_ALIGN_END;
-                else t->align_y = TETHER_ALIGN_START;
             }
         }
         else if (strcmp(key, "interactable") == 0) {
@@ -388,18 +431,25 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
                 tether_ecs_add_component(ent, TETHER_COMPONENT_TEXT_DYNAMIC);
             }
         }
-        else if (strcmp(key, "text_color") == 0) {
-            Tether_Text* text = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
-            if (text && val_node->type == TETHER_AST_SEQUENCE) {
-                if (val_node->child_count > 0) text->color.r = atoi(resolve_scalar(val_node->children[0], env));
-                if (val_node->child_count > 1) text->color.g = atoi(resolve_scalar(val_node->children[1], env));
-                if (val_node->child_count > 2) text->color.b = atoi(resolve_scalar(val_node->children[2], env));
-                if (val_node->child_count > 3) text->color.a = atoi(resolve_scalar(val_node->children[3], env));
-            }
-        }
         else if (strcmp(key, "opacity") == 0) {
             Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
             if (rt) rt->opacity = (float)atof(resolve_scalar(val_node, env));
+        }
+        else if (strcmp(key, "rotation") == 0) {
+            Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
+            if (rt) rt->rotation_deg = (float)atof(resolve_scalar(val_node, env));
+        }
+        else if (strcmp(key, "scale") == 0) {
+            Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
+            if (rt) resolve_vec2(val_node, env, &rt->scale_x, &rt->scale_y);
+        }
+        else if (strcmp(key, "translation") == 0) {
+            Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
+            if (rt) resolve_vec2(val_node, env, &rt->translation_x, &rt->translation_y);
+        }
+        else if (strcmp(key, "render_pivot") == 0) {
+            Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
+            if (rt) resolve_vec2(val_node, env, &rt->render_pivot.x, &rt->render_pivot.y);
         }
     }
 }

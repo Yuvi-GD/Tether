@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define TETHER_INVALID_HANDLE 0xFFFFFFFFU
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,7 +30,7 @@ enum {
 
 /* --- SYSTEM UI COMPONENTS (Layer 3) --- */
 enum {
-    TETHER_COMPONENT_STYLE = TETHER_CORE_COMPONENTS_MAX,
+    TETHER_COMPONENT_SHAPE = TETHER_CORE_COMPONENTS_MAX,
     TETHER_COMPONENT_ANCHOR_SLOT,
     TETHER_COMPONENT_FLEX_SLOT,
     TETHER_COMPONENT_TEXT,
@@ -138,8 +140,7 @@ typedef struct Tether_RenderTransform {
     float scale_x;
     float scale_y;
     float rotation_deg;
-    float pivot_x; /* Default 0.5 */
-    float pivot_y; /* Default 0.5 */
+    Tether_Vec2 render_pivot; /* Default {0.5f, 0.5f} */
     float opacity; /* Default 1.0 */
 } Tether_RenderTransform;
 
@@ -189,17 +190,18 @@ typedef struct Tether_FlexSlot {
     Tether_Align align_self_y;
 } Tether_FlexSlot;
 
-typedef struct Tether_Style {
+typedef struct Tether_Shape {
+    uint32_t handle;
     Tether_Color bg_color;
     Tether_Color border_color;
     float border_width;
     Tether_Edges border_radius;
-    void* render_handle; /* Opaque handle to the backend shape (Sokol RenderNode) */
-} Tether_Style;
+} Tether_Shape;
 
 typedef struct {
+    uint32_t handle;
     float font_size;
-    uint32_t font_id;
+    uint32_t font_id; /* Default 0, TETHER_INVALID_FONT_ID invalid */
     Tether_FontStyle font_style;
     Tether_Align align_x;
     Tether_Align align_y;
@@ -208,7 +210,6 @@ typedef struct {
     
     /* Computed state (updated by Text Measure System) */
     Tether_Vec2 intrinsic_size;
-    void* text_handle;
 } Tether_Text;
 
 typedef struct {
@@ -249,7 +250,6 @@ typedef struct Tether_Interactable {
 typedef struct Tether_Overflow {
     Tether_OverflowMode x;
     Tether_OverflowMode y;
-    void* clip_handle; /* RHI-specific handle (e.g. rect shape for masking) */
 } Tether_Overflow;
 
 #ifdef __cplusplus

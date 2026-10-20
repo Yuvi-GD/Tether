@@ -31,7 +31,7 @@ void on_close_yaml_modal(Tether_GUID entity, Tether_EventType type, void* user_d
 
 void on_open_yaml_modal(Tether_GUID entity, Tether_EventType type, void* user_data) {
     /* 1. Load the sub-tree from file dynamically */
-    Tether_GUID modal_root = tether_yaml_load("../../examples/UI/modal.yaml", TETHER_INVALID_GUID);
+    Tether_GUID modal_root = tether_yaml_load("UI/modal.yaml", TETHER_INVALID_GUID);
     
     if (modal_root != TETHER_INVALID_GUID) {
         printf("[Sandbox] Opened YAML Modal dynamically!\n");
@@ -45,13 +45,29 @@ void on_open_yaml_modal(Tether_GUID entity, Tether_EventType type, void* user_da
     }
 }
 
-void on_settings_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)
+void on_refresh_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)
+{
+    printf("[Sandbox] Refresh clicked - Reloading UI!\n");
+    Tether_GUID root = tether_registry_find_entity("AppRoot");
+    if (root != TETHER_INVALID_GUID) {
+        tether_widget_destroy(root);
+    }
+    
+    // Reload the YAML and rebind events for the new entities
+    Tether_GUID new_root = tether_yaml_load("UI/index.yaml", TETHER_INVALID_GUID);
+    if (new_root != TETHER_INVALID_GUID) {
+        sandbox_bind_events();
+        printf("[Sandbox] UI Successfully Refreshed!\n");
+    }
+}
+
+void on_show_hide_clicked(Tether_GUID entity, Tether_EventType type, void* user_data)
 {
     Tether_GUID btn_hide = tether_registry_find_entity("btn_hide");
     if(btn_hide != TETHER_INVALID_GUID)
     {
         tether_widget_set_visibility(btn_hide, TETHER_VISIBLE);
-        printf("[Sandbox] Settings clicked - Showing btn_hide!\n");
+        printf("[Sandbox] Show Hide clicked - Showing btn_hide!\n");
     }
 }
 
@@ -107,16 +123,17 @@ void sandbox_bind_events(void) {
         tether_bind_event(btn_yaml_modal, TETHER_EVENT_CLICK, on_open_yaml_modal, NULL);
     }
 
-        Tether_GUID settings_btn = tether_registry_find_entity("SettingsBtn");
-    if (settings_btn != TETHER_INVALID_GUID)
+    Tether_GUID refresh_btn = tether_registry_find_entity("RefreshBtn");
+    if (refresh_btn != TETHER_INVALID_GUID)
     {
-        /* We only bind CLICK here to demo C-event bindings. */
-        tether_bind_event(settings_btn, TETHER_EVENT_CLICK, on_settings_clicked, NULL);
-        printf("[Sandbox] Bound click event to SettingsBtn (GUID: %llu)\n", (unsigned long long)settings_btn);
+        tether_bind_event(refresh_btn, TETHER_EVENT_CLICK, on_refresh_clicked, NULL);
+        printf("[Sandbox] Bound click event to RefreshBtn\n");
     }
-    else
+    
+    Tether_GUID show_hide_btn = tether_registry_find_entity("ShowHideBtn");
+    if (show_hide_btn != TETHER_INVALID_GUID)
     {
-        printf("[Sandbox] Warning: Could not find SettingsBtn\n");
+        tether_bind_event(show_hide_btn, TETHER_EVENT_CLICK, on_show_hide_clicked, NULL);
     }
     
     Tether_GUID btn_hide = tether_registry_find_entity("btn_hide");

@@ -3,19 +3,17 @@ Panel:
   color: [0, 0, 0, 150]
   interactable: true
   flow: COLUMN
-  content_align_x: CENTER
-  content_align_y: CENTER
-  anchor_min: [0.0, 0.0]
-  anchor_max: [1.0, 1.0]
+  content_align: CENTER
+  anchor_min: 0.0
+  anchor_max: 1.0
   children:
     - Panel:
         id: "yaml_modal_popup"
         color: [240, 245, 250, 255]
-        padding: [40, 40, 40, 40]
+        padding: 40
         gap: [0, 30]
         flow: COLUMN
-        content_align_x: CENTER
-        content_align_y: CENTER
+        content_align: CENTER
         children:
           - Text:
               string: "Welcome to the YAML Modal!"

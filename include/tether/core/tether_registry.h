@@ -35,12 +35,13 @@ Tether_GUID tether_registry_find_entity(const char* alias);
 void tether_registry_remove_alias(Tether_GUID entity);
 
 /*
- * Font registry lives here now instead of in the ECS core.
- * These are the public entrypoints used by the renderer and font loader.
- * Max 32 fonts can be registered.
- * ID 0 is reserved for system default font.
+ * Font registry: 0-based to align directly with Chitra / Fontstash.
+ * ID 0 is the universal default font.
+ * 0xFFFFFFFFU is invalid font.
  */
-uint32_t tether_font_register(const char* name, const char* path);
+#define TETHER_INVALID_FONT_ID 0xFFFFFFFFU
+
+uint32_t    tether_font_register(const char* name, const char* path);
 const char* tether_font_get_path(uint32_t font_id);
 const char* tether_font_get_name(uint32_t font_id);
 

@@ -60,7 +60,7 @@ static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, fl
         /* Text: measure unbounded single-line to get natural content size */
         const char* str = tether_ecs_get_text_string(child);
         if (str && str[0] != '\0') {
-            g_rhi.text->measure_text(str, text->font_id, text->font_style, text->font_size, text->wrap_width, &w, &h);
+            g_rhi.text->measure_text(str, text->font_id, text->font_size, text->wrap_width, &w, &h);
             text->intrinsic_size.x = w;
             text->intrinsic_size.y = h;
             if (child_node) {
@@ -77,10 +77,11 @@ static void tether_layout_get_intrinsic_size(Tether_GUID child, float* out_w, fl
     *out_h = h;
 }
 
-/* 
- * PASS 1: MEASURE (Bottom-Up)
- * Recursively measure children first, then sum up total bounds.
- */
+/* ========================================================================== */
+/* PASS 1: MEASURE (Bottom-Up)                                                */
+/* Recursively measure children first, then sum up total bounds.              */
+/* ========================================================================== */
+
 static void tether_layout_measure_bottom_up(Tether_GUID entity) {
     Tether_Layout* node = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
@@ -170,10 +171,10 @@ static void tether_layout_measure_bottom_up(Tether_GUID entity) {
     node->measured_height = content_h + node->padding.top + node->padding.bottom;
 }
 
-/* 
- * PASS 2: ARRANGE (Top-Down Width + Bottom-Up Height)
- * Returns the final calculated height of the entity.
- */
+/* ========================================================================== */
+/* PASS 2: ARRANGE (Top-Down Width + Bottom-Up Height)                        */
+/* Returns the final calculated height of the entity.                         */
+/* ========================================================================== */
 static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, float parent_y, float parent_w, float parent_h) {
     Tether_SlotTransform* t = (Tether_SlotTransform*)tether_ecs_get_component(entity, TETHER_COMPONENT_SLOT_TRANSFORM);
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
@@ -241,7 +242,7 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                 node->wrap = 0;
             }
             
-            g_rhi.text->measure_text(str, text->font_id, text->font_style, text->font_size, max_w, &wrapped_w, &wrapped_h);
+            g_rhi.text->measure_text(str, text->font_id, text->font_size, max_w, &wrapped_w, &wrapped_h);
             if (is_auto_height) {
                 t->height = wrapped_h;
             }

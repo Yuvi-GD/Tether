@@ -121,33 +121,33 @@ void tether_registry_remove_alias(Tether_GUID entity) {
  * Font Registry
  * ========================================================================= */
 uint32_t tether_font_register(const char* name, const char* path) {
-    if (!name || !path) return 0;
+    if (!name || !path) return TETHER_INVALID_FONT_ID;
 
     for (uint32_t i = 0; i < g_font_registry.count; ++i) {
         if (strcmp(g_font_registry.entries[i].name, name) == 0) {
-            return i + 1;
+            return i;
         }
     }
 
-    if (g_font_registry.count >= 31) {
-        return 0;
+    if (g_font_registry.count >= 32) {
+        return TETHER_INVALID_FONT_ID;
     }
 
-    uint32_t id = g_font_registry.count + 1;
-    strncpy(g_font_registry.entries[g_font_registry.count].name, name, 63);
-    g_font_registry.entries[g_font_registry.count].name[63] = '\0';
-    strncpy(g_font_registry.entries[g_font_registry.count].path, path, 255);
-    g_font_registry.entries[g_font_registry.count].path[255] = '\0';
+    uint32_t id = g_font_registry.count;
+    strncpy(g_font_registry.entries[id].name, name, 63);
+    g_font_registry.entries[id].name[63] = '\0';
+    strncpy(g_font_registry.entries[id].path, path, 255);
+    g_font_registry.entries[id].path[255] = '\0';
     g_font_registry.count++;
     return id;
 }
 
 const char* tether_font_get_path(uint32_t font_id) {
-    if (font_id == 0 || font_id > g_font_registry.count) return NULL;
-    return g_font_registry.entries[font_id - 1].path;
+    if (font_id >= g_font_registry.count) return NULL;
+    return g_font_registry.entries[font_id].path;
 }
 
 const char* tether_font_get_name(uint32_t font_id) {
-    if (font_id == 0 || font_id > g_font_registry.count) return NULL;
-    return g_font_registry.entries[font_id - 1].name;
+    if (font_id >= g_font_registry.count) return NULL;
+    return g_font_registry.entries[font_id].name;
 }

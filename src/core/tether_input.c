@@ -95,8 +95,9 @@ void tether_input_process_event(Tether_Pointer_Event* event) {
     bool is_up = (event->type == TETHER_POINTER_UP);
     
     Tether_GUID hit = tether_hit_test(event->x, event->y);
-
-    /* --- Hover Transitions --- */
+    /* ========================================================================== */
+    /*                            Hover Transitions                               */
+    /* ========================================================================== */
     if (hit != g_hovered) {
         if (g_hovered != TETHER_INVALID_GUID) {
             Tether_Interactable* old_i = (Tether_Interactable*)tether_ecs_get_component(g_hovered, TETHER_COMPONENT_INTERACTABLE);
@@ -117,8 +118,9 @@ void tether_input_process_event(Tether_Pointer_Event* event) {
         }
         g_hovered = hit;
     }
-
-    /* --- Press / Release Transitions --- */
+    /* ========================================================================== */
+    /*                       Press / Release Transitions                          */
+    /* ========================================================================== */
     if (is_down && event->button == TETHER_MOUSE_BUTTON_LEFT) {
         if (g_pressed != hit) {
             if (g_pressed != TETHER_INVALID_GUID) {

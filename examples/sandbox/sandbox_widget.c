@@ -22,7 +22,7 @@ Tether_GUID create_my_c_modal(Tether_GUID parent)
     Tether_Interactable* oi = (Tether_Interactable*)tether_ecs_get_component(overlay, TETHER_COMPONENT_INTERACTABLE);
     if (oi) oi->hit_behavior = TETHER_HIT_BLOCK; /* Block clicks to background */
     
-    Tether_Style* os = (Tether_Style*)tether_ecs_get_component(overlay, TETHER_COMPONENT_STYLE);
+    Tether_Shape* os = (Tether_Shape*)tether_ecs_get_component(overlay, TETHER_COMPONENT_SHAPE);
     if (os) os->bg_color = (Tether_Color){0, 0, 0, 150}; /* Semi-transparent black */
     
     Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_get_component(overlay, TETHER_COMPONENT_ANCHOR_SLOT);
@@ -42,7 +42,7 @@ Tether_GUID create_my_c_modal(Tether_GUID parent)
         pl->content_align_y = TETHER_ALIGN_CENTER;
     }
     
-    Tether_Style* ps = (Tether_Style*)tether_ecs_get_component(popup, TETHER_COMPONENT_STYLE);
+    Tether_Shape* ps = (Tether_Shape*)tether_ecs_get_component(popup, TETHER_COMPONENT_SHAPE);
     if (ps) {
         ps->bg_color = (Tether_Color){240, 245, 250, 255}; /* Light grayish blue */
     }
@@ -62,7 +62,7 @@ Tether_GUID create_my_c_modal(Tether_GUID parent)
     
     /* 4. Create Close Button */
     Tether_GUID btn = tether_create_widget("Button", popup);
-    Tether_Style* bs = (Tether_Style*)tether_ecs_get_component(btn, TETHER_COMPONENT_STYLE);
+    Tether_Shape* bs = (Tether_Shape*)tether_ecs_get_component(btn, TETHER_COMPONENT_SHAPE);
     if (bs) {
         bs->bg_color = (Tether_Color){220, 53, 69, 255}; /* Bootstrap Danger Red */
     }

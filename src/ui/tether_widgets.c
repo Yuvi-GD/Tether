@@ -82,7 +82,7 @@ static Tether_GUID tether_widget_create_base(Tether_GUID parent) {
 
     Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_add_component(entity, TETHER_COMPONENT_RENDER_TRANSFORM);
     rt->translation_x = 0; rt->translation_y = 0; rt->scale_x = 1.0f; rt->scale_y = 1.0f;
-    rt->rotation_deg = 0; rt->pivot_x = 0.5f; rt->pivot_y = 0.5f;
+    rt->rotation_deg = 0; rt->render_pivot = (Tether_Vec2){0.5f, 0.5f};
     rt->opacity = 1.0f;
 
     tether_widget_add_to_parent(entity, parent);
@@ -94,8 +94,9 @@ static Tether_GUID tether_widget_create_base(Tether_GUID parent) {
 Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
     Tether_GUID entity = tether_widget_create_base(parent);
     
-    Tether_Style* s = (Tether_Style*)tether_ecs_add_component(entity, TETHER_COMPONENT_STYLE);
+    Tether_Shape* s = (Tether_Shape*)tether_ecs_add_component(entity, TETHER_COMPONENT_SHAPE);
     if (s) {
+        s->handle = TETHER_INVALID_HANDLE;
         s->bg_color = (Tether_Color){0, 0, 0, 0};
         s->border_color.r = 0; s->border_color.g = 0; s->border_color.b = 0; s->border_color.a = 0;
         s->border_width = 0.0f;
@@ -107,7 +108,6 @@ Tether_GUID tether_widget_create_panel(Tether_GUID parent) {
     if (of) {
         of->x = TETHER_OVERFLOW_CLIP;
         of->y = TETHER_OVERFLOW_CLIP;
-        of->clip_handle = NULL;
     }
     
     return entity;
@@ -117,8 +117,9 @@ Tether_GUID tether_widget_create_text(Tether_GUID parent) {
     Tether_GUID entity = tether_widget_create_base(parent);
 
     Tether_Text* t = (Tether_Text*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT);
+    t->handle = TETHER_INVALID_HANDLE;
     t->font_size = 24.0f;
-    t->font_id = 1;
+    t->font_id = 0; /* Default font */
     t->font_style = TETHER_FONT_NORMAL;
     t->align_x = TETHER_ALIGN_START;
     t->align_y = TETHER_ALIGN_START;
@@ -156,7 +157,7 @@ Tether_GUID tether_widget_create_button(Tether_GUID parent) {
         i->press_color_mode = TETHER_COLOR_MODE_AUTO;
     }
     
-    Tether_Style* s = (Tether_Style*)tether_ecs_get_component(entity, TETHER_COMPONENT_STYLE);
+    Tether_Shape* s = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
     if (s) {
         s->bg_color = (Tether_Color){97, 175, 239, 255}; /* Blueish default */
     }
@@ -188,6 +189,10 @@ void tether_widget_destroy(Tether_GUID entity) {
     // Destroy the entity from ECS
     tether_ecs_destroy_entity(entity);
 }
+
+    /* ========================================================================== */
+    /*                 Visibility Settings for UI                                 */
+    /* ========================================================================== */
 
 static void recompute_visibility_tree(Tether_GUID entity, Tether_VisibilityState parent_computed_state) {
     if (!tether_ecs_is_valid(entity)) return;

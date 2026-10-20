@@ -10,7 +10,7 @@
           color: [50, 56, 68, 255]
           flow: ROW
           gap: [12, 0]
-          padding: [12, 12, 12, 12]
+          padding: 12
           children:
             - Panel:
                 interactable: true
@@ -88,7 +88,7 @@
                 fill_ratio: 0.6
                 color: [50, 56, 68, 255]
                 flow: COLUMN
-                padding: [15, 15, 15, 15]
+                padding: 15
                 gap: [0, 10]
                 children:
                   - Text:
@@ -100,12 +100,13 @@
                       string: "Tether uses a pure Data-Oriented Entity Component System. Every UI element is an entity with components stored in dense, contiguous arrays. The two-pass layout solver measures bottom-up then arranges top-down for efficient, cache-friendly traversal."
                       font_size: 14.0
                       color: [140, 145, 155, 255]
+                      text_align: [top, left]
             # Live Status panel
             - Panel:
                 fill_ratio: 0.4
                 color: [50, 56, 68, 255]
                 flow: COLUMN
-                padding: [15, 15, 15, 15]
+                padding: 15
                 gap: [0, 10]
                 children:
                   - Text:
@@ -117,7 +118,7 @@
                       color: [152, 195, 121, 60]
                       hover_color: [152, 195, 121, 120]
                       press_color: [152, 195, 121, 200]
-                      padding: [10, 10, 10, 10]
+                      padding: 10
                       children:
                         - Text:
                             string: "Server: Online"
@@ -128,7 +129,7 @@
                       color: [224, 108, 117, 60]
                       hover_color: [224, 108, 117, 120]
                       press_color: [224, 108, 117, 200]
-                      padding: [10, 10, 10, 10]
+                      padding: 10
                       children:
                         - Text:
                             string: "[Alert]: High memory usage detected on node-3"
@@ -138,11 +139,10 @@
 
       # ---- ROW 4: Playground ----
       - Panel:
-          fill_ratio: 0.15
           color: [50, 56, 68, 255]
           flow: ROW
           gap: [12, 0]
-          padding: [15, 15, 15, 15]
+          padding: 15
           children:
             # Hide button
             - Panel:
@@ -155,7 +155,7 @@
                 border_radius: 16.0
                 hover_color: AUTO
                 press_color: AUTO
-                padding: [10, 10, 10, 10]
+                padding: 10
                 children:
                   - Text:
                       string: "Click to Hide"
@@ -169,7 +169,7 @@
                 color: [224, 108, 117, 255]
                 hover_color: AUTO
                 press_color: AUTO
-                padding: [10, 10, 10, 10]
+                padding: 10
                 opacity: 0.7
                 children:
                   - Text:
@@ -184,15 +184,14 @@
                 color: [97, 175, 239, 255]
                 hover_color: AUTO
                 press_color: AUTO
-                padding: [10, 10, 10, 10]
+                padding: 10
                 children:
                   - Text:
                       id: "txt_align"
                       string: "Align: CENTER"
                       font_size: 18.0
                       text_color: [40, 44, 52, 255]
-                      align_x: center
-                      align_y: center
+                      text_align: center
             # Open YAML Modal
             - Panel:
                 id: "btn_open_yaml_modal"
@@ -201,7 +200,7 @@
                 color: [152, 195, 121, 255]
                 hover_color: AUTO
                 press_color: AUTO
-                padding: [10, 10, 10, 10]
+                padding: 10
                 children:
                   - Text:
                       string: "Open YAML Modal"
@@ -215,11 +214,10 @@
                 color: [97, 175, 239, 255]
                 hover_color: AUTO
                 press_color: AUTO
-                padding: [10, 10, 10, 10]
+                padding: 10
                 children:
                   - Text:
                       string: "Open C Modal"
-                      align_x: center
-                      align_y: center
+                      text_align: center
                       font_size: 18.0
                       color: [40, 44, 52, 255]

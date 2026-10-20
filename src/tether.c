@@ -16,7 +16,7 @@ void tether_run(Tether_App_Config* config) {
     };
     tether_engine_init(&engine_config);
 
-    tether_ecs_register_component_static(TETHER_COMPONENT_STYLE, sizeof(Tether_Style));
+    tether_ecs_register_component_static(TETHER_COMPONENT_SHAPE, sizeof(Tether_Shape));
     tether_ecs_register_component_static(TETHER_COMPONENT_ANCHOR_SLOT, sizeof(Tether_AnchorSlot));
     tether_ecs_register_component_static(TETHER_COMPONENT_FLEX_SLOT, sizeof(Tether_FlexSlot));
     tether_ecs_register_component_static(TETHER_COMPONENT_TEXT, sizeof(Tether_Text));

@@ -5,17 +5,7 @@ build/
 out/
 bin/
 .trash/
-
-# ============================================================
-# Downloaded / Generated Third-Party Artifacts
-# These are fetched or built locally — never committed.
-# ============================================================
-
-# wgpu-native pre-built binaries (downloaded by CMake FetchContent per-platform)
-third_party/webgpu/
-
-# ThorVG Meson build output (built locally by CMake)
-third_party/thorvg/builddir/
+docs/archive/
 
 # ============================================================
 # Compiled Object Files and Binaries
@@ -31,7 +21,7 @@ third_party/thorvg/builddir/
 *.out
 *.app
 *.pdb
-!third_party/sokol-tools/sokol-shdc.exe
+
 
 # ============================================================
 # IDE and Editor Folders
@@ -53,3 +43,4 @@ third_party/thorvg/builddir/
 ehthumbs.db
 Thumbs.db
 *.log
+.vs
