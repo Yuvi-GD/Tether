@@ -40,7 +40,7 @@ Tether_GUID tether_hit_test(float x, float y);
  * Handles state transitions (Hover Enter/Exit, Press, Release, Click) and
  * automatically fires the Tether_EventRegistry callbacks.
  */
-void tether_input_process_event(Tether_Pointer_Event* event);
+void tether_input_process_event(const Tether_Pointer_Event* event);
 
 /* Reset input tracking (called on shutdown) */
 void tether_input_term(void);

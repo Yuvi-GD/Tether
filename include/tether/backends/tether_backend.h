@@ -1,28 +1,31 @@
-#ifndef TETHER_RHI_H
-#define TETHER_RHI_H
+#ifndef TETHER_BACKEND_H
+#define TETHER_BACKEND_H
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "tether/tether.h"
 #include "tether/core/tether_components.h"
 
 /* ============================================================================
- * Tether Rendering Hardware Interface (RHI)
+ * Tether Unified Backend Interface (Windowing HAL + Rendering RHI)
  *
  * This is the ONLY interface the engine (tether_render.c, tether_layout.c)
- * is allowed to call. Concrete backends (Chitra, etc.) fill in the function
- * pointers and assign g_rhi before the engine starts.
+ * is allowed to call. Concrete backends (Chitra, SDL, etc.) populate these
+ * tables and drive the application loop.
  * ============================================================================ */
 
 /* -------------------------------------------------------------------------- */
-/* System API — lifecycle, frame control, clipping                            */
+/* System API — lifecycle, frame control, clipping, resolution                */
 /* -------------------------------------------------------------------------- */
 typedef struct {
-    void (*init)(uint32_t width, uint32_t height, uint32_t max_w, uint32_t max_h, const void* device, const void* instance);
-    void (*resize)(uint32_t width, uint32_t height);
-    void (*term)(void);
+    void (*run)(Tether_App_Config* config);
 
-    /* Returns the current render texture / swapchain size in pixels. */
-    void (*get_texture_size)(uint32_t* out_w, uint32_t* out_h);
+    /* Physical window dimensions in pixels (w, h) */
+    void (*get_size)(uint32_t* out_w, uint32_t* out_h);
+
+    /* Resolution control (res_x, res_y. 0, 0 = matches window size) */
+    void (*set_resolution)(uint32_t res_x, uint32_t res_y);
+    void (*get_resolution)(uint32_t* out_x, uint32_t* out_y);
 
     /* Signals the backend that retained state has changed and must be rendered. */
     void (*mark_dirty)(void);
@@ -82,14 +85,18 @@ typedef struct {
     bool     (*get_bounds)(uint32_t handle, float* out_w, float* out_h);
 } Tether_Text_API;
 
-/* Master RHI Interface */
+/* Master Backend Interface */
 typedef struct {
     Tether_System_API* system;
     Tether_Shape_API*  shape;
     Tether_Text_API*   text;
-} Tether_RHI;
+} Tether_Backend;
 
-/* Global RHI instance — set by the active backend before engine init. */
-extern Tether_RHI g_rhi;
+/* Typedef alias for backward compatibility */
+typedef Tether_Backend Tether_RHI;
 
-#endif /* TETHER_RHI_H */
+/* Global Backend instance */
+extern Tether_Backend g_backend;
+#define g_rhi g_backend
+
+#endif /* TETHER_BACKEND_H */

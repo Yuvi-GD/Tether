@@ -1,4 +1,4 @@
-#include "tether/backends/tether_rhi.h"
+#include "tether/backends/tether_backend.h"
 
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
