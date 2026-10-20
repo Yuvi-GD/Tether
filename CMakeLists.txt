@@ -32,7 +32,7 @@ add_library(tether SHARED
     src/core/tether_input.c
     src/core/tether_events.c
     src/utils/tether_hashmap.c
-    src/backends/tether_chitra_backend.c
+    src/backends/chitra_backend.c
     src/engine/tether_render.c
     src/engine/parser/tether_yaml.c
     src/engine/parser/tether_yaml_ast.c

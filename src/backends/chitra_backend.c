@@ -1,60 +1,47 @@
 /* =============================================================================
- * tether_chitra_backend.c
+ * chitra_backend.c
  *
- * Concrete implementation of the Tether RHI interface backed by Chitra.
- * This is the ONLY file in the engine that knows about Chitra.
+ * Concrete implementation of the Tether backend interface backed by Chitra.
+ * This is the ONLY file in Tether that knows about Chitra.
  * ============================================================================= */
 
-#include "tether/backends/tether_hal.h"
-#include "tether/backends/tether_rhi.h"
+#include "tether/backends/tether_backend.h"
 #include "tether/core/tether_events.h"
 #include "tether/core/tether_input.h"
 #include "chitra.h"
 #include <stdio.h>
 
-#if defined(_WIN32)
-#include <windows.h>
-#include <dwmapi.h>
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
-#endif
-#endif
-
-/* Chitra exposes these internal lifecycle hooks to the consumer. */
-extern void chitra_internal_init(void);
-extern void chitra_internal_term(void);
-
 /* Tether engine lifecycle hooks called by this backend. */
-extern void tether_engine_on_hal_init(int w, int h, const void* device, const void* instance);
-extern void* tether_engine_on_hal_frame(int w, int h);
-extern void tether_engine_on_hal_cleanup(void);
-extern void tether_engine_on_hal_post_cleanup(void);
-extern void tether_engine_on_hal_input(const Tether_Pointer_Event* e);
-
-/* Window dimensions tracked by sys_resize. */
-static uint32_t s_win_w = 1280;
-static uint32_t s_win_h = 720;
+extern void  tether_engine_on_init(void);
+extern void* tether_engine_on_frame(int w, int h);
+extern void  tether_engine_on_post_frame(void);
+extern void  tether_engine_on_cleanup(void);
+extern void  tether_engine_on_input(const Tether_Pointer_Event* e);
 
 /* =============================================================================
- * Chitra Callbacks (on_init, on_frame, on_event)
+ * Chitra Callbacks (on_init, on_frame, on_post_frame, on_event, on_cleanup)
  * ============================================================================= */
 
 static void on_init(void) {
-    tether_engine_on_hal_init((int)s_win_w, (int)s_win_h, NULL, NULL);
+    tether_engine_on_init();
 }
 
 static void on_frame(void) {
-    if (s_win_w == 0 || s_win_h == 0) return;
-    tether_engine_on_hal_frame((int)s_win_w, (int)s_win_h);
+    int w = chitra_width();
+    int h = chitra_height();
+    if (w <= 0 || h <= 0) return;
+    tether_engine_on_frame(w, h);
+}
+
+static void on_post_frame(void) {
+    tether_engine_on_post_frame();
+}
+
+static void on_cleanup(void) {
+    tether_engine_on_cleanup();
 }
 
 static void on_event(const Chitra_InputEvent* e) {
-    if (e->type == CHITRA_EVENT_RESIZED) {
-        s_win_w = (uint32_t)e->window_width;
-        s_win_h = (uint32_t)e->window_height;
-        return;
-    }
-
     if (e->type == CHITRA_EVENT_MOUSE_DOWN ||
         e->type == CHITRA_EVENT_MOUSE_UP   ||
         e->type == CHITRA_EVENT_MOUSE_MOVE) {
@@ -73,7 +60,7 @@ static void on_event(const Chitra_InputEvent* e) {
         else if (e->button == 2) pe.button = TETHER_MOUSE_BUTTON_MIDDLE;
         else                     pe.button = TETHER_MOUSE_BUTTON_NONE;
 
-        tether_engine_on_hal_input(&pe);
+        tether_engine_on_input(&pe);
     }
 }
 
@@ -81,26 +68,20 @@ static void on_event(const Chitra_InputEvent* e) {
  * Tether_System_API  Implementation
  * ============================================================================= */
 
-static void sys_init(uint32_t width, uint32_t height,
-                     uint32_t max_w, uint32_t max_h,
-                     const void* device, const void* instance) {
-    (void)max_w; (void)max_h; (void)device; (void)instance;
-    s_win_w = width;
-    s_win_h = height;
+static void sys_get_size(uint32_t* out_w, uint32_t* out_h) {
+    if (out_w) *out_w = (uint32_t)chitra_width();
+    if (out_h) *out_h = (uint32_t)chitra_height();
 }
 
-static void sys_resize(uint32_t w, uint32_t h) {
-    s_win_w = w;
-    s_win_h = h;
+static void sys_set_resolution(uint32_t res_x, uint32_t res_y) {
+    chitra_set_resolution((int)res_x, (int)res_y);
 }
 
-static void sys_term(void) {
-    chitra_internal_term();
-}
-
-static void sys_get_texture_size(uint32_t* out_w, uint32_t* out_h) {
-    if (out_w) *out_w = s_win_w;
-    if (out_h) *out_h = s_win_h;
+static void sys_get_resolution(uint32_t* out_x, uint32_t* out_y) {
+    int rx = 0, ry = 0;
+    chitra_get_resolution(&rx, &ry);
+    if (out_x) *out_x = (uint32_t)rx;
+    if (out_y) *out_y = (uint32_t)ry;
 }
 
 /* =============================================================================
@@ -137,14 +118,34 @@ static bool text_set_text(uint32_t handle, uint32_t font_id, float size, const c
 }
 
 /* =============================================================================
- * Static API Tables + Global g_rhi
+ * Backend Entry Point
+ * ============================================================================= */
+
+static void backend_run(Tether_App_Config* config) {
+    Chitra_Config chitra_cfg = {
+        .width         = config ? config->width      : 1280,
+        .height        = config ? config->height     : 720,
+        .title         = config ? config->title      : "Tether",
+        .target_fps    = config ? config->target_fps : 0,  /* VSync default */
+        .on_init       = on_init,
+        .on_frame      = on_frame,
+        .on_post_frame = on_post_frame,
+        .on_event      = on_event,
+        .on_cleanup    = on_cleanup,
+    };
+
+    chitra_run(&chitra_cfg);
+}
+
+/* =============================================================================
+ * Static API Tables + Global g_backend
  * ============================================================================= */
 
 static Tether_System_API s_sys_api = {
-    .init              = sys_init,
-    .resize            = sys_resize,
-    .term              = sys_term,
-    .get_texture_size  = sys_get_texture_size,
+    .run               = backend_run,
+    .get_size          = sys_get_size,
+    .set_resolution    = sys_set_resolution,
+    .get_resolution    = sys_get_resolution,
     .mark_dirty        = chitra_mark_dirty,
     .register_clip     = chitra_register_clip,
     .update_clip       = chitra_update_clip,
@@ -188,35 +189,9 @@ static Tether_Text_API s_text_api = {
     .get_bounds       = chitra_text_get_bounds,
 };
 
-/* The global RHI instance — engine reads this via extern in tether_engine.c */
-Tether_RHI g_rhi = {
-    .system         = &s_sys_api,
-    .shape          = &s_shape_api,
-    .text           = &s_text_api,
+/* The global Backend instance — engine reads this via extern */
+Tether_Backend g_backend = {
+    .system = &s_sys_api,
+    .shape  = &s_shape_api,
+    .text   = &s_text_api,
 };
-
-/* =============================================================================
- * HAL Entry Point
- * ============================================================================= */
-
-void tether_hal_run(Tether_App_Config* config) {
-    if (config) {
-        s_win_w = (uint32_t)config->width;
-        s_win_h = (uint32_t)config->height;
-    }
-
-    Chitra_Config chitra_cfg = {
-        .width      = config ? config->width  : 1280,
-        .height     = config ? config->height : 720,
-        .title      = config ? config->title  : "Tether",
-        .target_fps = 0,  /* VSync */
-        .on_init    = on_init,
-        .on_frame   = on_frame,
-        .on_event   = on_event,
-    };
-
-    chitra_run(&chitra_cfg);
-
-    tether_engine_on_hal_cleanup();
-    tether_engine_on_hal_post_cleanup();
-}

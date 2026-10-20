@@ -88,7 +88,7 @@ Tether_GUID tether_hit_test(float x, float y) {
     return TETHER_INVALID_GUID;
 }
 
-void tether_input_process_event(Tether_Pointer_Event* event) {
+void tether_input_process_event(const Tether_Pointer_Event* event) {
     if (!event) return;
 
     bool is_down = (event->type == TETHER_POINTER_DOWN);

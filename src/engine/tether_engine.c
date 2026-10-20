@@ -1,6 +1,6 @@
 #include "tether/engine/tether_engine.h"
 #include "tether/engine/tether_render.h"
-#include "tether/backends/tether_rhi.h"
+#include "tether/backends/tether_backend.h"
 #include "tether/core/tether_registry.h"
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
@@ -33,9 +33,7 @@ void tether_engine_init(Tether_EngineConfig* config) {
     tether_registry_init();  
 }
 
-void tether_engine_on_hal_init(int width, int height, const void* device, const void* instance) {
-    g_rhi.system->init((uint32_t)width, (uint32_t)height, g_engine_config.max_render_width, g_engine_config.max_render_height, device, instance);
-
+void tether_engine_on_init(void) {
     tether_render_init();
 
     /* Load initial YAML after RHI is ready (g_rhi must be valid for tether_render_realize) */
@@ -56,72 +54,65 @@ void tether_engine_on_hal_init(int width, int height, const void* device, const 
 }
 
 static int s_last_w = 0, s_last_h = 0;
-void* tether_engine_on_hal_frame(int width, int height) {
+void* tether_engine_on_frame(int width, int height) {
     bool resized = (width != s_last_w || height != s_last_h);
     if (resized) {
         s_last_w = width;
         s_last_h = height;
-        g_rhi.system->resize(width, height);
     }
     
-    uint32_t tex_w = 0, tex_h = 0;
-    g_rhi.system->get_texture_size(&tex_w, &tex_h);
+    uint32_t res_x = 0, res_y = 0;
+    g_rhi.system->get_resolution(&res_x, &res_y);
     
     if (g_engine_config.on_frame) {
         g_engine_config.on_frame();
     }
     
     // Only render if needed (resized, input received, or components are dirty)
-    g_frame_drawn = tether_render_frame((float)tex_w, (float)tex_h, resized || g_redraw_requested);
+    g_frame_drawn = tether_render_frame((float)res_x, (float)res_y, resized || g_redraw_requested);
     g_redraw_requested = false;
     
     return NULL;
+}
+
+void tether_engine_on_post_frame(void) {
+    if (g_engine_config.on_post_frame) {
+        g_engine_config.on_post_frame();
+    }
 }
 
 bool tether_engine_did_draw(void) {
     return g_frame_drawn;
 }
 
-void tether_engine_on_hal_input(const Tether_Pointer_Event* event) {
-    if (s_last_w == 0 || s_last_h == 0) return;
-    
-    uint32_t tex_w = 0, tex_h = 0;
-    g_rhi.system->get_texture_size(&tex_w, &tex_h);
-    
-    Tether_Pointer_Event scaled_event = *event;
-    scaled_event.x = (event->x * (float)tex_w) / (float)s_last_w;
-    scaled_event.y = (event->y * (float)tex_h) / (float)s_last_h;
-    
-    tether_input_process_event(&scaled_event);
+void tether_engine_on_input(const Tether_Pointer_Event* event) {
+    tether_input_process_event(event);
     tether_engine_queue_redraw();
 }
 
-void tether_engine_on_hal_cleanup(void) {
+void tether_engine_on_cleanup(void) {
+    if (g_engine_config.on_term) {
+        g_engine_config.on_term();
+    }
 
     Tether_DenseArray* nodes = tether_ecs_get_dense_array(TETHER_COMPONENT_SLOT_TRANSFORM);
-    printf("length of TOTAL ENTITIES %lu\n", nodes->count);
-    /* Terminate Renderer*/
+    if (nodes) {
+        printf("length of TOTAL ENTITIES %lu\n", nodes->count);
+    }
+
+    /* Terminate Renderer */
     tether_render_term();
 
     /* Teardown engine-specific resources before HAL and RHI shut down. */
     tether_registry_term();
     tether_ecs_term();
-    
-    g_rhi.system->term();
-}
-
-void tether_engine_on_hal_post_cleanup(void) {
-    /* (All RHI and engine teardown now happens before sg_shutdown) */
 }
 
 void tether_engine_queue_redraw(void) {
     g_redraw_requested = true;
 }
 
-void tether_engine_get_texture_size(uint32_t* out_w, uint32_t* out_h) {
-    g_rhi.system->get_texture_size(out_w, out_h);
-}
-
-void tether_engine_term(void) {
-    /* (Engine subsystems are now torn down in tether_engine_on_hal_cleanup) */
+void tether_engine_run(Tether_App_Config* config)
+{
+    g_rhi.system->run(config);
 }

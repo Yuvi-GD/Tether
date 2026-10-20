@@ -26,6 +26,13 @@ void sandbox_init(void)
 
     /* Load font */
     tether_font_register("Roboto-Regular", "Font/Roboto-Regular.ttf");
+    
+    printf("[Sandbox] Init\n");
+}
+
+void sandbox_term(void)
+{
+    printf("[Sandbox] Pre-cleanup: UI & Game resources freed.\n");
 }
 
 int main()
@@ -36,22 +43,19 @@ int main()
         .height = 768,
         .title = "Tether UI Sandbox",
         .initial_yaml = "UI/index.yaml",
-        
-        /* Explicitly define our engine behavior */
-        .memory_strategy = TETHER_MEMORY_HIGH_WATER_MARK,
-        .renderer = TETHER_RENDERER_WEBGPU,
         .target_fps = 0, /* VSync */
         
-        /* Cap offscreen render resolution. 0 means no cap. 
-         * Note: ThorVG WebGPU backend uses ~350 bytes per pixel of canvas size.
-         * 1920x1080 = ~700MB. 1280x720 = ~300MB. 
-         * We cap it here to aggressively keep RAM low. The HAL will upscale it. */
-        .max_render_width = 0,
-        .max_render_height = 0,
-        
-        .on_init = sandbox_init
+        /* Application Lifecycle Callbacks */
+        .on_init = sandbox_init,
+        .on_frame = (void(*)(void))0,
+        .on_post_frame = (void(*)(void))0,
+        .on_term = sandbox_term
     };
     
+    // Pre Init Phase
+    printf("[Sandbox] Starting Tether...\n");
     tether_run(&config);
+    // Post Term Phase
+    printf("[Sandbox] Post-term: Closed cleanly.\n");
     return 0;
 }
