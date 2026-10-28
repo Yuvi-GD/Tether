@@ -5,7 +5,9 @@ build/
 out/
 bin/
 .trash/
+docs/
 docs/archive/
+docs/private/
 
 # ============================================================
 # Compiled Object Files and Binaries
