@@ -27,6 +27,7 @@ void tether_engine_init(Tether_EngineConfig* config) {
     tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_LAYOUT, 0);
     tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_VISUAL, 0);
     tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_HIERARCHY, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_TEXT_CONTENT, 0);
     tether_ecs_register_component_static(TETHER_COMPONENT_VOLATILE, 0);
     
     tether_ecs_init_roots();

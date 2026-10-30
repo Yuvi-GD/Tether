@@ -141,9 +141,15 @@ static void apply_visual_rules(Tether_GUID id) {
                 ty += rt->translation_y;
             }
 
-            uint32_t text_color_u32 = pack_color(text->color, opacity);
+            bool content_dirty = tether_ecs_get_component(id, TETHER_COMPONENT_DIRTY_TEXT_CONTENT) != NULL;
 
-            g_rhi.text->set_text(text->handle, text->font_id, text->font_size, str, wrap_width, tx, ty);
+            if (content_dirty) {
+                g_rhi.text->set_text(text->handle, text->font_id, text->font_size, str, wrap_width, tx, ty);
+            } else {
+                g_rhi.text->set_pos(text->handle, tx, ty);
+            }
+
+            uint32_t text_color_u32 = pack_color(text->color, opacity);
             g_rhi.text->set_color(text->handle, text_color_u32);
 
             if (rt) {
@@ -310,6 +316,14 @@ bool tether_render_frame(float screen_w, float screen_h, bool force_redraw) {
             tether_ecs_remove_component(id, TETHER_COMPONENT_DIRTY_HIERARCHY);
         }
     }
+    
+    Tether_DenseArray* dirty_text = tether_ecs_get_dense_array(TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+    if (dirty_text) {
+        for (int i = (int)dirty_text->count - 1; i >= 0; i--) {
+            Tether_GUID id = dirty_text->entity_map[i];
+            tether_ecs_remove_component(id, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+        }
+    }
 
     /* ========================================================================== */
     /*                 Draw (if any)                                              */
@@ -336,8 +350,11 @@ void tether_render_realize(Tether_GUID id) {
     }
     
     Tether_Text* text = (Tether_Text*)tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
-    if (text && !g_rhi.text->is_alive(text->handle)) {
-        text->handle = g_rhi.text->create();
+    if (text) {
+        if (!g_rhi.text->is_alive(text->handle)) {
+            text->handle = g_rhi.text->create();
+        }
+        tether_ecs_add_component(id, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
     }
     
     tether_ecs_add_component(id, TETHER_COMPONENT_DIRTY_VISUAL);

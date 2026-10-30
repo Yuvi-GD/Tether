@@ -519,5 +519,9 @@ bool tether_ecs_set_text_string(Tether_GUID entity, const char* string) {
     text->length = (uint32_t)length;
   }
 
+  tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+  tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_VISUAL);
+  tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_LAYOUT);
+
   return true;
 }
