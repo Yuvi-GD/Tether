@@ -36,8 +36,8 @@ Tether strictly requires only two vendored git submodules:
 
 | Dependency | Location | Purpose |
 | :--- | :--- | :--- |
-| **Chitra** | `third_party/chitra` | Retained-mode 2D rendering engine and windowing abstraction |
-| **libyaml** | `third_party/libyaml` | Fast C YAML parsing for declarative layout definitions |
+| **[Chitra](https://github.com/Yuvi-GD/Chitra)** | `third_party/chitra` | Retained-mode 2D rendering engine and windowing abstraction |
+| **[libyaml](https://github.com/yaml/libyaml)** | `third_party/libyaml` | Fast C YAML parsing for declarative layout definitions |
 
 ---
 

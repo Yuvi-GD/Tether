@@ -89,19 +89,26 @@ void on_align_clicked(Tether_GUID entity, Tether_EventType type, void* user_data
     if (txt != TETHER_INVALID_GUID)
     {
         Tether_Text* t = (Tether_Text*)tether_ecs_get_component(txt, TETHER_COMPONENT_TEXT);
-        Tether_TextWord* tw = (Tether_TextWord*)tether_ecs_get_component(txt, TETHER_COMPONENT_TEXT_WORD);
-        if (t && tw) 
+        if (t)
         {
             /* Cycle AUTO (0) -> FILL (1) -> START (2) -> CENTER (3) -> END (4) */
-            t->align_x = (Tether_Align)((t->align_x + 1) % 5);
+            Tether_Align next_align = (Tether_Align)((t->align_x + 1) % 5);
             
             const char* str = "Align: AUTO";
-            if (t->align_x == TETHER_ALIGN_FILL) str = "Align: FILL";
-            else if (t->align_x == TETHER_ALIGN_START) str = "Align: START";
-            else if (t->align_x == TETHER_ALIGN_CENTER) str = "Align: CENTER";
-            else if (t->align_x == TETHER_ALIGN_END) str = "Align: END";
+            if (next_align == TETHER_ALIGN_FILL) str = "Align: FILL";
+            else if (next_align == TETHER_ALIGN_START) str = "Align: START";
+            else if (next_align == TETHER_ALIGN_CENTER) str = "Align: CENTER";
+            else if (next_align == TETHER_ALIGN_END) str = "Align: END";
             
-            strcpy(tw->data, str);
+            if (!tether_ecs_set_text_string(txt, str)) {
+                fprintf(stderr, "[Sandbox] Failed to update alignment text\n");
+                return;
+            }
+            t->align_x = next_align;
+            /* Alignment changes the rendered text even when its slot stays the same. */
+            tether_ecs_add_component(txt, TETHER_COMPONENT_DIRTY_VISUAL);
+            /* The label also changed, so its measured size must be refreshed. */
+            tether_ecs_add_component(txt, TETHER_COMPONENT_DIRTY_LAYOUT);
             printf("[Sandbox] btn_align clicked - Alignment changed to %s\n", str);
         }
     }

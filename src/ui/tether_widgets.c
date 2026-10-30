@@ -49,9 +49,7 @@ static Tether_GUID tether_widget_create_base(Tether_GUID parent) {
     node->gap.x = 0; node->gap.y = 0;
     node->size_box.x = 0; node->size_box.y = 0;
     node->wrap = 0;
-    
-    tether_ecs_add_component(entity, TETHER_COMPONENT_VOLATILE);
-    
+        
     Tether_Interactable* i = (Tether_Interactable*)tether_ecs_add_component(entity, TETHER_COMPONENT_INTERACTABLE);
     if (i) {
         i->is_hovered = 0;
@@ -170,7 +168,6 @@ Tether_GUID tether_widget_create_button(Tether_GUID parent) {
         ts->color = (Tether_Color){255, 255, 255, 255}; /* White text */
     }
     tether_ecs_set_text_string(text_entity, "Button");
-    tether_ecs_add_component(entity, TETHER_COMPONENT_VOLATILE);
     return entity;
 }
 
