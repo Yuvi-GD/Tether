@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+if(NOT @TETHER_BUILD_SHARED@)
+    include(CMakeFindDependencyMacro)
+    find_dependency(yaml CONFIG)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/TetherTargets.cmake")
+
+check_required_components(Tether)

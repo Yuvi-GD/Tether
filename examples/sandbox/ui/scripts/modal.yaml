@@ -2,6 +2,7 @@ Panel:
   id: "yaml_modal_overlay"
   color: [0, 0, 0, 150]
   interactable: true
+  fill_ratio: 1.0
   flow: COLUMN
   content_align: CENTER
   anchor_min: 0.0
@@ -17,7 +18,7 @@ Panel:
         children:
           - Text:
               string: "Welcome to the YAML Modal!"
-              font_size: 28.0
+              font_size: 32.0
               color: [30, 32, 36, 255]
           - Button:
               id: "btn_close_yaml_modal"
@@ -25,5 +26,5 @@ Panel:
               content:
                 - Text:
                     string: "Close YAML Modal"
-                    font_size: 18.0
+                    font_size: 20.0
                     color: [255, 255, 255, 255]

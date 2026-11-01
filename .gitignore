@@ -8,6 +8,7 @@ bin/
 docs/
 docs/archive/
 docs/private/
+!tests/docs/
 
 # ============================================================
 # Compiled Object Files and Binaries

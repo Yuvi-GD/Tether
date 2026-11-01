@@ -1,31 +1,35 @@
 cmake_minimum_required(VERSION 3.20)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-project(TetherUI C CXX)
-
+project(TetherUI VERSION 0.2.0 LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ============================================================
-# Paths
-# ============================================================
-set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+set(TETHER_STANDALONE OFF)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set(TETHER_STANDALONE ON)
+endif()
+option(TETHER_BUILD_SHARED "Build a shared Tether library" ON)
+option(TETHER_BUILD_EXAMPLES "Build the sandbox application" ${TETHER_STANDALONE})
+option(TETHER_BUILD_TESTS "Build and register correctness tests" ${TETHER_STANDALONE})
+# Compatibility with existing build directories; new configurations use RUNNERS.
+if(DEFINED TETHER_BUILD_TOOLS AND NOT DEFINED TETHER_BUILD_RUNNERS)
+    set(TETHER_BUILD_RUNNERS ${TETHER_BUILD_TOOLS} CACHE BOOL "Build standalone test and benchmark runners")
+endif()
+option(TETHER_BUILD_RUNNERS "Build standalone test and benchmark runners" ${TETHER_STANDALONE})
+option(TETHER_ENABLE_INSTALL "Enable installation and CMake package exports" ${TETHER_STANDALONE})
+include(cmake/TetherSanitizers.cmake)
 
-# ============================================================
-# Step 1: Add libyaml and chitra from third_party
-# ============================================================
-message(STATUS "[Tether] Adding libyaml from third_party...")
-add_subdirectory(${THIRD_PARTY_DIR}/libyaml)
-message(STATUS "[Tether] Adding chitra from third_party...")
-add_subdirectory(${THIRD_PARTY_DIR}/chitra)
-
-# ============================================================
-# Step 2: Define Engine (tether.dll) and Sandbox
-# ============================================================
-
-# 2.1: The Core Engine Library (Shared / DLL)
-add_library(tether SHARED
+include(GNUInstallDirs)
+set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
+set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/yaml")
+add_subdirectory("${THIRD_PARTY_DIR}/libyaml")
+add_subdirectory("${THIRD_PARTY_DIR}/chitra")
+set(TETHER_SOURCES
     src/tether.c
     src/core/tether_ecs.c
     src/core/tether_registry.c
@@ -39,78 +43,48 @@ add_library(tether SHARED
     src/engine/tether_engine.c
     src/engine/tether_layout.c
     src/ui/tether_widgets.c
+    src/ui/tether_ui.c
 )
-# Automatically export all symbols on Windows
-set_target_properties(tether PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
-
-# 2.2: The Sandbox Application
-add_executable(tether_sandbox
-    examples/sandbox/sandbox_main.c
-    examples/sandbox/sandbox_events.c
-    examples/sandbox/sandbox_widget.c
-)
-
-# 2.3: ECS Unit Test
-add_executable(tether_ecs_test
-    tests/unit/ecs_test.c
-    src/core/tether_ecs.c
-    src/core/tether_registry.c
-    src/utils/tether_hashmap.c
-)
-
-# ============================================================
-# Step 3: Include Paths
-# ============================================================
-target_include_directories(tether PUBLIC
-    "${CMAKE_SOURCE_DIR}/include"
-    "${CMAKE_SOURCE_DIR}/src"
-)
-
-target_include_directories(tether_sandbox PRIVATE
-    "${CMAKE_SOURCE_DIR}/examples/sandbox/include"
-)
-
-target_include_directories(tether_ecs_test PRIVATE
-    "${CMAKE_SOURCE_DIR}/include"
-    "${CMAKE_SOURCE_DIR}/src"
-)
-
-# ============================================================
-# Step 4: Link Libraries
-# ============================================================
-target_link_libraries(tether PRIVATE yaml chitra)
-target_link_libraries(tether_sandbox PRIVATE tether)
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(tether PRIVATE X11 Xi Xcursor GL pthread dl m)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(tether PRIVATE dwmapi)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(tether PRIVATE "-framework Cocoa" "-framework QuartzCore" "-framework Metal" "-framework MetalKit")
+# Compile the engine once. The DLL and isolated runner/application binaries
+# reuse these objects; each operating-system process owns its runtime state.
+set(TETHER_PLATFORM_LIBRARIES)
+if(WIN32)
+    set(TETHER_PLATFORM_LIBRARIES dwmapi)
+elseif(APPLE)
+    set(TETHER_PLATFORM_LIBRARIES "-framework Cocoa" "-framework QuartzCore" "-framework Metal" "-framework MetalKit")
+else()
+    set(TETHER_PLATFORM_LIBRARIES X11 Xi Xcursor GL pthread dl m)
 endif()
+add_library(tether_build_dependencies INTERFACE)
+target_include_directories(tether_build_dependencies INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(tether_build_dependencies INTERFACE yaml chitra ${TETHER_PLATFORM_LIBRARIES})
+add_library(tether_objects OBJECT ${TETHER_SOURCES})
+target_link_libraries(tether_objects PRIVATE tether_build_dependencies)
+if(TETHER_BUILD_SHARED)
+    set_target_properties(tether_objects yaml chitra PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    add_library(tether SHARED $<TARGET_OBJECTS:tether_objects>)
+    set_target_properties(tether PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+else()
+    add_library(tether STATIC $<TARGET_OBJECTS:tether_objects>)
+endif()
+add_library(Tether::tether ALIAS tether)
+target_include_directories(tether PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:include>)
+target_link_libraries(tether PRIVATE $<BUILD_INTERFACE:tether_build_dependencies>
+    $<INSTALL_INTERFACE:yaml> $<INSTALL_INTERFACE:Tether::chitra> ${TETHER_PLATFORM_LIBRARIES})
 
-# ============================================================
-# Step 5: Post-Build Asset Copying
-# ============================================================
-add_custom_command(TARGET tether_sandbox POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/examples/UI"
-        "$<TARGET_FILE_DIR:tether_sandbox>/UI"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/examples/Font"
-        "$<TARGET_FILE_DIR:tether_sandbox>/Font"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "$<TARGET_FILE:tether>"
-        "$<TARGET_FILE_DIR:tether_sandbox>"
-    COMMENT "Copying assets (UI, Font) to build directory..."
-)
-
-# ============================================================
-# Summary
-# ============================================================
-message(STATUS "========================================")
-message(STATUS "  Tether Build Configuration (Chitra)")
-message(STATUS "========================================")
-message(STATUS "  OS:          ${CMAKE_SYSTEM_NAME} (${CMAKE_SYSTEM_PROCESSOR})")
-message(STATUS "  Backend:     Chitra (Sokol D3D11/Metal/GL)")
-message(STATUS "========================================")
+if(TETHER_BUILD_EXAMPLES OR TETHER_BUILD_TESTS OR TETHER_BUILD_RUNNERS)
+    add_library(tether_runtime STATIC $<TARGET_OBJECTS:tether_objects>)
+    target_link_libraries(tether_runtime PUBLIC tether_build_dependencies)
+    if(TETHER_BUILD_TESTS)
+        enable_testing()
+    endif()
+    add_subdirectory(tests)
+endif()
+if(TETHER_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+include(cmake/TetherInstall.cmake)
+message(STATUS "Tether ${PROJECT_VERSION}: shared=${TETHER_BUILD_SHARED}, sandbox=${TETHER_BUILD_EXAMPLES}, tests=${TETHER_BUILD_TESTS}, runners=${TETHER_BUILD_RUNNERS}")

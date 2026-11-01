@@ -43,21 +43,29 @@ void tether_ast_free(Tether_ASTNode* node) {
 }
 
 Tether_ASTNode* tether_ast_parse_file(const char* filepath) {
+    if (!filepath) {
+        return NULL;
+    }
     FILE* file = fopen(filepath, "r");
     if (!file) return NULL;
 
     yaml_parser_t parser;
     yaml_event_t event;
-    yaml_parser_initialize(&parser);
+    if (!yaml_parser_initialize(&parser)) {
+        fclose(file);
+        return NULL;
+    }
     yaml_parser_set_input_file(&parser, file);
 
     Tether_ASTNode* root = NULL;
     Tether_ASTNode* stack[64];
     int stack_idx = -1;
     Tether_ASTNode* current_key = NULL;
+    bool complete = false;
 
     while (yaml_parser_parse(&parser, &event)) {
         if (event.type == YAML_STREAM_END_EVENT) {
+            complete = true;
             yaml_event_delete(&event);
             break;
         }
@@ -86,6 +94,10 @@ Tether_ASTNode* tether_ast_parse_file(const char* filepath) {
             }
             case YAML_SEQUENCE_START_EVENT:
             case YAML_MAPPING_START_EVENT: {
+                if (stack_idx + 1 >= (int)(sizeof stack / sizeof *stack)) {
+                    yaml_event_delete(&event);
+                    goto cleanup;
+                }
                 Tether_ASTNodeType type = (event.type == YAML_SEQUENCE_START_EVENT) ? TETHER_AST_SEQUENCE : TETHER_AST_MAPPING;
                 Tether_ASTNode* node = create_node(type);
                 
@@ -115,6 +127,12 @@ Tether_ASTNode* tether_ast_parse_file(const char* filepath) {
         yaml_event_delete(&event);
     }
 
+cleanup:
+    if (!complete || stack_idx != -1 || current_key) {
+        tether_ast_free(current_key);
+        tether_ast_free(root);
+        root = NULL;
+    }
     yaml_parser_delete(&parser);
     fclose(file);
     return root;

@@ -1,0 +1,81 @@
+- Panel:
+    id: LabRoot
+    color: [18, 22, 31, 255]
+    flow: COLUMN
+    padding: [16, 20, 16, 20]
+    gap: [0, 12]
+    children:
+      - Text:
+          id: workbench_title
+          string: "TETHER / WORKBENCH"
+          font_size: 26
+          color: [225, 233, 246, 255]
+      - Panel:
+          flow: ROW
+          fill_ratio: 1
+          gap: [20, 0]
+          children:
+            - Panel:
+                id: WorkloadCol
+                fill_ratio: 0.85
+                flow: COLUMN
+                gap: [0, 10]
+                children:
+                  - LabControls:
+                      fill_ratio: 1
+            - Panel:
+                id: ResultsCol
+                fill_ratio: 1.15
+                flow: COLUMN
+                gap: [0, 10]
+                children:
+                  - Text:
+                      string: "LAST COMPLETED RUN"
+                      font_size: 17
+                      color: [155, 178, 208, 255]
+                  - Panel:
+                      id: CardStatus
+                      color: [28, 42, 56, 255]
+                      border_radius: 8
+                      padding: [10, 14]
+                      flow: COLUMN
+                      gap: [0, 4]
+                      children:
+                        - Text:
+                            id: res_status_badge
+                            string: "READY"
+                            font_size: 24
+                            color: [150, 195, 235, 255]
+                        - Text:
+                            id: res_scenario_label
+                            string: "No completed run loaded"
+                            font_size: 17
+                            color: [190, 207, 230, 255]
+                  - ResultCards:
+                  - Text:
+                      id: res_report_text
+                      string: "Run a workload or load a saved JSON result."
+                      font_size: 16
+                      color: [170, 190, 215, 255]
+                      wrap_width: 610
+                  - Text:
+                      string: "Work is CPU preparation and render submission. Frame interval includes pacing. RAM is sampled process memory; GPU time is not measured."
+                      font_size: 15
+                      color: [145, 165, 190, 255]
+                      wrap_width: 610
+                  - Panel:
+                      id: btn_load_result
+                      size_box: [0, 42]
+                      color: [39, 53, 74, 255]
+                      hover_color: AUTO
+                      press_color: AUTO
+                      border_radius: 7
+                      flow: COLUMN
+                      children:
+                        - Text:
+                            id: res_import_label
+                            string: "Load result file"
+                            font_size: 18
+                            color: [222, 232, 247, 255]
+                            text_align: CENTER
+                            fill_ratio: 1

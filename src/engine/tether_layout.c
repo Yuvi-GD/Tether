@@ -186,6 +186,11 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
                 if (align == TETHER_ALIGN_FILL) {
                     is_auto_height = false;
                 }
+            } else if (pnode && pnode->flow == TETHER_FLOW_NONE) {
+                Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
+                if (anchor && (anchor->anchor_max.y - anchor->anchor_min.y) > 0.0f) {
+                    is_auto_height = false;
+                }
             }
         }
     }
@@ -316,6 +321,19 @@ static float tether_layout_arrange_top_down(Tether_GUID entity, float parent_x, 
          */
         float current_x = inner_x;
         float current_y = inner_y;
+        if (node->flow == TETHER_FLOW_COLUMN && total_fill_ratio == 0.0f) {
+            if (node->content_align_y == TETHER_ALIGN_CENTER) {
+                current_y = inner_y + (available_space / 2.0f);
+            } else if (node->content_align_y == TETHER_ALIGN_END) {
+                current_y = inner_y + available_space;
+            }
+        } else if (node->flow == TETHER_FLOW_ROW && total_fill_ratio == 0.0f) {
+            if (node->content_align_x == TETHER_ALIGN_CENTER) {
+                current_x = inner_x + (available_space / 2.0f);
+            } else if (node->content_align_x == TETHER_ALIGN_END) {
+                current_x = inner_x + available_space;
+            }
+        }
         
         child = h->first_child;
         while (tether_ecs_is_valid(child)) {

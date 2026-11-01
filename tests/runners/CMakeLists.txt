@@ -1,0 +1,8 @@
+add_library(tether_workloads STATIC ../workloads/workload.c ../workloads/layout.c)
+target_link_libraries(tether_workloads PUBLIC tether_runtime tether_run_support)
+add_executable(tether_test main.c)
+target_compile_definitions(tether_test PRIVATE TOOL_IS_TEST=1)
+target_link_libraries(tether_test PRIVATE tether_workloads)
+if(TETHER_BUILD_RUNNERS)
+    add_subdirectory(../benchmarks "${CMAKE_CURRENT_BINARY_DIR}/benchmarks")
+endif()

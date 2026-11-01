@@ -1,0 +1,29 @@
+name: Tether rendering (manual desktop)
+# This runner must have an interactive desktop and a working graphics driver.
+# Do not attach this job to pull_request events on a public repository.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rendering:
+    runs-on: [self-hosted, Windows, X64, tether-gpu]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Configure
+        run: cmake -S . -B build-render-ci -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON -DTETHER_REGISTER_RENDER_TESTS=ON
+      - name: Build
+        run: cmake --build build-render-ci --config Release --target tether_sandbox tether_ui_contract_test --parallel 4
+      - name: Rendering and launcher tests
+        run: ctest --test-dir build-render-ci -C Release -L rendering --output-on-failure --no-tests=error
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rendering-results
+          path: |
+            build-render-ci/*/report/**/*.json*
+            build-render-ci/Testing/Temporary/LastTest.log

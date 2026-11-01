@@ -1,80 +1,46 @@
 #include "sandbox_widget.h"
 #include "sandbox_events.h"
-#include "tether/core/tether_ecs.h"
-#include "tether/core/tether_components.h"
-#include "tether/core/tether_events.h"
+#include "tether/ui/tether_ui.h"
 #include "tether/core/tether_registry.h"
-#include <string.h>
+#include "tether/core/tether_components.h"
 
-Tether_GUID create_my_c_modal(Tether_GUID parent) 
-{
-    /* 1. Create Background Overlay Panel */
-    Tether_GUID overlay = tether_create_widget("Panel", parent);
-    Tether_Layout* ol = (Tether_Layout*)tether_ecs_get_component(overlay, TETHER_COMPONENT_LAYOUT);
+Tether_GUID create_my_c_modal(Tether_GUID parent) {
+    /* 1. Background Overlay Panel */
+    Tether_GUID overlay = tether_ui_column(parent, 0.0f);
+    tether_ui_set_color(overlay, (Tether_Color){0, 0, 0, 150});
+    tether_ui_set_flex(overlay, 1.0f);
+    tether_registry_alias_entity(overlay, "c_modal_overlay");
+
+    Tether_Layout *ol = (Tether_Layout*)tether_ecs_get_component(overlay, TETHER_COMPONENT_LAYOUT);
     if (ol) {
-        ol->flow = TETHER_FLOW_COLUMN;
         ol->content_align_x = TETHER_ALIGN_CENTER;
         ol->content_align_y = TETHER_ALIGN_CENTER;
     }
-    
-    tether_registry_alias_entity(overlay, "c_modal_overlay");
+    Tether_Interactable *oi = (Tether_Interactable*)tether_ecs_get_component(overlay, TETHER_COMPONENT_INTERACTABLE);
+    if (oi) oi->hit_behavior = TETHER_HIT_BLOCK;
 
-    Tether_Interactable* oi = (Tether_Interactable*)tether_ecs_get_component(overlay, TETHER_COMPONENT_INTERACTABLE);
-    if (oi) oi->hit_behavior = TETHER_HIT_BLOCK; /* Block clicks to background */
-    
-    Tether_Shape* os = (Tether_Shape*)tether_ecs_get_component(overlay, TETHER_COMPONENT_SHAPE);
-    if (os) os->bg_color = (Tether_Color){0, 0, 0, 150}; /* Semi-transparent black */
-    
-    Tether_AnchorSlot* anchor = (Tether_AnchorSlot*)tether_ecs_get_component(overlay, TETHER_COMPONENT_ANCHOR_SLOT);
+    Tether_AnchorSlot *anchor = (Tether_AnchorSlot*)tether_ecs_get_component(overlay, TETHER_COMPONENT_ANCHOR_SLOT);
     if (anchor) {
         anchor->anchor_min = (Tether_Vec2){0.0f, 0.0f};
         anchor->anchor_max = (Tether_Vec2){1.0f, 1.0f};
     }
-    
-    /* 2. Create Inner Popup Panel */
-    Tether_GUID popup = tether_create_widget("Panel", overlay);
-    Tether_Layout* pl = (Tether_Layout*)tether_ecs_get_component(popup, TETHER_COMPONENT_LAYOUT);
+
+    /* 2. Inner Popup Panel */
+    Tether_GUID popup = tether_ui_column(overlay, 30.0f);
+    tether_ui_set_padding(popup, 40.0f, 40.0f, 40.0f, 40.0f);
+    tether_ui_set_color(popup, (Tether_Color){240, 245, 250, 255});
+    tether_ui_set_flex(popup, 0.0f);
+
+    Tether_Layout *pl = (Tether_Layout*)tether_ecs_get_component(popup, TETHER_COMPONENT_LAYOUT);
     if (pl) {
-        pl->flow = TETHER_FLOW_COLUMN;
-        pl->padding = (Tether_Edges){40, 40, 40, 40};
-        pl->gap = (Tether_Vec2){0, 30};
         pl->content_align_x = TETHER_ALIGN_CENTER;
         pl->content_align_y = TETHER_ALIGN_CENTER;
     }
-    
-    Tether_Shape* ps = (Tether_Shape*)tether_ecs_get_component(popup, TETHER_COMPONENT_SHAPE);
-    if (ps) {
-        ps->bg_color = (Tether_Color){240, 245, 250, 255}; /* Light grayish blue */
-    }
-    
-    Tether_FlexSlot* pf = (Tether_FlexSlot*)tether_ecs_get_component(popup, TETHER_COMPONENT_FLEX_SLOT);
-    if (pf) {
-        pf->fill_ratio = 0.0f; /* Don't stretch, size to content */
-    }
-    
-    /* 3. Create Text Label */
-    Tether_GUID text = tether_create_widget("Text", popup);
-    Tether_Text* ts = (Tether_Text*)tether_ecs_get_component(text, TETHER_COMPONENT_TEXT);
-    if (ts) {
-        ts->font_size = 28.0f;
-    }
-    tether_ecs_set_text_string(text, "Welcome to the C Modal!");
-    
-    /* 4. Create Close Button */
-    Tether_GUID btn = tether_create_widget("Button", popup);
-    Tether_Shape* bs = (Tether_Shape*)tether_ecs_get_component(btn, TETHER_COMPONENT_SHAPE);
-    if (bs) {
-        bs->bg_color = (Tether_Color){220, 53, 69, 255}; /* Bootstrap Danger Red */
-    }
-    
-    /* Modify the button's automatically generated text child */
-    Tether_Hierarchy* bh = (Tether_Hierarchy*)tether_ecs_get_component(btn, TETHER_COMPONENT_HIERARCHY);
-    if (bh && bh->first_child != TETHER_INVALID_GUID) {
-        tether_ecs_set_text_string(bh->first_child, "Close Modal");
-    }
-    
-    /* Bind close event on button click (passing the overlay root so it destroys the whole modal) */
-    tether_bind_event(btn, TETHER_EVENT_CLICK, on_close_c_modal, (void*)(uintptr_t)overlay);
-    
+
+    /* 3. Text & Close Button */
+    tether_ui_text(popup, "Welcome to the C Modal!", 32.0f, (Tether_Color){30, 30, 30, 255});
+    tether_ui_button(popup, "Close Modal", 20.0f, (Tether_Color){220, 53, 69, 255},
+                     on_close_c_modal, (void*)(uintptr_t)overlay);
+
     return overlay;
 }

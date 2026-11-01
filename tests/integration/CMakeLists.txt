@@ -1,0 +1,22 @@
+add_executable(tether_yaml_ast_test yaml_ast_test.c)
+target_link_libraries(tether_yaml_ast_test PRIVATE tether_runtime)
+add_test(NAME yaml_parse_recovery COMMAND tether_yaml_ast_test "${CMAKE_CURRENT_BINARY_DIR}/yaml-fixture.yaml")
+set_tests_properties(yaml_parse_recovery PROPERTIES LABELS "correctness;integration" TIMEOUT 15)
+add_executable(tether_report_test report_test.c)
+target_link_libraries(tether_report_test PRIVATE tether_run_support)
+add_test(NAME report_import COMMAND tether_report_test "${CMAKE_CURRENT_BINARY_DIR}/report-fixture.json")
+set_tests_properties(report_import PROPERTIES LABELS "correctness;integration" TIMEOUT 10)
+add_test(NAME lifecycle COMMAND tether_test --scenario lifecycle --count 1000
+    --spawn 17 --delete 23 --mutate 31 --frames 12 --output "$<TARGET_FILE_DIR:tether_test>/report/correctness/lifecycle.json")
+add_test(NAME hierarchy COMMAND tether_test --scenario hierarchy --count 101
+    --frames 3 --output "$<TARGET_FILE_DIR:tether_test>/report/correctness/hierarchy.json")
+add_test(NAME empty_population COMMAND tether_test --scenario lifecycle --count 0
+    --spawn 5 --delete 20 --mutate 100 --frames 4 --output "$<TARGET_FILE_DIR:tether_test>/report/correctness/empty.json")
+add_test(NAME invalid_count COMMAND tether_test --scenario lifecycle --count -1)
+set_tests_properties(invalid_count PROPERTIES WILL_FAIL TRUE)
+set_tests_properties(lifecycle hierarchy empty_population invalid_count
+    PROPERTIES LABELS "correctness;integration" TIMEOUT 30)
+option(TETHER_REGISTER_RENDER_TESTS "Register graphics tests for an explicitly provisioned display/GPU runner" OFF)
+if(TETHER_REGISTER_RENDER_TESTS)
+    add_subdirectory(../rendering "${CMAKE_CURRENT_BINARY_DIR}/rendering")
+endif()

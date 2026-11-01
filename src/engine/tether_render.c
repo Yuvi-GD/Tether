@@ -321,7 +321,14 @@ bool tether_render_frame(float screen_w, float screen_h, bool force_redraw) {
     if (dirty_text) {
         for (int i = (int)dirty_text->count - 1; i >= 0; i--) {
             Tether_GUID id = dirty_text->entity_map[i];
-            tether_ecs_remove_component(id, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+            Tether_Visibility* vis = tether_ecs_get_component(id, TETHER_COMPONENT_VISIBILITY);
+            Tether_Text* text = tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
+            /* Hidden/unrealized text has not been submitted yet. Keep its
+               content pending until a visible visual update consumes it. */
+            if (text && g_rhi.text->is_alive(text->handle) &&
+                (!vis || vis->computed_state == TETHER_VISIBLE)) {
+                tether_ecs_remove_component(id, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+            }
         }
     }
 

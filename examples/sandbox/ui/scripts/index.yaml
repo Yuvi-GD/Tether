@@ -13,7 +13,7 @@
           children:
             - Text:
                 string: $card_title
-                font_size: 16.0
+                font_size: 18.0
                 color: [40, 44, 52, 180]
             - Slot: "children"
 
@@ -41,7 +41,7 @@
               children:
                 - Text:
                     string: "Tether UI"
-                    font_size: 32.0
+                    font_size: 36.0
                     color: [255, 255, 255, 255]
                 - Panel: # Spacer
                     fill_ratio: 0.1
@@ -60,7 +60,7 @@
                       - Text:
                           fill_ratio: 1.0
                           string: "Refresh"
-                          font_size: 20.0
+                          font_size: 22.0
                           color: [30, 32, 36, 255]
 
           # ============================================================
@@ -82,7 +82,7 @@
                     children:
                       - Text:
                           string: "Navigation"
-                          font_size: 22.0
+                          font_size: 24.0
                           color: [171, 178, 191, 255]
                       - Panel: # Spacer
                           fill_ratio: 1.0
@@ -96,7 +96,7 @@
                           children:
                             - Text:
                                 string: "Dashboard"
-                                font_size: 18.0
+                                font_size: 20.0
                                 color: [30, 32, 36, 255]
                       - Panel: # Nav: Analytics
                           interactable: true
@@ -107,7 +107,7 @@
                           children:
                             - Text:
                                 string: "Analytics"
-                                font_size: 18.0
+                                font_size: 20.0
                                 color: [200, 200, 210, 255]
                       - Panel: # Nav: Reports
                           interactable: true
@@ -118,7 +118,7 @@
                           children:
                             - Text:
                                 string: "Reports"
-                                font_size: 18.0
+                                font_size: 20.0
                                 color: [200, 200, 210, 255]
                       - Panel: # Nav: Toggle
                           id: "ShowHideBtn"
@@ -130,7 +130,7 @@
                           children:
                             - Text:
                                 string: "Show Feature"
-                                font_size: 18.0
+                                font_size: 20.0
                                 color: [200, 200, 210, 255]
 
                 # --- Main View ---
