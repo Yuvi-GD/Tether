@@ -14,6 +14,19 @@ Tether is a lightweight, zero-allocation universal user interface engine written
 
 ---
 
+## Documentation
+
+> [!WARNING]
+> **Work In Progress (WIP)**: The documentation suite is currently under active development and preview. Architectural specifications, API signatures, and roadmap features reflect preview builds and may continue to evolve.
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+* **[Documentation Master Index](docs/index.md)**: Master navigation hub and high-level cell-block architecture flowchart.
+* **[Technical & Developer Documentation](docs/index.md#category-b-technical-and-developer-documentation)**: 14 in-depth engineering chapters covering the ECS Kernel, memory layout, components, invalidation lifecycles, widget registries, layout engines, backend interfaces, GPU rendering, input hit-testing, declarative parsing, polyglot language bindings, API reference, benchmarks, and architectural decision records (ADRs).
+* **[Project Presentation](docs/index.md#category-a-project-presentation)**: Public-facing documentation covering project vision, motivation, design philosophy, ecosystem boundaries, capabilities, technology comparisons, and roadmap.
+
+---
+
 ## Rendering Pipeline: Chitra
 
 Tether decouples UI orchestration from graphics hardware via an abstract Render Hardware Interface (RHI). Core 2D rendering is driven by **[Chitra](https://github.com/Yuvi-GD/Chitra)**, a modular retained-mode 2D graphics subsystem:
