@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
     test.volatile_mode = !strcmp(argv[1], "volatile");
     test.font_path = argv[2];
     test.yaml_path = argv[3];
-    Tether_App_Config config = {0};
+    Tether_Config config = {0};
     config.width = 800;
     config.height = 600;
     config.target_fps = 60;

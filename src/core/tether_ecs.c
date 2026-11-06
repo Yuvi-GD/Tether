@@ -229,11 +229,7 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
 /*                          Component Management                              */
 /* ========================================================================== */
 
-void tether_ecs_set_static_component_limit(uint32_t component_limit) {
-  if (component_limit > g_registry.next_custom_component_id) {
-    g_registry.next_custom_component_id = component_limit;
-  }
-}
+
 
 void tether_ecs_register_component_static(uint32_t component_id, size_t element_size) {
   if (component_id < 0) return;

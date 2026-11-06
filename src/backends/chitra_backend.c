@@ -8,37 +8,31 @@
 #include "tether/backends/tether_backend.h"
 #include "tether/core/tether_events.h"
 #include "tether/core/tether_input.h"
+#include "tether/engine/tether_engine.h"
 #include "chitra.h"
 #include <stdio.h>
-
-/* Tether engine lifecycle hooks called by this backend. */
-extern void  tether_engine_on_init(void);
-extern void* tether_engine_on_frame(int w, int h);
-extern void  tether_engine_on_post_frame(void);
-extern void  tether_engine_on_cleanup(void);
-extern void  tether_engine_on_input(const Tether_Pointer_Event* e);
 
 /* =============================================================================
  * Chitra Callbacks (on_init, on_frame, on_post_frame, on_event, on_cleanup)
  * ============================================================================= */
 
 static void on_init(void) {
-    tether_engine_on_init();
+    tether_on_init();
 }
 
 static void on_frame(void) {
     int w = chitra_width();
     int h = chitra_height();
     if (w <= 0 || h <= 0) return;
-    tether_engine_on_frame(w, h);
+    tether_on_frame(w, h);
 }
 
 static void on_post_frame(void) {
-    tether_engine_on_post_frame();
+    tether_on_post_frame();
 }
 
 static void on_cleanup(void) {
-    tether_engine_on_cleanup();
+    tether_on_cleanup();
 }
 
 static void on_event(const Chitra_InputEvent* e) {
@@ -60,7 +54,7 @@ static void on_event(const Chitra_InputEvent* e) {
         else if (e->button == 2) pe.button = TETHER_MOUSE_BUTTON_MIDDLE;
         else                     pe.button = TETHER_MOUSE_BUTTON_NONE;
 
-        tether_engine_on_input(&pe);
+        tether_on_input(&pe);
     }
 }
 
@@ -121,7 +115,7 @@ static bool text_set_text(uint32_t handle, uint32_t font_id, float size, const c
  * Backend Entry Point
  * ============================================================================= */
 
-static void backend_run(Tether_App_Config* config) {
+static void backend_run(Tether_Config* config) {
     Chitra_Config chitra_cfg = {
         .width         = config ? config->width      : 1280,
         .height        = config ? config->height     : 720,

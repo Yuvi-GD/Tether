@@ -2,8 +2,10 @@
 #define TETHER_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include "tether/core/tether_input.h"
 
-typedef struct {
+typedef struct Tether_Config {
     int width;
     int height;
     const char* title;
@@ -15,9 +17,19 @@ typedef struct {
     void (*on_frame)(void);
     void (*on_post_frame)(void);
     void (*on_term)(void);
-} Tether_App_Config;
+} Tether_Config;
 
-/* The core engine entry point */
-void tether_run(Tether_App_Config* config);
+/* The primary engine entry point */
+void  tether_init(Tether_Config* config);
+void  tether_run(Tether_Config* config);
+void  tether_queue_redraw(void);
+bool  tether_did_draw(void);
 
-#endif
+/* Lifecycle hooks invoked by platform backend runners (e.g. Chitra) */
+void  tether_on_init(void);
+void* tether_on_frame(int width, int height);
+void  tether_on_post_frame(void);
+void  tether_on_cleanup(void);
+void  tether_on_input(const Tether_Pointer_Event* event);
+
+#endif /* TETHER_H */

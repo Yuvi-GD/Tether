@@ -104,11 +104,7 @@ Tether_GUID tether_ecs_find_by_id(const char* id);
 /*                          Component Management                              */
 /* ========================================================================== */
 
-/*
- * Set the exclusive limit of the statically assigned component IDs.
- * This determines the first ID available to runtime-allocated components.
-*/
-void tether_ecs_set_static_component_limit(uint32_t component_limit);
+
 
 /* Register a component array for a specific compile-time component type ID. */
 void tether_ecs_register_component_static(uint32_t component_id, size_t element_size);

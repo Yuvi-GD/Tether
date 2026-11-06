@@ -18,7 +18,7 @@
 /* System API — lifecycle, frame control, clipping, resolution                */
 /* -------------------------------------------------------------------------- */
 typedef struct {
-    void (*run)(Tether_App_Config* config);
+    void (*run)(Tether_Config* config);
 
     /* Physical window dimensions in pixels (w, h) */
     void (*get_size)(uint32_t* out_w, uint32_t* out_h);
@@ -91,9 +91,6 @@ typedef struct {
     Tether_Shape_API*  shape;
     Tether_Text_API*   text;
 } Tether_Backend;
-
-/* Typedef alias for backward compatibility */
-typedef Tether_Backend Tether_RHI;
 
 /* Global Backend instance */
 extern Tether_Backend g_backend;

@@ -209,7 +209,7 @@ int sandbox_run(int argc, char **argv) {
     if (!tool_enter_executable_directory()) {
         return 2;
     }
-    Tether_App_Config config = {0};
+    Tether_Config config = {0};
     config.width = 1200;
     config.height = 830;
     config.title = "Tether Sandbox";

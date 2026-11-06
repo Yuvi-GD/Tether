@@ -423,7 +423,7 @@ int tool_run(const ToolOptions *o, ToolResult *r) {
 #else
         r->backend = "Chitra/Sokol";
 #endif
-        Tether_App_Config config = {0};
+        Tether_Config config = {0};
         config.width = 1280;
         config.height = 720;
         config.title = o->test ? "Tether UI correctness" : "Tether rendered workload";

@@ -37,7 +37,6 @@ set(TETHER_SOURCES
     src/core/tether_events.c
     src/utils/tether_hashmap.c
     src/backends/chitra_backend.c
-    src/engine/tether_render.c
     src/engine/parser/tether_yaml.c
     src/engine/parser/tether_yaml_ast.c
     src/engine/tether_engine.c

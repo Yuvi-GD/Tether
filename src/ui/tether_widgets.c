@@ -1,5 +1,5 @@
 #include "tether/core/tether_components.h"
-#include "tether/engine/tether_render.h"
+#include "tether/engine/tether_engine.h"
 #include "tether/ui/tether_widgets.h"
 
 
@@ -174,14 +174,14 @@ Tether_GUID tether_widget_create_button(Tether_GUID parent) {
 void tether_widget_show(Tether_GUID entity) {
     /* To show a widget, we must allocate its RHI handles. */
     /* This function delegates to the render engine. */
-    tether_render_realize(entity);
+    tether_engine_realize(entity);
 }
 
 void tether_widget_destroy(Tether_GUID entity) {
     if (!tether_ecs_is_valid(entity)) return;
     
     // Safely unrealize GPU resources recursively before the ECS data is gone
-    tether_render_unrealize(entity);
+    tether_engine_unrealize(entity);
     
     // Destroy the entity from ECS
     tether_ecs_destroy_entity(entity);

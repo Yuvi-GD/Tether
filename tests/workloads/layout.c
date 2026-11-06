@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern void tether_post_init(void);
 
 /* The timer surrounds only the existing Tether layout entry point. Structure
    creation, resize/invalidation, assertions and teardown are outside it. */
@@ -26,8 +25,7 @@ int tool_run_layout(const ToolOptions *o, ToolResult *r) {
         snprintf(r->message, sizeof r->message, "Layout sample allocation failed.");
         return 2;
     }
-    tether_engine_init(NULL);
-    tether_post_init();
+    tether_init(NULL);
     Tether_GUID root = tether_widget_create_panel(tether_ecs_get_main_root());
     tether_ui_set_size(root, 800, 600);
     Tether_Layout *root_layout = tether_ecs_get_component(root, TETHER_COMPONENT_LAYOUT);

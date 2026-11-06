@@ -13,7 +13,6 @@
 
 /* These cases exercise CPU-side contracts without opening a graphics device.
    They do not stand in for font rasterization or pixel-comparison tests. */
-extern void tether_post_init(void);
 static unsigned checks;
 
 #define CHECK(condition)                                                                           \
@@ -167,8 +166,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Usage: tether_behavior_test layout|visibility|input|lifetime|text\n");
         return 2;
     }
-    tether_engine_init(NULL);
-    tether_post_init();
+    tether_init(NULL);
     bool passed = false;
     if (!strcmp(argv[1], "layout")) {
         passed = layout_case();
