@@ -1,4 +1,5 @@
 # Tether Documentation
+*Version 0.0.2 (Developer Preview)*
 
 Tether is a high-performance, modular 2D UI engine written in C. It provides the foundational runtime infrastructure needed to build modern user interface frameworks, interactive applications, and portable UI systems with zero garbage collection overhead, cache-friendly data access, and predictable frame times.
 

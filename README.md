@@ -1,4 +1,5 @@
 # Tether UI Engine
+*Version 0.0.2 (Developer Preview)*
 
 Tether is a lightweight, zero-allocation universal user interface engine written in pure C99. Designed from a systems-programming perspective, it operates as a minimalist UI micro-kernel that scales from bare-metal microcontrollers to high-performance desktop applications.
 
