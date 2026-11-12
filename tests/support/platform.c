@@ -302,7 +302,7 @@ bool tool_replace_file(const char *source, const char *destination) {
 #endif
 }
 
-bool tool_pick_result(char *path, size_t size) {
+static bool tool_pick_file(char *path, size_t size, const char *filter) {
 #ifdef _WIN32
     if (!size || size > 0xffffffffu) {
         return false;
@@ -310,7 +310,7 @@ bool tool_pick_result(char *path, size_t size) {
     path[0] = 0;
     OPENFILENAMEA dialog = {0};
     dialog.lStructSize = sizeof dialog;
-    dialog.lpstrFilter = "Tether results (*.json)\0*.json\0\0";
+    dialog.lpstrFilter = filter;
     dialog.lpstrFile = path;
     dialog.nMaxFile = (DWORD)size;
     dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
@@ -318,6 +318,15 @@ bool tool_pick_result(char *path, size_t size) {
 #else
     (void)path;
     (void)size;
+    (void)filter;
     return false;
 #endif
+}
+
+bool tool_pick_result(char *path, size_t size) {
+    return tool_pick_file(path, size, "Tether results (*.json)\0*.json\0\0");
+}
+
+bool tool_pick_yaml(char *path, size_t size) {
+    return tool_pick_file(path, size, "YAML files (*.yaml;*.yml)\0*.yaml;*.yml\0\0");
 }

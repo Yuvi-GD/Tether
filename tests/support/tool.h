@@ -96,6 +96,7 @@ typedef struct {
 } ToolReport;
 bool tool_read_report_data(const char *path, ToolReport *report);
 bool tool_pick_result(char *path, size_t size);
+bool tool_pick_yaml(char *path, size_t size);
 bool tool_replace_file(const char *source, const char *destination);
 int tool_run(const ToolOptions *options, ToolResult *result);
 #endif

@@ -2,6 +2,25 @@
 
 This record describes executed checks for the technical-preview workbench on the stated machine and build. See [methodology](methodology.md) for metric definitions.
 
+## Scripted sandbox verification on 2026-11-11
+
+The sandbox shell, Lab controls, result cards, and gallery content now use YAML
+layouts with native widgets. C binds IDs to application state and actions. The
+native C modal and context-menu setup remain examples of native composition.
+
+Release desktop checks passed **3/3**: launch/import/render, invalid-report display,
+and failed-report display. The launch smoke also exercises Dropdown, Radio,
+SegmentedBar, Slider, Toggle, and Checkbox APIs through the Lab bindings before
+launching a small lifecycle workload. Selecting 10M in this check verifies preset
+mapping only; it does not run or validate a 10M workload.
+
+An isolated Debug build and launch/import/render smoke also passed in
+`build/widget-asan/Debug`; despite that directory name, this was a normal Debug
+configuration, not an AddressSanitizer result. The usual Debug executable was
+locked and was not replaced. Screenshot/manual visual review was unavailable
+because the computer-use native helper could not connect. Geometry checks do not
+establish pixel-level visual correctness.
+
 ## Correctness inventory
 
 | CTest case | Verified behavior | Boundary |
@@ -21,6 +40,29 @@ This record describes executed checks for the technical-preview workbench on the
 | `sandbox_invalid_report`, `sandbox_failure_display` | Invalid and failed report presentation | Automated geometry/state checks, not visual review |
 
 The text regression reproduced a Chitra origin mismatch: initial glyph vertices included glyph bearings, while position-only updates used the first vertex as the origin. Chitra now tracks the requested logical origin and moves vertices by the origin delta. Both retained and volatile geometry tests pass. The YAML parser regression rejects malformed partial ASTs; tested paths do not prove all allocation failures are handled.
+
+## Focused YAML stabilization on 2026-11-11
+
+The reduced patch passed **10/10 selected tests in Debug, Release, and MSVC
+AddressSanitizer Release** (`ctest -R 'yaml_|behavior_'`). `yaml_construction`
+performs 58 checks for cached-definition reuse/replacement, bounded template
+expansion, Dropdown property order, 40 options, invalid Dropdown values, failed
+construction cleanup, and recovery. The Release sandbox builds successfully.
+
+A separate headless run loaded the existing index (including its dashboard Scene),
+modal, and widgets scripts and passed 61 checks. These are CPU-state checks;
+visual rendering, full-suite CI, and performance were not reverified in this pass.
+
+The generic adapter experiment has been removed. Native widget APIs and existing
+YAML property handling remain in place. Cached definitions now own copied trees
+and are released by `tether_yaml_term()`, called during normal application cleanup.
+Custom teardown must call it explicitly. Loading and teardown are UI-thread-only.
+
+Failure cleanup removes entities constructed by the failed load and their aliases.
+It does not restore overwritten preexisting aliases or cached definitions, or undo
+external callback side effects. Broad raw-property validation, allocation-failure
+coverage, automatic hot reload, and other widget property-order fixes remain outside
+this patch. This establishes the tested subset, not universal parser robustness.
 
 ## Local execution on 2026-11-01
 

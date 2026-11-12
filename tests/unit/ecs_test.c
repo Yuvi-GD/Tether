@@ -17,16 +17,16 @@ int main() {
     tether_ecs_init();
     tether_registry_init();
     
-    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy));
-    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_HIERARCHY, 0);
-    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_LAYOUT, 0);
-    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_VISUAL, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy), NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_HIERARCHY, 0, NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_LAYOUT, 0, NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_VISUAL, 0, NULL);
     
     printf("Calling tether_ecs_init_roots...\n");
     tether_ecs_init_roots();
     printf("Roots initialized.\n");
     
-    tether_ecs_register_component_static(COMPONENT_TRANSFORM, sizeof(Transform));
+    tether_ecs_register_component_static(COMPONENT_TRANSFORM, sizeof(Transform), NULL);
     
     printf("[1] Spawning 10,000 entities with Transform components...\n");
     Tether_GUID entities[10000];
@@ -83,15 +83,14 @@ int main() {
     
     printf("[4] Testing Custom Component Registration...\n");
     typedef struct { int hp; int mp; } CustomStats;
-    int custom_id = tether_ecs_register_component_dynamic(sizeof(CustomStats));
+    CustomStats def_stats = { 100, 50 };
+    int custom_id = tether_ecs_register_component_dynamic(sizeof(CustomStats), &def_stats);
     if (custom_id < TETHER_COMPONENT_MAX) {
         printf("    [FAILED] Custom component ID should be >= 32 (got %d)\n", custom_id);
         valid = false;
     } else {
         Tether_GUID p1 = tether_ecs_create_entity();
         CustomStats* stats = (CustomStats*)tether_ecs_add_component(p1, custom_id);
-        stats->hp = 100;
-        stats->mp = 50;
         CustomStats* check = (CustomStats*)tether_ecs_get_component(p1, custom_id);
         if (check->hp != 100 || check->mp != 50) {
             printf("    [FAILED] Custom component data mismatch\n");
@@ -102,7 +101,7 @@ int main() {
     
     printf("[5] Testing Hierarchy Doubly-Linked List and Cascading Delete...\n");
     // Ensure TETHER_COMPONENT_HIERARCHY is registered
-    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy)); // 3 is TETHER_COMPONENT_HIERARCHY
+    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy), NULL); // 3 is TETHER_COMPONENT_HIERARCHY
     
     Tether_GUID parent = tether_ecs_create_entity();
     Tether_GUID c1 = tether_ecs_create_entity();

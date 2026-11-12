@@ -27,6 +27,21 @@ static struct {
     Tether_GUID inner_clip;
     Tether_GUID clipped_shape;
     Tether_GUID yaml_root;
+    Tether_GUID arrow;
+    Tether_GUID reference_arrow;
+    Tether_GUID wrap_panel;
+    Tether_GUID resize_text;
+    Tether_GUID capped_text;
+    Tether_GUID row_panel;
+    Tether_GUID row;
+    Tether_GUID row_label;
+    Tether_GUID row_button;
+    Tether_GUID row_next;
+    float row_wide_height;
+    float arrow_x;
+    float arrow_y;
+    float resize_height;
+    unsigned capped_lines;
     float original_x;
     float original_y;
     float original_slot_x;
@@ -56,7 +71,7 @@ static bool write_scene(const char *contents) {
 }
 
 static Tether_GUID panel(Tether_GUID parent, float width, float height, float x, float y) {
-    Tether_GUID entity = tether_widget_create_panel(parent);
+    Tether_GUID entity = tether_ui_panel(parent);
     tether_ui_set_size(entity, width, height);
     Tether_AnchorSlot *slot = tether_ecs_get_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
     slot->anchor_min = (Tether_Vec2){0, 0};
@@ -94,23 +109,86 @@ static bool first_vertex(Tether_GUID entity, float *x, float *y) {
     return true;
 }
 
+static unsigned wrapped_line_count(Tether_GUID entity) {
+    Tether_Text *text = tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
+    uint8_t pipeline;
+    uint32_t count = 0;
+    Chitra_TextVertex *vertices = text ? chitra_table_get_vertices(text->handle, &pipeline, &count) : NULL;
+    if (!vertices || pipeline != CHITRA_PIPELINE_TEXT || count < 4) return 0;
+
+    unsigned lines = 1;
+    float previous_y = vertices[0].pos[1];
+    for (uint32_t i = 20; i < count; i += 20) {
+        if (fabsf(vertices[i].pos[1] - previous_y) > 1.0f) {
+            ++lines;
+            previous_y = vertices[i].pos[1];
+        }
+    }
+    return lines;
+}
+
 static void init(void) {
     tether_font_register("Roboto-Regular", test.font_path);
     Tether_GUID stage = panel(tether_ecs_get_main_root(), 800, 600, 0, 0);
     tether_widget_show(stage);
     Tether_GUID root = panel(stage, 400, 100, 0, 0);
     test.root = root;
-    test.text = tether_ui_text(root, "Tether validation", 24, (Tether_Color){255, 255, 255, 255});
+    test.text = tether_ui_text(root);
+    tether_ui_set_text(test.text, "Tether validation");
+    tether_ui_set_text_size(test.text, 24.0f);
+    tether_ui_set_text_color(test.text, (Tether_Color){255, 255, 255, 255});
     tether_ui_set_text_align(test.text, TETHER_ALIGN_START, TETHER_ALIGN_START);
     tether_widget_show(root);
 
+    test.arrow = tether_ui_text(stage);
+    tether_ui_set_text(test.arrow, "<");
+    tether_ui_set_text_size(test.arrow, 24.0f);
+    Tether_RenderTransform *arrow_transform =
+        tether_ecs_get_component(test.arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
+    arrow_transform->rotation_deg = 180.0f;
+    tether_widget_show(test.arrow);
+    test.reference_arrow = tether_ui_text(stage);
+    tether_ui_set_text(test.reference_arrow, "<");
+    tether_ui_set_text_size(test.reference_arrow, 24.0f);
+    tether_widget_show(test.reference_arrow);
+
+    test.wrap_panel = panel(stage, 380, 160, 0, 410);
+    test.resize_text = tether_ui_text(test.wrap_panel);
+    tether_ui_set_text(test.resize_text, "alpha alpha alpha alpha alpha alpha");
+    tether_ui_set_text_size(test.resize_text, 20.0f);
+    test.capped_text = tether_ui_text(test.wrap_panel);
+    tether_ui_set_text(test.capped_text, "alpha alpha alpha alpha alpha alpha");
+    tether_ui_set_text_size(test.capped_text, 20.0f);
+    Tether_Text *capped_text = tether_ecs_get_component(test.capped_text, TETHER_COMPONENT_TEXT);
+    capped_text->wrap_width = 220.0f;
+    tether_widget_show(test.wrap_panel);
+
+    test.row_panel = panel(stage, 380, 200, 0, 0);
+    tether_ui_set_container(test.row_panel, TETHER_FLOW_COLUMN);
+    test.row = tether_widget_create_container(test.row_panel);
+    tether_ui_set_container(test.row, TETHER_FLOW_ROW);
+    Tether_GUID column = tether_widget_create_container(test.row);
+    tether_ui_set_container(column, TETHER_FLOW_COLUMN);
+    tether_ui_set_flex(column, 1.0f);
+    test.row_label = tether_ui_text(column);
+    tether_ui_set_text(test.row_label, "alpha alpha alpha alpha alpha alpha");
+    tether_ui_set_text_size(test.row_label, 20.0f);
+    test.row_button = tether_ui_button(column);
+    tether_ui_set_flex(test.row_button, 0.0f);
+    tether_ui_set_size(test.row_button, 0.0f, 36.0f);
+    test.row_next = tether_ui_text(test.row_panel);
+    tether_ui_set_text(test.row_next, "Next row");
+    tether_widget_show(test.row_panel);
+
     test.hidden_parent = panel(stage, 300, 100, 0, 250);
-    test.hidden_text = tether_ui_text(test.hidden_parent, "Hidden original", 24,
-                                      (Tether_Color){255, 255, 255, 255});
+    test.hidden_text = tether_ui_text(test.hidden_parent);
+    tether_ui_set_text(test.hidden_text, "Hidden original");
+    tether_ui_set_text_size(test.hidden_text, 24.0f);
+    tether_ui_set_text_color(test.hidden_text, (Tether_Color){255, 255, 255, 255});
     tether_widget_set_visibility(test.hidden_parent, TETHER_HIDDEN);
     tether_widget_show(test.hidden_parent);
 
-    test.outer_clip = panel(stage, 200, 100, 500, 30);
+    test.outer_clip = panel(stage, 200, 100, 500.25f, 30.25f);
     Tether_Overflow *overflow =
         tether_ecs_add_component(test.outer_clip, TETHER_COMPONENT_OVERFLOW);
     *overflow = (Tether_Overflow){TETHER_OVERFLOW_CLIP, TETHER_OVERFLOW_CLIP};
@@ -133,14 +211,33 @@ static void update(void) {
         return;
     }
     if (test.frame == 1) {
+        Tether_AnchorSlot *wrap = tether_ecs_get_component(test.wrap_panel, TETHER_COMPONENT_ANCHOR_SLOT);
+        wrap->offset.right = -75.0f;
+        tether_ecs_add_component(test.wrap_panel, TETHER_COMPONENT_DIRTY_LAYOUT);
+        Tether_AnchorSlot *row_anchor = tether_ecs_get_component(test.row_panel, TETHER_COMPONENT_ANCHOR_SLOT);
+        row_anchor->offset.right = -75.0f;
+        tether_ecs_add_component(test.row_panel, TETHER_COMPONENT_DIRTY_LAYOUT);
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_VISUAL);
         tether_ui_set_text_align(test.text, TETHER_ALIGN_CENTER, TETHER_ALIGN_CENTER);
         tether_ui_set_text(test.hidden_text, "Changed while hidden");
     } else if (test.frame == 2) {
+        Tether_AnchorSlot *wrap = tether_ecs_get_component(test.wrap_panel, TETHER_COMPONENT_ANCHOR_SLOT);
+        wrap->offset.right = -380.0f;
+        tether_ecs_add_component(test.wrap_panel, TETHER_COMPONENT_DIRTY_LAYOUT);
+        Tether_AnchorSlot *row_anchor = tether_ecs_get_component(test.row_panel, TETHER_COMPONENT_ANCHOR_SLOT);
+        row_anchor->offset.right = -380.0f;
+        tether_ecs_add_component(test.row_panel, TETHER_COMPONENT_DIRTY_LAYOUT);
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_VISUAL);
         tether_widget_set_visibility(test.hidden_parent, TETHER_VISIBLE);
         Tether_Text *text = tether_ecs_get_component(test.text, TETHER_COMPONENT_TEXT);
         text->wrap_width = 100;
         tether_ui_set_text(test.text, "Tether validation wraps across several lines");
     } else if (test.frame == 3) {
+        Tether_RenderTransform *arrow_transform =
+            tether_ecs_get_component(test.arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
+        arrow_transform->rotation_deg = -90.0f;
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_VISUAL);
         Tether_AnchorSlot *anchor =
             tether_ecs_get_component(test.root, TETHER_COMPONENT_ANCHOR_SLOT);
         anchor->offset.left = 30;
@@ -159,13 +256,40 @@ static void update(void) {
         test.yaml_root = tether_yaml_load(test.yaml_path, TETHER_INVALID_GUID);
         check(tether_ecs_is_valid(test.yaml_root), "reload modified YAML");
         Tether_GUID new_text = tether_registry_find_entity("ReloadText");
-        const char *value = tether_ecs_get_text_string(new_text);
+        const char *value = tether_ui_get_text(new_text);
         check(value && !strcmp(value, "after"), "reload uses modified content");
         check(write_scene("- Panel: [unterminated"), "write invalid YAML");
         check(tether_yaml_load(test.yaml_path, TETHER_INVALID_GUID) == TETHER_INVALID_GUID,
               "invalid YAML is rejected");
         check(tether_ecs_is_valid(test.yaml_root), "failed load preserves existing scene");
         apply_mode();
+    } else if (test.frame == 4) {
+        Tether_RenderTransform *arrow_transform =
+            tether_ecs_get_component(test.arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
+        arrow_transform->rotation_deg = 0.0f;
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_VISUAL);
+    } else if (test.frame == 5) {
+        Tether_RenderTransform *transform = tether_ecs_get_component(test.arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
+        transform->rotation_deg = 45.0f;
+        transform->scale_x = 2.0f;
+        transform->scale_y = 0.5f;
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_VISUAL);
+    } else if (test.frame == 6) {
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_VISUAL);
+    } else if (test.frame == 7) {
+        Tether_RenderTransform *transform = tether_ecs_get_component(test.arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
+        transform->translation_x = 15.0f;
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_VISUAL);
+    } else if (test.frame == 8) {
+        Tether_RenderTransform *transform = tether_ecs_get_component(test.arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
+        transform->translation_x = 0.0f;
+        transform->rotation_deg = 0.0f;
+        transform->scale_x = 1.0f;
+        transform->scale_y = 1.0f;
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
+        tether_ecs_add_component(test.arrow, TETHER_COMPONENT_DIRTY_VISUAL);
     }
 }
 
@@ -174,6 +298,77 @@ static void after_frame(void) {
         return;
     }
     float x = 0, y = 0;
+    if (test.frame <= 2) {
+        Tether_SlotTransform *row = tether_ecs_get_component(test.row, TETHER_COMPONENT_SLOT_TRANSFORM);
+        Tether_SlotTransform *label = tether_ecs_get_component(test.row_label, TETHER_COMPONENT_SLOT_TRANSFORM);
+        Tether_SlotTransform *button = tether_ecs_get_component(test.row_button, TETHER_COMPONENT_SLOT_TRANSFORM);
+        Tether_SlotTransform *next = tether_ecs_get_component(test.row_next, TETHER_COMPONENT_SLOT_TRANSFORM);
+        check(row && label && button && next &&
+              button->y >= label->y + label->height - 0.1f &&
+              next->y >= button->y + button->height - 0.1f,
+              "wrapped row reserves space for its controls and following row");
+        if (test.frame == 0 && row) test.row_wide_height = row->height;
+        if (test.frame == 1) check(row && row->height > test.row_wide_height,
+                                   "row grows when its label wraps");
+        if (test.frame == 2) check(row && fabsf(row->height - test.row_wide_height) < 0.1f,
+                                   "row shrinks after widening");
+        unsigned lines = wrapped_line_count(test.resize_text);
+        check(test.frame == 1 ? lines > 1 : lines == 1,
+              "text reflows when its parent narrows and widens");
+        Tether_Text *wrapped = tether_ecs_get_component(test.resize_text, TETHER_COMPONENT_TEXT);
+        if (test.frame == 0 && wrapped) test.resize_height = wrapped->intrinsic_size.y;
+        if (test.frame == 1) check(wrapped && wrapped->intrinsic_size.y > test.resize_height,
+                                   "wrapped intrinsic height follows the available width");
+        if (test.frame == 2) check(wrapped && fabsf(wrapped->intrinsic_size.y - test.resize_height) < 0.1f,
+                                   "intrinsic height recovers when width increases");
+        unsigned capped_lines = wrapped_line_count(test.capped_text);
+        if (test.frame == 0) {
+            test.capped_lines = capped_lines;
+            check(capped_lines > 1, "explicit wrap limit applies at wide width");
+        } else {
+            if (test.frame == 1 && capped_lines <= test.capped_lines) {
+                Tether_SlotTransform *slot = tether_ecs_get_component(test.capped_text, TETHER_COMPONENT_SLOT_TRANSFORM);
+                fprintf(stderr, "Capped lines: %u -> %u, width %.1f\n", test.capped_lines,
+                        capped_lines, slot ? slot->width : -1.0f);
+            }
+            check(test.frame == 1 ? capped_lines > test.capped_lines : capped_lines == test.capped_lines,
+                  "explicit wrap limit follows a narrower parent and recovers");
+        }
+    }
+    float arrow_x = 0, arrow_y = 0;
+    check(first_vertex(test.arrow, &arrow_x, &arrow_y), "rotated arrow has glyph geometry");
+    if (test.frame == 0 || test.frame == 3 || test.frame == 5) {
+        test.arrow_x = arrow_x;
+        test.arrow_y = arrow_y;
+        if (test.frame == 0 || test.frame == 3) {
+            float reference_x = 0, reference_y = 0;
+            Tether_SlotTransform *slot = tether_ecs_get_component(test.arrow, TETHER_COMPONENT_SLOT_TRANSFORM);
+            bool has_reference = first_vertex(test.reference_arrow, &reference_x, &reference_y);
+            if (has_reference && slot) {
+                float pivot_x = slot->x + slot->width * 0.5f;
+                float pivot_y = slot->y + slot->height * 0.5f;
+                float expected_x = test.frame == 0 ? 2.0f * pivot_x - reference_x
+                                                  : pivot_x + reference_y - pivot_y;
+                float expected_y = test.frame == 0 ? 2.0f * pivot_y - reference_y
+                                                  : pivot_y - reference_x + pivot_x;
+                check(fabsf(arrow_x - expected_x) < 0.1f && fabsf(arrow_y - expected_y) < 0.1f,
+                      "arrow geometry matches its requested absolute angle");
+            } else {
+                check(false, "arrow reference geometry is available");
+            }
+        }
+    } else if (test.frame == 4 || test.frame == 8) {
+        float reference_x = 0, reference_y = 0;
+        check(first_vertex(test.reference_arrow, &reference_x, &reference_y) &&
+              fabsf(arrow_x - reference_x) < 0.1f && fabsf(arrow_y - reference_y) < 0.1f,
+              "returning to identity restores original glyph geometry");
+    } else if (test.frame == 7) {
+        check(fabsf(arrow_x - (test.arrow_x + 15.0f)) < 0.1f &&
+              fabsf(arrow_y - test.arrow_y) < 0.1f, "moving transformed text preserves its geometry");
+    } else {
+        check(fabsf(arrow_x - test.arrow_x) < 0.1f && fabsf(arrow_y - test.arrow_y) < 0.1f,
+              "rotated arrow does not accumulate transforms between frames");
+    }
     check(first_vertex(test.text, &x, &y), "real font produces text geometry");
     Tether_Text *text = tether_ecs_get_component(test.text, TETHER_COMPONENT_TEXT);
     Tether_SlotTransform *bounds =
@@ -217,9 +412,9 @@ static void after_frame(void) {
     if (test.frame == 0 && clip) {
         fprintf(stderr, "Clip id %u: %d,%d %dx%d\n", clip_id, clip->x, clip->y, clip->w, clip->h);
     }
-    check(clip && clip->x == 550 && clip->y == 50 && clip->w == 150 && clip->h == 80,
+    check(clip && clip->x == 550 && clip->y == 50 && clip->w == 151 && clip->h == 81,
           "nested clips intersect before graphics submission");
-    if (++test.frame == 5) {
+    if (++test.frame == 9) {
         test.finished = true;
         chitra_quit();
     }
