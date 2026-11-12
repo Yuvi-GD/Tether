@@ -14,7 +14,7 @@ This degradation is not the fault of developers; it is the inevitable consequenc
 - **Pure Immediate-Mode Toolkits**: Ergonomically elegant debug UI (Dear ImGui) that cannot enter low-power idle states due to 100% continuous CPU/GPU polling, struggling with complex multi-pass layouts.
 - **Proprietary Game Engine HUDs**: Highly optimized game UI toolkits (Unreal Slate, Unity UI) permanently locked behind massive proprietary commercial engines.
 
-Tether was created to resolve this impasse by establishing a new foundation: a data-oriented, zero-allocation C99 UI micro-kernel that delivers modern declarative ergonomics without the memory bloat, latency spikes, or battery drain of legacy frameworks.
+Tether was created to resolve this impasse by establishing a data-oriented C99 UI micro-kernel that combines retained UI structure, two-pass layout, and optional declarative authoring without browser bloat or deep OOP class trees (`v0.0.3-preview` lays the desktop C99 foundation while `.tbc` bytecode, Vinyasa, and embedded tuning remain on the [roadmap](10_roadmap_and_community.md)).
 
 ```mermaid
 flowchart TD
@@ -24,8 +24,8 @@ flowchart TD
         ImGui["Pure Immediate Mode (Dear ImGui)\n(Continuous 100% CPU/GPU Polling, Awkward Complex Layouts)"]
     end
 
-    subgraph TheTetherSolution["The Tether Solution: A Data-Oriented UI Kernel"]
-        Tether["Tether UI Kernel\n(Pure C99, Data-Oriented ECS, Zero-Allocation Steady State,\nReactive Invalidation, Kilobyte-Scale Data Arrays,\nTiny Binary Footprint, Zero Idle CPU)"]
+    subgraph TheTetherSolution["The Tether Architecture: A Data-Oriented UI Kernel"]
+        Tether["Tether UI Kernel\n(C99 Core, Data-Oriented ECS, Retained Dirty Tags,\nTwo-Pass Layout, Decoupled Backends, Roadmap Embedded & Zero-Alloc Targets)"]
     end
 
     Web -->|Replaced by| Tether
@@ -119,22 +119,22 @@ However, these frameworks suffer from a fatal limitation: **they are proprietary
 
 Tether was engineered from first principles to occupy the critical **missing middle** of UI architecture:
 
-| UI Architecture Dimension | Web Stack (Electron / DOM) | Legacy OOP (Qt / wxWidgets) | Immediate Mode (Dear ImGui) | Tether UI Kernel |
+| UI Architecture Dimension | Web Stack (Electron / DOM) | Legacy OOP (Qt / wxWidgets) | Immediate Mode (Dear ImGui) | Tether UI Kernel (Target Architecture) |
 | :--- | :---: | :---: | :---: | :---: |
-| **Language & Standard** | HTML / CSS / JavaScript (V8) | C++ with non-standard MOC | C++ | **Pure ISO C99 ABI** |
+| **Language & Standard** | HTML / CSS / JavaScript (V8) | C++ with non-standard MOC | C++ | **C99 Core & Scalar ABI** |
 | **Memory Strategy** | Garbage-collected V8 Heap | Fragmented C++ Heap Objects | Stack Buffers (Frame-allocated) | **Data-Oriented ECS Contiguous Pools** |
-| **Idle Power Consumption** | High (Background Event Loops) | Low (Event-driven) | Continuous 100% CPU/GPU Polling | **Zero Idle CPU (Reactive Invalidation)** |
-| **Working Set Memory** | $200\text{ MB} - 500+\text{ MB}$ | $15\text{ MB} - 50\text{ MB}$ | $< 5\text{ MB}$ | **Kilobyte-Scale Core Data (Sub-64KB SRAM)** |
-| **Layout Model** | CSS Flex / Grid / DOM Reflow | Manual Layout Classes | Single-pass procedural | **2-Pass Solver / Vinyasa Architecture** |
-| **Animation Impact** | Reflows parent/sibling DOM | Reflows parent layout | Re-executes full loop | **Zero Reflow (RenderTransform GPU only)** |
-| **Language Interoperability** | Complex WebSockets / IPC | Complex C++ Wrappers | C-shim wrappers (cimgui) | **Direct Native C ABI (Scalar GUIDs)** |
-| **Hardware Portability** | Desktop / Mobile Browsers only | Desktop / Mobile OS only | Desktop / Console Games | **Microcontrollers to Spatial VR** |
+| **Idle Power Consumption** | High (Background Event Loops) | Low (Event-driven) | Continuous 100% CPU/GPU Polling | **Retained Dirty Flags (`tether_did_draw`); Zero-Idle Goal** |
+| **Working Set Memory** | $200\text{ MB} - 500+\text{ MB}$ | $15\text{ MB} - 50\text{ MB}$ | $< 5\text{ MB}$ | **Compact ECS Arrays (Sub-64KB SRAM Target)** |
+| **Layout Model** | CSS Flex / Grid / DOM Reflow | Manual Layout Classes | Single-pass procedural | **2-Pass Solver (Planned Vinyasa Integration)** |
+| **Animation Impact** | Reflows parent/sibling DOM | Reflows parent layout | Re-executes full loop | **Separated `SlotTransform` / `RenderTransform` (Text rebuilds glyphs)** |
+| **Language Interoperability** | Complex WebSockets / IPC | Complex C++ Wrappers | C-shim wrappers (cimgui) | **Native C ABI (Scalar GUIDs; Bindings on Roadmap)** |
+| **Hardware Portability** | Desktop / Mobile Browsers only | Desktop / Mobile OS only | Desktop / Console Games | **Desktop Preview (`v0.0.3-preview`) -> MCU/VR Roadmap** |
 
-### What Tether Delivers
-1. **The ergonomics of declarative UI** (via clean YAML markup or fluent C99 builder APIs) without the memory bloat, GC pauses, or multi-hundred-megabyte runtimes of the Web.
-2. **The raw performance and cache locality of data-oriented systems programming**, completely avoiding the fragile base classes and pointer-chasing heap allocations of legacy C++ frameworks.
-3. **The zero-power battery life of true retained-mode invalidation**, skipping layout and rendering entirely when the screen is static, while offering a `VOLATILE` continuous update mode when real-time animation is needed.
-4. **An open, standalone C99 micro-kernel** that any developer can embed into any game engine, embedded device, or desktop utility with zero proprietary lock-in.
+### What Tether Pursues
+1. **Declarative + Imperative Ergonomics** via optional YAML scenes and C99 widget APIs backed by shared ECS pools, without browser-engine overhead.
+2. **Data-Oriented Cache Locality** over flat C component arrays instead of pointer-chasing OOP inheritance graphs.
+3. **Retained Dirty-Tag Invalidation** that skips unnecessary updates (`tether_did_draw() == false`) when static while supporting `VOLATILE` continuous updates (moving toward measurable low-power idle).
+4. **An Open C99 Micro-Kernel** behind a decoupled `Tether_Backend` contract that can grow from desktop tools into custom game loops and embedded devices.
 
 ---
 

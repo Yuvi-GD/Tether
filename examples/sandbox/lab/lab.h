@@ -3,7 +3,7 @@
 
 #include "tether/core/tether_ecs.h"
 
-void lab_register(void);
+bool lab_bind(void);
 void lab_update(void);
 void lab_cleanup(void);
 bool lab_has_geometry(void);

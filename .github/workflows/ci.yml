@@ -20,7 +20,7 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON
       - name: Build
-        run: cmake --build build --config ${{ matrix.config }} --target tether tether_sandbox tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test --parallel 4
+        run: cmake --build build --config ${{ matrix.config }} --target tether tether_sandbox tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
       - name: Correctness tests
         run: ctest --test-dir build -C ${{ matrix.config }} -L correctness --output-on-failure --no-tests=error
       - uses: actions/upload-artifact@v7
@@ -41,7 +41,7 @@ jobs:
       - name: Configure instrumented headless validation
         run: cmake -S . -B build-asan -DTETHER_ENABLE_ASAN=ON -DTETHER_BUILD_SHARED=OFF -DTETHER_BUILD_EXAMPLES=OFF -DTETHER_BUILD_RUNNERS=OFF -DTETHER_BUILD_TESTS=ON -DTETHER_ENABLE_INSTALL=OFF
       - name: Build
-        run: cmake --build build-asan --config Debug --target tether_test tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test --parallel 4
+        run: cmake --build build-asan --config Debug --target tether_test tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
       - name: Correctness tests under AddressSanitizer
         run: ctest --test-dir build-asan -C Debug -L correctness --output-on-failure --no-tests=error
       - uses: actions/upload-artifact@v7

@@ -9,14 +9,14 @@
 In Tether, user interface entities do not exist as heavyweight object-oriented class instances or DOM nodes. Instead, every visual element, layout container, interactive control, and structural node is represented by a lightweight 64-bit entity identifier (`Tether_GUID`) attached to flat, typed component payloads stored within the ECS kernel.
 
 This chapter details:
-1. **Base Node Components**: The foundational data structures that constitute an element in the scene graph.
+1. **Base Node Components**: The foundational data structures that constitute an element in the scene graph, initialized automatically from `default_data` templates.
 2. **Separation of Layout and Presentation Transforms**: Why physical layout boundaries (`SlotTransform`) and visual GPU transformations (`RenderTransform`) are decoupled into separate components.
 3. **Scene Tree Hierarchy (`Tether_Hierarchy`)**: Doubly-linked tree topologies stored in contiguous memory, $O(1)$ reparenting, and cascading deletion.
 4. **Visibility System (`Tether_Visibility`)**: Local vs. computed visibility states (`VISIBLE`, `HIDDEN`, `COLLAPSED`) and their impact on layout participation and rendering.
-5. **Interactive Hit-Testing and Input State Machine (`Tether_Interactable`)**: Spatial culling, hit-behavior policies, hover/pressed state tracking, and automatic vs. manual color transition modes.
-6. **Reactive Invalidation Tags**: Zero-payload ECS tag components (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`, `DIRTY_TEXT_CONTENT`, `VOLATILE`) coordinating targeted system execution.
-7. **The Engine Update Cycle**: The sequential 6-stage execution pipeline inside `tether_engine_frame()`.
-8. **Realization and Unrealization Lifecycle**: Bridging ECS entity lifetimes with GPU backend rendering handles.
+5. **Interactive Hit-Testing, State & Styling (`Tether_Interactable`, `Tether_Shape`)**: Spatial culling, hit-behavior policies, enabled gating (`is_enabled`), hover/press/focus state tracking, and widget-driven `active_bg`/`active_border` overrides.
+6. **Semantic UI State & Position Modes**: Pure ECS state components (`VALUE_RANGE`, `BOOL_STATE`, `SELECTION_STATE`) and CSS `Tether_PositionMode` (`RELATIVE`, `ABSOLUTE`, `FIXED`).
+7. **Reactive Invalidation Tags**: Zero-payload ECS tag components (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`, `DIRTY_TEXT_CONTENT`, `VOLATILE`) coordinating targeted system execution.
+8. **The Engine Update Cycle and Realization Lifecycle**: Sequential execution inside `tether_engine_frame()` and GPU backend handle management.
 
 ---
 
@@ -31,10 +31,10 @@ Tether classifies every component into a clear three-tier taxonomy that separate
    Defined from `TETHER_CORE_COMPONENTS_MAX` to `TETHER_SYSTEM_COMPONENTS_MAX - 1`. These components provide visual styling, typography, container slots, pointer interaction state, overflow clipping, and Small String Optimization (SSO) storage.
    *Together, Tier 1 and Tier 2 comprise the Native Components of Tether (`0` to `TETHER_COMPONENT_MAX - 1`).*
 3. **Tier 3: Custom Application Components (Static & Dynamic)**:
-   - **Static Custom Components**: Defined with fixed IDs by compiled C applications via `tether_ecs_register_component_static()`.
-   - **Dynamic Custom Components**: Registered at runtime by external systems, dynamic plugins, or scripting languages via `tether_ecs_register_component_dynamic()`. These allocate monotonic IDs starting at `TETHER_COMPONENT_MAX` and up, sharing the exact same cache-coherent dense arrays as native components.
+   - **Static Custom Components**: Defined with fixed IDs by compiled C applications via `tether_ecs_register_component_static(id, size, default_data)`.
+   - **Dynamic Custom Components**: Registered at runtime by external systems, dynamic plugins, or scripting languages via `tether_ecs_register_component_dynamic(size, default_data)`. These allocate monotonic IDs starting at `TETHER_COMPONENT_MAX` and up, sharing the exact same cache-coherent dense arrays as native components. Both paths copy `default_data` automatically when `tether_ecs_add_component()` attaches the component (or zero-initialize if `default_data` is `NULL`).
 
-When a UI element is instantiated via the widget subsystem (e.g., `tether_widget_create_base()`), the kernel allocates a base suite of core and system components that establish its spatial, hierarchical, visual, and interactive properties:
+When a UI element is instantiated via the widget subsystem (e.g., `tether_widget_create_container()`), the kernel allocates a base suite of core components initialized from their registered `default_data` templates (`TETHER_DEFAULT_SLOT_TRANSFORM`, `TETHER_DEFAULT_LAYOUT`, `TETHER_DEFAULT_VISIBILITY`, `TETHER_DEFAULT_RENDER_TRANSFORM`, `TETHER_DEFAULT_OVERFLOW`, `TETHER_DEFAULT_ANCHOR_SLOT`, `TETHER_DEFAULT_FLEX_SLOT`):
 
 ```mermaid
 flowchart TD
@@ -47,15 +47,16 @@ flowchart TD
         V["Tether_Visibility\n(local_state, computed_state)"]
     end
 
-    subgraph LayoutBehavior["Layout & Constraints"]
-        L["Tether_Layout\n(flow, align, padding, gap, size_box)"]
+    subgraph LayoutBehavior["Layout, Slots & Semantic State"]
+        L["Tether_Layout\n(flow, position, align, padding, gap, size_box)"]
         AS["Tether_AnchorSlot\n(anchor_min, anchor_max, offset, pivot)"]
         FS["Tether_FlexSlot\n(margin, fill_ratio, align_self)"]
+        SEM["Semantic State\n(VALUE_RANGE, BOOL_STATE, SELECTION_STATE)"]
     end
 
     subgraph PresentationInput["Presentation & Interaction"]
-        SH["Tether_Shape\n(handle, bg_color, border_color, border_radius)"]
-        IN["Tether_Interactable\n(hovered, pressed, hit_behavior, color_modes)"]
+        SH["Tether_Shape\n(handle, bg/border, active_bg/active_border, radius)"]
+        IN["Tether_Interactable\n(is_enabled, hovered, pressed, focus, hit_behavior)"]
         OF["Tether_Overflow\n(x, y clip modes)"]
     end
 
@@ -75,20 +76,26 @@ flowchart TD
 
 ### Component Data Definitions (`include/tether/core/tether_components.h`)
 
-| Component ID | Struct Type | Payload Size | Domain Responsibility |
-| :--- | :--- | :---: | :--- |
-| `TETHER_COMPONENT_SLOT_TRANSFORM` | `Tether_SlotTransform` | 16 bytes | Output geometry calculated strictly by the layout solver. |
-| `TETHER_COMPONENT_RENDER_TRANSFORM` | `Tether_RenderTransform` | 32 bytes | Visual GPU offsets, scaling, rotation, pivot, and opacity. |
-| `TETHER_COMPONENT_HIERARCHY` | `Tether_Hierarchy` | 44 bytes | Contiguous doubly-linked scene graph topology. |
-| `TETHER_COMPONENT_VISIBILITY` | `Tether_Visibility` | 8 bytes | Local requested state and hierarchically resolved effective state. |
-| `TETHER_COMPONENT_LAYOUT` | `Tether_Layout` | 44 bytes | Parent-side layout container rules (Flow, Alignment, Gap, Padding). |
-| `TETHER_COMPONENT_ANCHOR_SLOT` | `Tether_AnchorSlot` | 40 bytes | Canvas container child-side anchoring and stretch rules. |
-| `TETHER_COMPONENT_FLEX_SLOT` | `Tether_FlexSlot` | 28 bytes | Flex container child-side margin, fill ratio, and self-alignment. |
-| `TETHER_COMPONENT_SHAPE` | `Tether_Shape` | 28 bytes | Vector geometry backend handle, fill color, and border styling. |
-| `TETHER_COMPONENT_TEXT` | `Tether_Text` | 40 bytes | Text handle, font sizing, alignment, wrapping, and intrinsic bounds. |
-| `TETHER_COMPONENT_INTERACTABLE` | `Tether_Interactable` | 16 bytes | Pointer hit behavior, input states, and transition color rules. |
-| `TETHER_COMPONENT_OVERFLOW` | `Tether_Overflow` | 8 bytes | Scissor clipping policies (`CLIP`, `VISIBLE`, `WRAP`, `SCROLL`). |
-| `TETHER_COMPONENT_IS_LEAF` | Tag Component | 0 bytes | Structural guard forbidding child attachment (e.g., text, icons). |
+| Component ID | Struct Type | Domain Responsibility |
+| :--- | :--- | :--- |
+| `TETHER_COMPONENT_SLOT_TRANSFORM` | `Tether_SlotTransform` | Output geometry calculated strictly by the layout solver (`16` bytes). |
+| `TETHER_COMPONENT_RENDER_TRANSFORM` | `Tether_RenderTransform` | Visual GPU offsets, scaling, rotation, pivot, and opacity. |
+| `TETHER_COMPONENT_HIERARCHY` | `Tether_Hierarchy` | Contiguous doubly-linked scene graph topology. |
+| `TETHER_COMPONENT_VISIBILITY` | `Tether_Visibility` | Local requested state and hierarchically resolved effective state. |
+| `TETHER_COMPONENT_OVERFLOW` | `Tether_Overflow` | Scissor clipping policies (`CLIP`, `VISIBLE`, `WRAP`, `SCROLL`). |
+| `TETHER_COMPONENT_INTERACTABLE` | `Tether_Interactable` | Pointer hit behavior, `is_enabled` gating, hover, press, and focus states. |
+| `TETHER_COMPONENT_LAYOUT` | `Tether_Layout` | Parent-side layout container rules (`flow`, `position`, alignment, gap, padding). |
+| `TETHER_COMPONENT_ANCHOR_SLOT` | `Tether_AnchorSlot` | Canvas container child-side anchoring and stretch rules. |
+| `TETHER_COMPONENT_FLEX_SLOT` | `Tether_FlexSlot` | Flex container child-side margin, fill ratio, and self-alignment. |
+| `TETHER_COMPONENT_SHAPE` | `Tether_Shape` | Vector handle, `bg_color`/`border_color`, transient `active_bg`/`active_border`, corner radii. |
+| `TETHER_COMPONENT_TEXT` | `Tether_Text` | Text handle, font sizing, alignment, wrapping, and intrinsic bounds. |
+| `TETHER_COMPONENT_VALUE_RANGE` | `Tether_ValueRange` | Scalar value, min, max, step (`16` bytes, 4 floats) backing Slider and ProgressBar. |
+| `TETHER_COMPONENT_BOOL_STATE` | `Tether_BoolState` | Boolean state (`value`) backing Toggle, Checkbox, and Collapsible. |
+| `TETHER_COMPONENT_SELECTION_STATE` | `Tether_SelectionState` | Index, count, and open flag backing Radio, SegmentedBar, List, Menu, Dropdown, and Switcher. |
+| `TETHER_COMPONENT_IS_LEAF` | Tag Component (`0` bytes) | Structural guard forbidding child attachment (e.g., text, icons). |
+
+> [!NOTE]
+> `Tether_Layout.position` supports `TETHER_POSITION_RELATIVE` (default flow/tree order), `TETHER_POSITION_ABSOLUTE`, and `TETHER_POSITION_FIXED`. Absolute and fixed subtrees render in a single-pass overlay Z-layer (`abs_z`) and clear `parent_clip_id = 0` so popups and dropdown menus escape parent card clipping cleanly.
 
 ---
 
@@ -161,7 +168,7 @@ $$\text{Origin } Y = \text{Final } Y + \text{Final } H \times \text{RenderTransf
 $$\text{Final Opacity} = \text{RenderTransform}.\text{opacity}$$
 
 ### Performance Implications
-- **Zero-Reflow Hover Animations**: Hovering over a card can scale it up ($1.1\times$), add a slight offset ($y - 4\text{px}$), and apply a subtle rotation. These values write directly to `RenderTransform` and tag the entity with `TETHER_COMPONENT_DIRTY_VISUAL`. The layout solver is completely bypassed, incurring zero CPU layout recalculation overhead.
+- **Separated Visual Offsets**: Visual offsets and opacity changes write to `RenderTransform` and mark `TETHER_COMPONENT_DIRTY_VISUAL`, avoiding layout invalidation unless text transforms (`DIRTY_TEXT_CONTENT`) also rebuild glyph geometry.
 - **Stable Sibling Layout**: Neighboring widgets retain their precise layout grid positions because `SlotTransform` remains undisturbed.
 - **Hardware-Accelerated Scissor Preservation**: Layout clipping boxes remain anchored to `SlotTransform`, while inner contents smoothly translate or rotate inside.
 
@@ -292,9 +299,9 @@ Tether optimizes invalidation based on state transition boundaries:
 
 ---
 
-## 6. Interactive Hit-Testing and Input State Machine (`Tether_Interactable`)
+## 6. Interactive Hit-Testing and State Styles (`Tether_Interactable`)
 
-User interaction is managed through the `Tether_Interactable` component:
+User interaction state is tracked by the `Tether_Interactable` component:
 
 ```c
 typedef enum {
@@ -304,64 +311,27 @@ typedef enum {
     TETHER_HIT_CHILD_ONLY = 3 /* Self is transparent; interactive children can receive hits */
 } Tether_HitBehavior;
 
-typedef enum {
-    TETHER_COLOR_MODE_NONE = 0,   /* No state color; static background color is preserved */
-    TETHER_COLOR_MODE_AUTO = 1,   /* Automatically adjusts luminance (+30 hover, -30 pressed) */
-    TETHER_COLOR_MODE_MANUAL = 2  /* Uses explicitly defined hover_color and press_color */
-} Tether_ColorMode;
-
 typedef struct Tether_Interactable {
-    uint8_t is_hovered;
-    uint8_t is_pressed;
-    uint8_t has_focus;
-    
+    bool is_enabled;
+    bool is_hovered;
+    bool is_pressed;
+    bool has_focus;
     Tether_HitBehavior hit_behavior;
-    
-    Tether_ColorMode hover_color_mode;
-    Tether_Color hover_color;
-    Tether_ColorMode press_color_mode;
-    Tether_Color press_color;
 } Tether_Interactable;
 ```
 
 > [!NOTE]
-> `Tether_Interactable` defines the per-entity interactive state, hit filter flags, and stateful color configurations. For the full hierarchical spatial query algorithm (`tether_hit_test`), reverse-DFS bounding-box culling, and input event dispatching pipeline, see [Chapter 09: Input and Event System](09_input_and_events.md).
+> `Tether_Interactable` defines per-entity enabled gating, interactive state flags, and hit filter policies. For the full spatial query algorithm (`tether_hit_test`), priority routing (`tether_input_set_route`), and input event dispatching pipeline, see [Chapter 09: Input and Event System](09_input_and_events.md).
 
-### Visual Color Resolution
-During rendering synchronization (`resolve_color()` in `src/engine/tether_engine.c`), the engine computes effective visual colors based on interaction state:
+### Active Visual Colors (`active_bg` / `active_border`)
+Rather than hardcoding color rules in the core renderer, widgets react to hover/press events and write transient highlight colors via `tether_ui_set_active_color()` / `tether_ui_reset_active_color()` (using helpers like `tether_ui_interaction_offset()` and `tether_ui_adjust_color()`). During visual synchronization (`apply_visual_rules()` in `src/engine/tether_engine.c`), the engine simply checks whether an active override has non-zero alpha:
 
 ```c
-static Tether_Color resolve_color(Tether_GUID entity, Tether_Color base_color) {
-    Tether_Interactable* i = tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
-    if (!i) return base_color;
-
-    if (i->is_pressed) {
-        if (i->press_color_mode == TETHER_COLOR_MODE_MANUAL) return i->press_color;
-        if (i->press_color_mode == TETHER_COLOR_MODE_AUTO) {
-            return (Tether_Color){
-                clamp_u8((int)base_color.r - 30),
-                clamp_u8((int)base_color.g - 30),
-                clamp_u8((int)base_color.b - 30),
-                base_color.a
-            };
-        }
-    }
-
-    if (i->is_hovered) {
-        if (i->hover_color_mode == TETHER_COLOR_MODE_MANUAL) return i->hover_color;
-        if (i->hover_color_mode == TETHER_COLOR_MODE_AUTO) {
-            return (Tether_Color){
-                clamp_u8((int)base_color.r + 30),
-                clamp_u8((int)base_color.g + 30),
-                clamp_u8((int)base_color.b + 30),
-                base_color.a
-            };
-        }
-    }
-
-    return base_color;
-}
+Tether_Color fill_c   = (shape->active_bg.a != 0)     ? shape->active_bg     : shape->bg_color;
+Tether_Color border_c = (shape->active_border.a != 0) ? shape->active_border : shape->border_color;
 ```
+
+When `tether_widget_set_enabled(entity, false)` is called, interaction state is cleared, `active_bg`/`active_border` are reset, opacity is dimmed recursively, and the widget subtree is skipped during hit-testing.
 
 ---
 
@@ -371,12 +341,13 @@ Tether utilizes zero-payload ECS tag components to implement a fine-grained reac
 
 ```c
 enum {
-    TETHER_COMPONENT_DIRTY_LAYOUT = 5,
+    TETHER_COMPONENT_DIRTY_LAYOUT = TETHER_CORE_COMPONENTS_MAX,
     TETHER_COMPONENT_DIRTY_VISUAL,
     TETHER_COMPONENT_DIRTY_HIERARCHY,
     TETHER_COMPONENT_DIRTY_TEXT_CONTENT,
     TETHER_COMPONENT_VOLATILE,
-    TETHER_CORE_COMPONENTS_MAX
+    TETHER_COMPONENT_IS_LEAF,
+    /* ... */
 };
 ```
 
@@ -386,17 +357,14 @@ enum {
 | :--- | :---: | :--- | :--- | :--- |
 | `TETHER_COMPONENT_DIRTY_LAYOUT` | 0 bytes | Size changes, visibility transitions to/from `COLLAPSED`, child addition/removal. | Layout Solver (`tether_layout_process_all`) | Cleared after layout, unless entity is `VOLATILE`. |
 | `TETHER_COMPONENT_DIRTY_VISUAL` | 0 bytes | Color updates, transform adjustments, hover/press state changes, visibility changes. | Visual Sync (`apply_visual_rules`) | Cleared after visual sync, unless entity is `VOLATILE`. |
-| `TETHER_COMPONENT_DIRTY_HIERARCHY` | 0 bytes | Reparenting, attachment, detachment, sibling reordering (`bring_to_front`). | Hierarchy Sync (`sync_hierarchy_recursive`) | Cleared unconditionally after Z-order and clip sync. |
-| `TETHER_COMPONENT_DIRTY_TEXT_CONTENT` | 0 bytes | `tether_ecs_set_text_string()`, font size modifications. | Visual Sync (`g_rhi.text->set_text`) | Cleared only when text is visible and successfully submitted to RHI. |
-| `TETHER_COMPONENT_VOLATILE` | 0 bytes | Interactive widgets, continuous animation controllers. | Dirty Flag Flush | **Never cleared** during frame flushes. |
+| `TETHER_COMPONENT_DIRTY_HIERARCHY` | 0 bytes | Reparenting, attachment, detachment, position mode change (`ABSOLUTE`/`FIXED`), sibling reordering (`bring_to_front`). | Hierarchy Sync (`sync_hierarchy_recursive`) | Cleared unconditionally after Z-order and clip sync. |
+| `TETHER_COMPONENT_DIRTY_TEXT_CONTENT` | 0 bytes | `tether_ui_set_text()`, `tether_ui_set_text_size()`, wrapping/transform changes. | Visual Sync (`g_rhi.text->set_text`) | Cleared only when text is visible and successfully submitted to RHI. |
+| `TETHER_COMPONENT_VOLATILE` | 0 bytes | Continuous animation controllers or explicit volatile containers. | Dirty Flag Flush | **Never cleared** during frame flushes. |
 
 ### The `VOLATILE` Optimization Pattern
-In typical retained-mode UI toolkits, running an animation or handling interactive button states requires marking entities dirty on every single tick. If an application forgets to mark an entity dirty, animations freeze or hover states lag by one frame.
-
-Tether solves this through the `TETHER_COMPONENT_VOLATILE` tag:
-- Attached to interactive widgets during instantiation (`tether_widget_create_base()`).
-- During Stage 5 of the frame execution cycle, the engine loops through the dirty pools. If an entity possesses `TETHER_COMPONENT_VOLATILE`, its `DIRTY_LAYOUT` or `DIRTY_VISUAL` tags are **retained across flushes**.
-- Interactive controls evaluate their hover and press color states every frame at native speed without requiring per-frame manual invalidation calls from the host application.
+In typical retained-mode UI toolkits, running a continuous per-frame animation requires marking entities dirty on every tick. Tether solves this through the `TETHER_COMPONENT_VOLATILE` tag:
+- Attached selectively to entities that must update continuously every frame (such as live telemetry views or shader/animation drivers). Standard interactive widgets (Button, Slider, Toggle, etc.) instead stay idle until input events or property setters tag `DIRTY_VISUAL` / `DIRTY_LAYOUT`, preserving zero-power idle execution.
+- During the dirty flush stage of `tether_engine_frame()`, any entity carrying `TETHER_COMPONENT_VOLATILE` retains its `DIRTY_LAYOUT` or `DIRTY_VISUAL` tags across flushes.
 
 ---
 
@@ -409,10 +377,10 @@ Rather than traversing deep object graphs or running dirty checks on every compo
 | Tag Component | Set By | Consumed By | Architectural Effect |
 | :--- | :--- | :--- | :--- |
 | `TETHER_COMPONENT_DIRTY_LAYOUT` | Widget dimension changes, visibility toggles to/from `COLLAPSED`, child additions/removals. | Layout Solver (`tether_layout_process_all`) | Signals that bounds must be re-evaluated. Recalculates `Tether_SlotTransform` across affected branches. |
-| `TETHER_COMPONENT_DIRTY_HIERARCHY` | Reparenting, attachment, detachment, sibling reordering (`bring_to_front`). | Hierarchy Synchronizer (`sync_hierarchy_recursive`) | Recomputes monotonic global draw orders (Z-index) and scissor clipping intersection rectangles. |
-| `TETHER_COMPONENT_DIRTY_VISUAL` | Color modifications, hover/press state changes, opacity updates, transform adjustments. | Visual Synchronizer (`apply_visual_rules`) | Pushes updated vector coordinates, corner radii, borders, and state colors to backend GPU handles. |
-| `TETHER_COMPONENT_DIRTY_TEXT_CONTENT` | String mutations via `tether_ecs_set_text_string()`, font size modifications. | Text Synchronizer (`g_rhi.text->set_text`) | Pushes updated text strings and wrapping constraints to the font rasterizer. |
-| `TETHER_COMPONENT_VOLATILE` | Widget creation (`tether_widget_create_base`), continuous animations. | Dirty Flag Flush | Exempts entities from having their dirty flags cleared during frame flushes. |
+| `TETHER_COMPONENT_DIRTY_HIERARCHY` | Reparenting, attachment, detachment, position mode transitions (`ABSOLUTE`/`FIXED`), sibling reordering (`bring_to_front`). | Hierarchy Synchronizer (`sync_hierarchy_recursive`) | Recomputes single-pass Z-orders (`current_z` / `abs_z`) and scissor clipping intersection rectangles. |
+| `TETHER_COMPONENT_DIRTY_VISUAL` | Color/active-color modifications, hover/press state changes, opacity updates, transform adjustments. | Visual Synchronizer (`apply_visual_rules`) | Pushes updated vector coordinates, corner radii, borders, and state colors to backend GPU handles. |
+| `TETHER_COMPONENT_DIRTY_TEXT_CONTENT` | String mutations via `tether_ui_set_text()`, font size modifications, text wrap changes. | Text Synchronizer (`g_rhi.text->set_text`) | Pushes updated text strings and wrapping constraints to the font rasterizer. |
+| `TETHER_COMPONENT_VOLATILE` | Continuous animations, live timers, telemetry plots. | Dirty Flag Flush | Exempts entities from having their dirty flags cleared during frame flushes. |
 
 ### Reverse Dense Array Flush Mechanics
 At the conclusion of each frame pass, the engine flushes dirty component arrays. Because removing a component invokes Swap-and-Pop (relocating the tail element into the vacated slot), forward iteration over a dense array while removing items causes elements to be skipped.

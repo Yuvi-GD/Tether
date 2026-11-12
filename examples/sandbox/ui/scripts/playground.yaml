@@ -1,0 +1,28 @@
+Panel:
+  flow: COLUMN
+  padding: 20
+  gap: [0, 12]
+  color: [42, 42, 46, 255]
+  border_radius: 8
+  children:
+    - Text:
+        string: "Hello from YAML"
+        font_size: 24
+        color: [235, 235, 235, 255]
+    - Text:
+        string: "Edit UI/playground.yaml and load it again to change this preview."
+        font_size: 16
+        color: [190, 190, 190, 255]
+    - Checkbox:
+        checked: true
+    - Toggle:
+        is_on: true
+    - Slider:
+        min: 0
+        max: 100
+        value: 40
+    - Button:
+        fill_ratio: 0
+        content:
+          - Text:
+              string: "A native Tether button"

@@ -8,8 +8,8 @@
 
 Software performance is not created by low-level micro-optimizations or compiler flags; it is the natural consequence of sound **architectural discipline**. When an architecture aligns with the physical realities of modern hardware, high performance, low latency, and deterministic memory behavior emerge effortlessly.
 
-Tether is built upon six foundational design principles:
-1. **Zero-Allocation Steady State**: Memory is never dynamically allocated or freed on the steady-state rendering and layout loops.
+Tether is built upon six foundational design principles (combining active `v0.0.3-preview` design with ongoing optimization targets):
+1. **Zero-Allocation Steady State (Target Discipline)**: Minimize and eliminate dynamic heap churn in steady-state frame, layout, and rendering paths.
 2. **Data-Oriented Architecture (DOD)**: Data is stored in contiguous memory pools optimized for CPU cache lines, completely rejecting classical OOP inheritance trees and vtable indirection.
 3. **Decoupling of Layout Space from Render Space**: Visual GPU transformations (animations, scales, rotations, fades) must never invalidate container layout bounds or trigger reflow storms.
 4. **Explicit Memory Ownership and Lifetime Discipline**: No opaque smart-pointer cycles, no unpredictable garbage collection pauses, and no dangling pointer crashes across language boundaries.
@@ -43,9 +43,9 @@ In high-performance systems programming, dynamic memory allocation (`malloc`, `f
 Tether enforces a strict rule across its layout and rendering pipelines:
 > **Once the UI scene is loaded and initialized, steady-state frame evaluation, layout recalculation, and rendering synchronization execute with zero dynamic heap allocations.**
 
-- **High-Water Mark Strategy**: Component arrays allocate memory during startup or capacity expansion using geometric growth. Once the peak population is accommodated, memory pools stabilize.
-- **In-Place Mutation**: When a label caption updates, a button transitions from hovered to pressed, or an animation interpolates a position, the engine updates values in-place within the contiguous dense arrays.
-- **Scratch Arenas for Transient Calculations**: Layout passes that require temporary intermediate scratch calculations (such as Vinyasa multi-reference resolution) utilize fixed transient scratch buffers that reset instantaneously at the conclusion of the pass without touching the OS allocator.
+- **High-Water Mark Strategy**: Component arrays allocate memory during startup or capacity expansion using geometric growth (`realloc`). Once the peak population is accommodated, pool capacities stabilize.
+- **In-Place Mutation & SSO**: When button hover/press state changes or animations update offsets, values mutate in-place inside contiguous dense arrays, and short strings stay inline in fixed SSO tiers.
+- **Scratch Arenas & Current Preview Note**: Future Vinyasa multi-reference resolution uses transient scratch buffers without touching the OS allocator. Note that in `v0.0.3-preview`, expanding pools and `Tether_TextDynamic` (>512B strings) still allocate on the C heap; complete zero-allocation auditing across frame paths is an active [roadmap](10_roadmap_and_community.md) goal.
 
 ---
 
@@ -129,9 +129,8 @@ flowchart TD
   Represents the absolute geometric rectangle allocated to the entity by the layout solver ($x, y, \text{width}, \text{height}$). It changes **only** when structural layout properties change (e.g., container padding, flex weights, explicit sizes, or text wrapping).
 - **`Tether_RenderTransform` (Render Space)**:
   Represents local visual offsets (translation $x/y$, scale $x/y$, rotation in degrees, render pivot, and opacity).
-  - High-frequency UI animations (such as hover bounce, button press squish, spinning loading indicators, or smooth fade-ins) mutate **only** `RenderTransform`.
-  - These transforms are passed directly to the GPU shader or drawing list during visual synchronization.
-  - **Zero CPU layout recalculation occurs**. The surrounding layout remains completely static and clean.
+  - High-frequency UI animations (hover effects, visual offsets, shape rotation/opacity) mutate **only** `RenderTransform` without marking parent or sibling `DIRTY_LAYOUT`.
+  - **Zero layout recalculation occurs** on surrounding containers (note: in `v0.0.3-preview`, transforming text elements rebuilds CPU-side glyph geometry via `DIRTY_TEXT_CONTENT`).
 
 ---
 
@@ -202,9 +201,9 @@ sequenceDiagram
     Note over Kernel: Native C code modifies and reparents YAML-declared widget directly
 ```
 
-1. **Identical Runtime Representation**: An entity spawned from YAML and an entity created via `tether_ui_button()` in C instantiate the exact same ECS components in the same dense arrays.
+1. **Identical Runtime Representation**: An entity spawned from YAML and an entity created via `tether_ui_button()` in C instantiate the exact same ECS components in the same dense arrays (`YAML` currently exposes a subset of C API properties).
 2. **Transparent Cross-Querying**: YAML entities assigned an `id:` are instantly queryable in C via `tether_registry_find_entity()`.
-3. **Seamless Hybrid Workflows**: Developers can design overall layout hierarchies in declarative YAML for rapid visual iteration, inject dynamic custom controls authored in C, and attach interactive logic in Python or Lua without artificial barriers.
+3. **Hybrid Workflows**: Developers can design overall layout hierarchies in declarative YAML for rapid iteration, inject dynamic controls in C, and extend future scripting bindings cleanly.
 
 ---
 

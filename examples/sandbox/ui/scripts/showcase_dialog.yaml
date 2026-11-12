@@ -1,0 +1,32 @@
+Panel:
+  id: "showcase_dialog"
+  color: [0, 0, 0, 175]
+  interactable: true
+  flow: COLUMN
+  content_align: CENTER
+  children:
+    - Panel:
+        flow: COLUMN
+        size_box: [480, 0]
+        padding: 24
+        gap: [0, 14]
+        color: [43, 43, 47, 255]
+        border_color: [100, 100, 100, 255]
+        border_width: 1
+        border_radius: 8
+        children:
+          - Text:
+              string: "A custom dialog"
+              font_size: 24
+              color: [235, 235, 235, 255]
+          - Text:
+              string: "This modal is composed in YAML from a backdrop, panel, text and button. The application binds its close action."
+              font_size: 16
+              wrap_width: 420
+              color: [195, 195, 195, 255]
+          - Button:
+              id: "showcase_dialog_close"
+              fill_ratio: 0
+              content:
+                - Text:
+                    string: "Close dialog"

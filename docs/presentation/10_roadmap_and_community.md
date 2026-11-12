@@ -14,16 +14,16 @@ This chapter outlines the phased architectural roadmap for Tether's future devel
 
 ```mermaid
 flowchart TD
-    subgraph NearTerm["Phase 1: Core Systems and Pipeline Maturity (v0.0.2 - v0.0.3 Preview)"]
+    subgraph NearTerm["Phase 1: Core Systems and Pipeline Maturity (v0.0.3 Preview - Next)"]
         Vinyasa["Vinyasa Layout Solver Integration\n(Stateless Scratch-Arena Constraint Engine)"]
         AOTCooker["Production Bytecode Pipeline (.tbc)\n(tether_cooker & Zero-Parse Interpreter)"]
         StrategyReg["Layout Strategy Registry\n(Container-Agnostic Extensibility: Grid/Wrap)"]
-        OverflowSystem["Overflow Control System\n(WRAP, CLIP, SCROLL, Kinetic Viewports)"]
+        OverflowSystem["Scroll Viewports & Kinetic Scrolling\n(Extending Clip & Wrap Overflow Policies)"]
     end
 
     subgraph MidTerm["Phase 2: Modern Aesthetics and Ecosystem Expansion (v0.0.4 - v0.0.5 Preview)"]
         Aesthetics["Modern UI Rendering Aesthetics\n(Per-Corner Radii, Shadows, Blur, Gradients, Lottie)"]
-        Prefabs["UI Prefabs & Composite Macros\n(Dropdown, Slider, Checkbox Template Expansion)"]
+        Prefabs["Extended Controls & Composite Views\n(Tables, Text Input, Virtualized Lists)"]
         OptInDrivers["Opt-in RHI & Pure CPU Software Rendering\n(TETHER_RENDER_SOFTWARE Blitter)"]
         Bindings["Official Language Bindings\n(Rust, Python, WebAssembly, Lua, Zig)"]
         Typography["HarfBuzz Unicode Typography\n(Complex Script Shaping & Bidirectional Text)"]
@@ -41,27 +41,29 @@ flowchart TD
 
 ---
 
-## 2. Non-Negotiable Architectural Invariants
+## 2. Long-Term Engineering Goals
 
-As Tether evolves, all future development, feature additions, and community pull requests must adhere to four permanent engineering invariants:
+These are areas for design and measurement, not guarantees of the current preview:
 
 ### 1. ISO C99 ABI Stability
-The core Tether engine will remain implemented in pure, portable ISO C99. The public C Application Binary Interface (ABI) will remain stable across minor versions. Entities will be addressed exclusively via 64-bit scalar values (`Tether_GUID`), ensuring zero-friction, safe interoperability across all programming languages without foreign function boundary memory corruption.
+Improve C portability and define an ABI stability policy when the public API is ready. Entity identifiers are 64-bit values; foreign-language bindings still need ownership and lifetime handling.
 
 ### 2. Zero Steady-State Heap Allocations
-Tether will never perform dynamic memory allocations (`malloc`, `free`, `realloc`) during steady-state frame execution loops, layout recalculations, or input dispatching. All internal buffers must grow geometrically during initialization into pre-allocated high-water pools.
+Reduce and measure allocations in frame, layout, and input paths. Runtime allocation behavior depends on the operation and current capacity.
 
 ### 3. Kilobyte-Scale Core State & Microcontroller Viability
-The core ECS state for typical UI hierarchies will remain measured in kilobytes, preserving bare-metal suitability on microcontrollers with sub-$64\text{ KB}$ SRAM constraints. Hardware-accelerated desktop builds will continue to isolate graphics driver memory (swapchains and font textures) strictly within the host operating system and GPU subsystem.
+Investigate compact memory configurations and microcontroller support. A sub-64 KB target has not been demonstrated.
 
 ### 4. Complete Parity Between Declarative Markup and Compiled Code
-Every capability expressible in declarative markup (YAML or future bytecode) must have direct, 100% equivalent parity in the compiled C API, and vice versa. There will never be "declarative-only" or "code-only" features.
+Expand declarative coverage of C APIs and define how reusable widgets and components can extend authoring. Full parity and future bytecode support are not implemented.
+
+Other possible future work includes automatic watched-file reload, diagnostic inspectors, additional platform backends, and verified measurements of idle behavior, memory use, and frame times. Preserve existing manual reload and separate benchmark reporting while evaluating those ideas.
 
 ---
 
 ## 3. Phased Architectural Roadmap
 
-### Phase 1: Core Systems & Pipeline Maturity (v0.0.2 - v0.0.3 Preview)
+### Phase 1: Core Systems & Pipeline Maturity (v0.0.3 Preview - Next)
 
 #### 1. Full Vinyasa Layout Solver Integration
 - **Context**: Tether currently integrates a built-in two-pass layout solver supporting flexbox and canvas anchor modes. The standalone Vinyasa layout engine expands on this with advanced multi-reference constraint solving and dynamic flex wrapping.
@@ -116,17 +118,16 @@ Every capability expressible in declarative markup (YAML or future bytecode) mus
   - **Glassmorphism & Visual Effects**: Real-time backdrop blur, frosted glass, and composite post-process shaders.
   - **Images & Vector Media**: Native decoding and rendering of PNG, JPG, vector SVG, and Lottie animations.
 
-#### 2. UI Prefabs and Composite Macros (Slate / UMG Composition)
-- **Context**: Allowing developers to instantiate complex composite controls with a single line of YAML.
+#### 2. Extended Controls and Composite Views
+- **Context**: Building on the built-in `v0.0.3-preview` widget suite (`Button`, `Slider`, `Toggle`, `Checkbox`, `Radio`, `SegmentedBar`, `Dropdown`, `Menu`, `ContextMenu`, `Collapsible`, `Switcher`) with data-heavy controls.
 - **Milestone Goals**:
-  - Implement macro expansion for composite widgets (`Dropdown`, `Slider`, `Checkbox`, `ColorPicker`, `ProgressBar`).
-  - Instantiating `- Dropdown:` in YAML expands automatically into the constituent ECS primitives: Panel, Interactable, Text, and Border entities.
-  - Custom user prefab system allowing developers to define reusable YAML templates instanced across multiple scenes.
+  - Multi-column data tables, virtualized scrollable lists, and interactive single/multi-line text input controls.
+  - Richer reusable template and styling composition across YAML scenes and C factories.
 
 #### 3. Developer Experience & Opt-in Rendering Modes
 - **Context**: Making graphics dependencies strictly opt-in and supporting systems without GPUs.
 - **Milestone Goals**:
-  - **Pure CPU Software Rendering**: Add `TETHER_RENDER_SOFTWARE` to `Tether_App_Config`, initializing a pure CPU software blitter for systems without GPU acceleration.
+  - **Pure CPU Software Rendering**: Add software blitter options to `Tether_Config` for systems without GPU acceleration.
   - **Opt-in CMake Build Flags**: Wrap GPU dependencies cleanly: `TETHER_GPU_API=GL`, `WGPU`, `D3D11`, `METAL`, or `VULKAN`, allowing developers to compile minimal binaries without downloading massive external SDKs.
 
 #### 4. Official Foreign Language Bindings
@@ -204,7 +205,7 @@ To ensure that Tether maintains its high performance and reliability, all pull r
 | **Zero Performance Regressions** | Pull requests must not regress verified metrics captured by `tether_bench.exe`. |
 
 ### How to Get Involved
-- **Authoring New Backends**: Implement the 12-function `Tether_Backend` interface for novel platforms, embedded microcontrollers, or game engines.
+- **Authoring New Backends**: Implement the `Tether_Backend` interface (`System`, `Shape`, and `Text` API tables) for novel platforms, embedded microcontrollers, or game engines.
 - **Building Language Bindings**: Create idiomatic foreign function interfaces for your preferred programming language.
 - **Expanding the Showcase**: Contribute real-world example interfaces, creative utility layouts, and benchmark workloads to `examples/sandbox/`.
 

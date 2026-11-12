@@ -1,5 +1,5 @@
 # Tether Documentation
-*Version 0.0.2 (Developer Preview)*
+*Version 0.0.3 (Developer Preview)*
 
 Tether is a high-performance, modular 2D UI engine written in C. It provides the foundational runtime infrastructure needed to build modern user interface frameworks, interactive applications, and portable UI systems with zero garbage collection overhead, cache-friendly data access, and predictable frame times.
 
@@ -11,12 +11,12 @@ Just as compiler backends (such as LLVM) provide reusable optimization and code-
 
 Rather than relying on traditional object-oriented hierarchies, virtual DOM diffing, and pointer-heavy widget trees, Tether is engineered around five fundamental architectural strengths:
 
-- **Zero-Allocation Steady-State Execution**:
-  Once UI elements are initialized, runtime updates, layout passes, and rendering synchronization generate zero heap allocations or garbage collection churn. Memory remains completely stable during animation and user interaction.
+- **Allocation-Aware Execution**:
+  Reducing runtime allocations is a goal. Component storage and text can allocate as workloads change.
 - **Pure C Data-Oriented ECS Kernel**:
   UI hierarchy, spatial bounds, visual styles, and interaction states are stripped into contiguous component arrays mapped by sparse sets. When the engine traverses scenes or submits draw operations, the CPU sweeps flat arrays with linear cache prefetching rather than chasing pointers across fragmented heap objects.
 - **Separation of Layout and Presentation Transforms**:
-  Layout coordinates (`SlotTransform`) and visual GPU offsets (`RenderTransform`) are kept strictly separated. Running continuous visual animations, hover scale effects, rotations, and transitions updates GPU transforms directly without invalidating parent layout trees or triggering costly reflow passes.
+  Layout coordinates (`SlotTransform`) and visual GPU offsets (`RenderTransform`) are kept strictly separated. Running continuous visual animations, hover scale effects, rotations, and transitions can avoid a layout update; text geometry may be rebuilt on transform changes.
 - **Decoupled Modular Cell-Block Architecture**:
   Rather than enforcing a rigid vertical hierarchy or monolithic stack, Tether is organized into decoupled functional cell blocks (ECS Kernel, Layout Solver, Backend Interface, Authoring/AST, Widget Composition) communicating through explicit C contracts. Subsystems can be swapped, extended, or tested independently without ripple effects.
 - **The "PDF of Interactive UIs" Vision**:
@@ -35,7 +35,7 @@ flowchart TD
     subgraph Cells["Modular Subsystem Cells"]
         Authoring["Authoring Cell (Declarative YAML, AST Parser, Future AOT)"]
         UI["Widget Library Cell (Base Controls, Custom Widgets, Layout Rules)"]
-        Registry["Central Registry Cell (Widgets, Aliases, Layout Strategies, Function Bindings)"]
+        Registry["Central Registry Cell (Widgets, Aliases, Fonts)"]
         Engine["Engine Orchestrator (Transforms, Hierarchy, Input Dispatch, Invalidation)"]
         Kernel["ECS Kernel Cell (Sparse Sets, Dense Arrays, GUIDs, SSO Memory)"]
         Layout["Layout Solver Interface (Tree Solver, Anchor/Flex, Future Vinyasa)"]
@@ -96,7 +96,7 @@ The Tether documentation is organized into two primary pillars: **Category A** f
 | 02 | [Tether Core Architecture and Execution Model](technical/02_core_architecture.md) | Engine lifecycle (`tether_run`), frame execution stages, subsystem dependencies, and thread ownership contracts. |
 | 03 | [ECS, Memory Management, and Lifecycle](technical/03_ecs_and_memory.md) | 64-bit generation GUIDs, sparse sets, dense arrays, swap-and-pop deallocation, and small string optimization (SSO). |
 | 04 | [Components, State, Invalidation, and Updates](technical/04_components_and_invalidation.md) | Base node components (`SlotTransform`, `Hierarchy`, `Visibility`), dirty flags (`DIRTY_VISUAL`, `DIRTY_LAYOUT`), and `VOLATILE` continuous mode. |
-| 05 | [UI Framework, Widget Registry, and Extensibility](technical/05_ui_framework_and_widgets.md) | Built-in widgets (Panel, Button, Text), the fluent UI convenience layer (`tether_ui`), Central Registry (widget factories, string aliases, fonts), and custom component extensibility. |
+| 05 | [UI Framework, Widget Registry, and Extensibility](technical/05_ui_framework_and_widgets.md) | Built-in widget suite (Container, Panel, Text, Button, Slider, Toggle, Checkbox, Radio, Dropdown, Menu, ContextMenu, Collapsible, Switcher), semantic state components, Central Registry, and custom widgets. |
 | 06 | [Vinyasa Layout System](technical/06_vinyasa_layout.md) | The built-in 2-pass layout algorithm (Measure/Arrange), container rules, flex and canvas modes, and planned Vinyasa integration. |
 | 07 | [Backend Interfaces](technical/07_backend_interfaces.md) | Universal backend contract table (System, Shape, Text), hardware abstraction, lifecycle hooks, and link-time backend swapping (Chitra, ThorVG, Raylib, Skia, SDL3). |
 | 08 | [Chitra Rendering System](technical/08_chitra_rendering.md) | Tether default 2D GPU backend, internal HAL/RHI, SDF vector rasterization, glyph caching, monotonic Z-ordering, and clipping. |
@@ -124,9 +124,9 @@ The Tether documentation is organized into two primary pillars: **Category A** f
 
 | Subsystem | Implemented in Source Today | On Active Roadmap |
 | :--- | :--- | :--- |
-| **Memory Kernel** | Data-oriented ECS with sparse sets, contiguous dense arrays, swap-and-pop, and SSO string storage. | Custom pool allocators and memory budget telemetry. |
-| **Layout** | 2-pass intrinsic measure and arrangement (Flex Row/Column, Canvas, Anchor constraints). | Integration of the standalone Vinyasa layout engine. |
-| **Rendering** | Retained-mode dirty-state sync, visual transforms, clipping, and Chitra GPU backend. | Headless software rasterization backend. |
-| **Input** | Normalized pointer down, up, move, hover, and press hit-testing with spatial culling. | Keyboard navigation, focus management, text input buffers. |
-| **Authoring** | Declarative YAML parser, AST / Scene IR, hot-reload, and direct C widget APIs. | Ahead-of-Time (AOT) bytecode compilation (`.tbc`) and C code generation. |
-| **Framework** | High-level `tether_ui` widgets (panels, buttons, labels, rows, columns, cards, badges). | Expanded widget suite (sliders, tables, scroll containers, tabs). |
+| **Memory Kernel** | Data-oriented ECS with sparse sets, contiguous dense arrays, swap-and-pop, optional component `default_data` templates, dynamic buffer cleanup on shutdown, and SSO string storage. | Custom pool allocators and memory budget telemetry. |
+| **Layout** | 2-pass intrinsic measure and arrangement (Flex Row/Column, Canvas, Anchor constraints) plus CSS `Tether_PositionMode` (`RELATIVE`, `ABSOLUTE`, `FIXED`). | Integration of the standalone Vinyasa layout engine. |
+| **Rendering** | Retained-mode dirty-state sync, visual transforms, `active_bg`/`active_border` state styling, single-pass `abs_z` overlay Z-order (`clip = 0` escape), hierarchical clipping, and Chitra GPU backend. | Headless software rasterization backend. |
+| **Input** | Normalized pointer down, up, move, drag, hover, press, click, right-click bubbling, temporary input routes (`tether_input_set_route`), disabled interaction gating (`is_enabled`), and reentrant-safe event dispatch. | Keyboard navigation, focus management, text input buffers. |
+| **Authoring** | Declarative YAML parser (`tether_yaml_widgets.c`), cloned template ASTs (`tether_yaml_term`), depth limits, entity cleanup on detected load failure, manual YAML reload, and direct C widget APIs. | Ahead-of-Time (AOT) bytecode compilation (`.tbc`) and C code generation. |
+| **Framework** | `tether_ui` fluent helpers, `tether_list`, semantic state components (`VALUE_RANGE`, `BOOL_STATE`, `SELECTION_STATE`), and 13 built-in widgets (Button, Text, ProgressBar, Slider, Toggle, Checkbox, Radio, SegmentedBar, Menu, Dropdown, ContextMenu, Collapsible, Switcher) alongside Container/Panel. | Additional controls (tables, virtualized scroll containers, text input). |

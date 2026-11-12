@@ -56,6 +56,7 @@ typedef struct Tether_DenseArray {
   size_t element_size;     /* Size of one component in bytes */
   uint32_t count;          /* Number of active elements */
   uint32_t capacity;       /* Allocated capacity */
+  void *default_data;      /* Default data template (copied on add_component) */
 } Tether_DenseArray;
 
 /* ========================================================================== */
@@ -106,11 +107,11 @@ Tether_GUID tether_ecs_find_by_id(const char* id);
 
 
 
-/* Register a component array for a specific compile-time component type ID. */
-void tether_ecs_register_component_static(uint32_t component_id, size_t element_size);
+/* Register a component array for a specific compile-time component type ID with an optional default byte template (or NULL for zeroed memory). */
+void tether_ecs_register_component_static(uint32_t component_id, size_t element_size, const void* default_data);
 
-/* Allocate a custom component ID dynamically for a third-party struct. Returns the assigned ID. */
-uint32_t tether_ecs_register_component_dynamic(size_t element_size);
+/* Allocate a custom component ID dynamically for a third-party struct with an optional default byte template. Returns the assigned ID. */
+uint32_t tether_ecs_register_component_dynamic(size_t element_size, const void* default_data);
 
 /*
  * Add a component to an entity.
@@ -145,18 +146,6 @@ void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity);
  * Bring an entity to the front of its parent's local draw order.
  */
 void tether_ecs_bring_to_front(Tether_GUID entity);
-
-
-/* ========================================================================== */
-/*                            Text Component API                              */
-/* ========================================================================== */
-
-/* Retrieves the character pointer from whichever Text Component the entity has attached. Returns NULL if none. */
-const char* tether_ecs_get_text_string(Tether_GUID entity);
-
-/* Stores text in the smallest component that can hold it. */
-bool tether_ecs_set_text_string(Tether_GUID entity, const char* string);
-
 
 #ifdef __cplusplus
 }

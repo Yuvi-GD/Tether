@@ -2,52 +2,17 @@
 
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
+#include "tether/ui/widgets/tether_text.h"
 
 #include "tether/engine/tether_engine.h"
 #include "tether/engine/tether_layout.h"
 
 #include <stdbool.h>
-
-static inline uint8_t clamp_u8(int v) {
-    if (v < 0) return 0;
-    if (v > 255) return 255;
-    return (uint8_t)v;
-}
+#include <math.h>
 
 static inline uint32_t pack_color(Tether_Color c, float opacity) {
     uint8_t a = (uint8_t)(c.a * opacity);
     return ((uint32_t)c.r) | (((uint32_t)c.g) << 8) | (((uint32_t)c.b) << 16) | (((uint32_t)a) << 24);
-}
-
-static Tether_Color resolve_color(Tether_GUID entity, Tether_Color base_color) {
-    Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
-    if (!i) return base_color;
-
-    if (i->is_pressed) {
-        if (i->press_color_mode == TETHER_COLOR_MODE_MANUAL) return i->press_color;
-        if (i->press_color_mode == TETHER_COLOR_MODE_AUTO) {
-            return (Tether_Color){
-                clamp_u8((int)base_color.r - 30),
-                clamp_u8((int)base_color.g - 30),
-                clamp_u8((int)base_color.b - 30),
-                base_color.a
-            };
-        }
-    }
-
-    if (i->is_hovered) {
-        if (i->hover_color_mode == TETHER_COLOR_MODE_MANUAL) return i->hover_color;
-        if (i->hover_color_mode == TETHER_COLOR_MODE_AUTO) {
-            return (Tether_Color){
-                clamp_u8((int)base_color.r + 30),
-                clamp_u8((int)base_color.g + 30),
-                clamp_u8((int)base_color.b + 30),
-                base_color.a
-            };
-        }
-    }
-
-    return base_color;
 }
 
 static void apply_visual_rules(Tether_GUID id) {
@@ -84,18 +49,17 @@ static void apply_visual_rules(Tether_GUID id) {
             float radius = shape->border_radius.top;
             float border = shape->border_width;
 
-            Tether_Color bg = resolve_color(id, shape->bg_color);
-            Tether_Color bc = resolve_color(id, shape->border_color);
-
-            uint32_t fill_u32 = pack_color(bg, opacity);
-            uint32_t border_u32 = pack_color(bc, opacity);
+            Tether_Color fill_c = (shape->active_bg.a != 0) ? shape->active_bg : shape->bg_color;
+            Tether_Color border_c = (shape->active_border.a != 0) ? shape->active_border : shape->border_color;
+            uint32_t fill_u32 = pack_color(fill_c, opacity);
+            uint32_t border_u32 = pack_color(border_c, opacity);
 
             g_rhi.shape->set_bounds(shape->handle, x, y, w, h);
             g_rhi.shape->set_radius(shape->handle, radius);
             g_rhi.shape->set_border(shape->handle, border);
             g_rhi.shape->set_color(shape->handle, fill_u32, border_u32);
 
-            if (rt && rt->rotation_deg != 0.0f) {
+            if (rt) {
                 float px = rt->render_pivot.x;
                 float py = rt->render_pivot.y;
                 float origin_x = x + w * px;
@@ -111,7 +75,7 @@ static void apply_visual_rules(Tether_GUID id) {
         if (is_hidden) {
             g_rhi.text->set_opacity(text->handle, 0.0f);
         } else {
-            const char* str = tether_ecs_get_text_string(id);
+            const char* str = tether_ui_get_text(id);
             if (!str) str = "";
 
             float wrap_width = 0.0f;
@@ -152,19 +116,15 @@ static void apply_visual_rules(Tether_GUID id) {
             uint32_t text_color_u32 = pack_color(text->color, opacity);
             g_rhi.text->set_color(text->handle, text_color_u32);
 
-            if (rt) {
+            if (rt && content_dirty) {
                 float px = rt->render_pivot.x;
                 float py = rt->render_pivot.y;
                 float origin_x = (st ? (st->x + rt->translation_x) : tx) + (st ? st->width : tw) * px;
                 float origin_y = (st ? (st->y + rt->translation_y) : ty) + (st ? st->height : th) * py;
 
-                if (rt->scale_x != 1.0f || rt->scale_y != 1.0f) {
-                    g_rhi.text->set_scale(text->handle, origin_x, origin_y, rt->scale_x, rt->scale_y);
-                }
-                if (rt->rotation_deg != 0.0f) {
-                    float angle_rad = rt->rotation_deg * (3.14159265358979323846f / 180.0f);
-                    g_rhi.text->set_rotation(text->handle, origin_x, origin_y, angle_rad);
-                }
+                g_rhi.text->set_scale(text->handle, origin_x, origin_y, rt->scale_x, rt->scale_y);
+                float angle_rad = rt->rotation_deg * (3.14159265358979323846f / 180.0f);
+                g_rhi.text->set_rotation(text->handle, origin_x, origin_y, angle_rad);
             }
         }
     }
@@ -172,7 +132,7 @@ static void apply_visual_rules(Tether_GUID id) {
 
 extern Tether_GUID tether_ecs_get_main_root(void);
 
-static void sync_hierarchy_recursive(Tether_GUID id, int* current_z, uint16_t parent_clip_id) {
+static void sync_hierarchy_recursive(Tether_GUID id, int* current_z, int* current_abs, uint16_t parent_clip_id, bool is_parent_absolute) {
     if (id == TETHER_INVALID_GUID) return;
 
     Tether_Hierarchy* h       = (Tether_Hierarchy*)tether_ecs_get_component(id, TETHER_COMPONENT_HIERARCHY);
@@ -180,14 +140,24 @@ static void sync_hierarchy_recursive(Tether_GUID id, int* current_z, uint16_t pa
     Tether_Text* text         = (Tether_Text*)tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
     Tether_SlotTransform* st  = (Tether_SlotTransform*)tether_ecs_get_component(id, TETHER_COMPONENT_SLOT_TRANSFORM);
     Tether_Overflow* overflow = (Tether_Overflow*)tether_ecs_get_component(id, TETHER_COMPONENT_OVERFLOW);
+    Tether_Layout* layout     = (Tether_Layout*)tether_ecs_get_component(id, TETHER_COMPONENT_LAYOUT);
 
-    int z = (*current_z)++;
+    bool is_absolute = is_parent_absolute || (layout && (layout->position == TETHER_POSITION_ABSOLUTE || layout->position == TETHER_POSITION_FIXED));
+
+    int z;
+    if (is_absolute) {
+        z = (*current_abs)++;
+        parent_clip_id = 0; /* Absolute / fixed elements escape parent card clipping */
+    } else {
+        z = (*current_z)++;
+    }
+
     if (shape && g_rhi.shape->is_alive(shape->handle)) {
         g_rhi.system->set_draw_order(shape->handle, (uint32_t)z);
         g_rhi.system->set_clip(shape->handle, parent_clip_id);
     }
     if (text && g_rhi.text->is_alive(text->handle)) {
-        int text_z = (shape && g_rhi.shape->is_alive(shape->handle)) ? (*current_z)++ : z;
+        int text_z = (shape && g_rhi.shape->is_alive(shape->handle)) ? (is_absolute ? (*current_abs)++ : (*current_z)++) : z;
         g_rhi.system->set_draw_order(text->handle, (uint32_t)text_z);
         g_rhi.system->set_clip(text->handle, parent_clip_id);
     }
@@ -201,7 +171,6 @@ static void sync_hierarchy_recursive(Tether_GUID id, int* current_z, uint16_t pa
         float inner_w = st->width;
         float inner_h = st->height;
 
-        Tether_Layout* layout = (Tether_Layout*)tether_ecs_get_component(id, TETHER_COMPONENT_LAYOUT);
         if (layout) {
             inner_x += layout->padding.left;
             inner_y += layout->padding.top;
@@ -223,16 +192,20 @@ static void sync_hierarchy_recursive(Tether_GUID id, int* current_z, uint16_t pa
                 existing_clip_id = g_rhi.system->get_clip_id(fct->handle);
 
             /* First frame: registers a new clip slot. Every frame after: updates the rect in-place. O(1) always. */
+            int clip_x = (int)floorf(inner_x);
+            int clip_y = (int)floorf(inner_y);
+            int clip_right = inner_w > 0.0f ? (int)ceilf(inner_x + inner_w) : clip_x;
+            int clip_bottom = inner_h > 0.0f ? (int)ceilf(inner_y + inner_h) : clip_y;
             child_clip_id = g_rhi.system->clip_intersect_to(
                 existing_clip_id, parent_clip_id,
-                (int)inner_x, (int)inner_y, (int)inner_w, (int)inner_h);
+                clip_x, clip_y, clip_right - clip_x, clip_bottom - clip_y);
         }
     }
 
     if (h) {
         Tether_GUID child = h->first_child;
         while (child != TETHER_INVALID_GUID) {
-            sync_hierarchy_recursive(child, current_z, child_clip_id);
+            sync_hierarchy_recursive(child, current_z, current_abs, child_clip_id, is_absolute);
             Tether_Hierarchy* ch_comp = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
             if (ch_comp) child = ch_comp->next_sibling;
             else break;
@@ -277,8 +250,10 @@ bool tether_engine_frame(float screen_w, float screen_h, bool force_redraw) {
     /* 2. Sync Hierarchy & Clipping (reads up-to-date SlotTransforms for overflow clip_intersect) */
     if (layout_changed || (dirty_hierarchy && dirty_hierarchy->count > 0)) {
         int z = 0;
-        sync_hierarchy_recursive(tether_ecs_get_main_root(), &z, 0);
-        sync_hierarchy_recursive(tether_ecs_get_overlay_root(), &z, 0);
+        Tether_DenseArray* hierarchies = tether_ecs_get_dense_array(TETHER_COMPONENT_HIERARCHY);
+        int abs_z = hierarchies ? (int)hierarchies->count + 100 : 1000;
+        sync_hierarchy_recursive(tether_ecs_get_main_root(), &z, &abs_z, 0, false);
+        sync_hierarchy_recursive(tether_ecs_get_overlay_root(), &z, &abs_z, 0, false);
     }
     
     /* Process Visual Dirty Entities */
@@ -350,15 +325,14 @@ bool tether_engine_frame(float screen_w, float screen_h, bool force_redraw) {
 void tether_engine_realize(Tether_GUID id) {
     if (id == TETHER_INVALID_GUID) return;
 
-    Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(id, TETHER_COMPONENT_HIERARCHY);
     Tether_Shape* shape = (Tether_Shape*)tether_ecs_get_component(id, TETHER_COMPONENT_SHAPE);
-    if (shape && !g_rhi.shape->is_alive(shape->handle)) {
+    if (g_rhi.shape && shape && !g_rhi.shape->is_alive(shape->handle)) {
         shape->handle = g_rhi.shape->create();
     }
     
     Tether_Text* text = (Tether_Text*)tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
     if (text) {
-        if (!g_rhi.text->is_alive(text->handle)) {
+        if (g_rhi.text && !g_rhi.text->is_alive(text->handle)) {
             text->handle = g_rhi.text->create();
         }
         tether_ecs_add_component(id, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
@@ -367,25 +341,17 @@ void tether_engine_realize(Tether_GUID id) {
     tether_ecs_add_component(id, TETHER_COMPONENT_DIRTY_VISUAL);
     tether_ecs_add_component(id, TETHER_COMPONENT_DIRTY_LAYOUT);
     
-    /* Recursively realize children */
+    Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(id, TETHER_COMPONENT_HIERARCHY);
     if (h) {
         Tether_GUID child = h->first_child;
         while (child != TETHER_INVALID_GUID) {
-            tether_engine_realize(child);
             Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-            if (ch) {
-                child = ch->next_sibling;
-            } else {
-                break;
-            }
+            Tether_GUID next = ch ? ch->next_sibling : TETHER_INVALID_GUID;
+            tether_engine_realize(child);
+            child = next;
         }
-    }
-    
-    /* Post-traversal: flag the parent for hierarchy sync so this entire subtree is mounted */
-    if (h && h->parent != TETHER_INVALID_GUID) {
-        tether_ecs_add_component(h->parent, TETHER_COMPONENT_DIRTY_HIERARCHY);
+        tether_ecs_add_component(h->parent != TETHER_INVALID_GUID ? h->parent : id, TETHER_COMPONENT_DIRTY_HIERARCHY);
     } else {
-        /* If it's a root entity, flag itself so sync_main_scene picks it up */
         tether_ecs_add_component(id, TETHER_COMPONENT_DIRTY_HIERARCHY);
     }
 }
@@ -405,15 +371,15 @@ void tether_engine_unrealize(Tether_GUID entity) {
     }
 
     Tether_Shape* shape = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
-    if (shape && g_rhi.shape->is_alive(shape->handle)) {
-        g_rhi.system->release_clip(shape->handle);
+    if (shape && g_rhi.shape && g_rhi.shape->is_alive(shape->handle)) {
+        if (g_rhi.system) g_rhi.system->release_clip(shape->handle);
         g_rhi.shape->destroy(shape->handle);
         shape->handle = TETHER_INVALID_HANDLE;
     }
 
     Tether_Text* text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
-    if (text && g_rhi.text->is_alive(text->handle)) {
-        g_rhi.system->release_clip(text->handle);
+    if (text && g_rhi.text && g_rhi.text->is_alive(text->handle)) {
+        if (g_rhi.system) g_rhi.system->release_clip(text->handle);
         g_rhi.text->destroy(text->handle);
         text->handle = TETHER_INVALID_HANDLE;
     }

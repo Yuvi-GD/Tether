@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-project(TetherUI VERSION 0.0.2 LANGUAGES C CXX)
+project(TetherUI VERSION 0.0.3 LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -39,10 +39,25 @@ set(TETHER_SOURCES
     src/backends/chitra_backend.c
     src/engine/parser/tether_yaml.c
     src/engine/parser/tether_yaml_ast.c
+    src/engine/parser/tether_yaml_widgets.c
     src/engine/tether_engine.c
     src/engine/tether_layout.c
     src/ui/tether_widgets.c
     src/ui/tether_ui.c
+    src/ui/tether_list.c
+    src/ui/widgets/tether_text.c
+    src/ui/widgets/tether_button.c
+    src/ui/widgets/tether_progress_bar.c
+    src/ui/widgets/tether_slider.c
+    src/ui/widgets/tether_toggle.c
+    src/ui/widgets/tether_checkbox.c
+    src/ui/widgets/tether_radio.c
+    src/ui/widgets/tether_segmented_bar.c
+    src/ui/widgets/tether_menu.c
+    src/ui/widgets/tether_dropdown.c
+    src/ui/widgets/tether_context_menu.c
+    src/ui/widgets/tether_collapsible.c
+    src/ui/widgets/tether_switcher.c
 )
 # Compile the engine once. The DLL and isolated runner/application binaries
 # reuse these objects; each operating-system process owns its runtime state.

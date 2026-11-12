@@ -1,81 +1,435 @@
+# Layout and native controls. Actions and numeric preset values are bound in lab.c.
+# Keep preset option order aligned with the numeric tables in lab.c; IDs survive layout changes.
+- Widget:
+    name: "ResultCard"
+    tree:
+      Panel:
+        id: "$card_id"
+        flow: "COLUMN"
+        padding: [8, 10]
+        gap: [0, 5]
+        fill_ratio: 1
+        color: $card_color
+        border_radius: 8
+        children:
+          - Text:
+              string: "$title"
+              font_size: 14
+              color: [181, 199, 220, 255]
+          - Text:
+              id: "$value_id"
+              string: "--"
+              font_size: 23
+              color: $value_color
 - Panel:
-    id: LabRoot
-    color: [18, 22, 31, 255]
-    flow: COLUMN
-    padding: [16, 20, 16, 20]
-    gap: [0, 12]
+    id: "LabRoot"
+    flow: "COLUMN"
+    padding: [14, 20]
+    gap: [0, 10]
+    color: [20, 20, 22, 255]
     children:
       - Text:
-          id: workbench_title
-          string: "TETHER / WORKBENCH"
-          font_size: 26
-          color: [225, 233, 246, 255]
+          string: "Lab Workbench"
+          font_size: 24
+          color: [230, 230, 230, 255]
+          id: "workbench_title"
+      - Text:
+          string: "Configure workloads, run them independently, and review their results."
+          font_size: 14
+          color: [160, 160, 160, 255]
       - Panel:
-          flow: ROW
-          fill_ratio: 1
-          gap: [20, 0]
+          flow: "ROW"
+          color: [33, 33, 36, 255]
+          border_radius: 8
           children:
-            - Panel:
-                id: WorkloadCol
-                fill_ratio: 0.85
-                flow: COLUMN
-                gap: [0, 10]
-                children:
-                  - LabControls:
-                      fill_ratio: 1
-            - Panel:
-                id: ResultsCol
-                fill_ratio: 1.15
-                flow: COLUMN
-                gap: [0, 10]
+            - Container:
+                flow: "COLUMN"
+                gap: [0, 8]
+                padding: [12, 16]
                 children:
                   - Text:
-                      string: "LAST COMPLETED RUN"
-                      font_size: 17
-                      color: [155, 178, 208, 255]
-                  - Panel:
-                      id: CardStatus
-                      color: [28, 42, 56, 255]
-                      border_radius: 8
-                      padding: [10, 14]
-                      flow: COLUMN
-                      gap: [0, 4]
+                      string: "Controls"
+                      size_box: [0, 36]
+                      text_align: [CENTER, CENTER]
+                      font_size: 20
+                      color: [225, 225, 225, 255]
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
+                      children:
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 5]
+                            fill_ratio: 2
+                            children:
+                              - Text:
+                                  id: "label_lab_scenario"
+                                  string: "Workload"
+                                  font_size: 15
+                              - Dropdown:
+                                  id: "lab_scenario"
+                                  options: ["Render benchmark", "ECS benchmark", "Lifecycle test", "Hierarchy test", "Rendered UI test"]
+                                  selected: 0
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 5]
+                            fill_ratio: 1
+                            children:
+                              - Text:
+                                  id: "label_lab_count"
+                                  string: "Objects"
+                                  font_size: 15
+                              - Dropdown:
+                                  id: "lab_count"
+                                  options: ["100", "1K", "10K", "100K", "1M", "10M"]
+                                  selected: 1
+                  - Container:
+                      flow: "COLUMN"
+                      gap: [0, 5]
                       children:
                         - Text:
-                            id: res_status_badge
+                            id: "label_lab_budget"
+                            string: "Memory (MiB)"
+                            font_size: 15
+                        - Radio:
+                            id: "lab_budget"
+                            flow: "ROW"
+                            options: ["1024", "4096", "16384", "32768"]
+                            selected: 0
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
+                      children:
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 6]
+                            children:
+                              - Text:
+                                  string: "SPAWN / STEP"
+                                  font_size: 15
+                                  color: [195, 195, 195, 255]
+                                  id: "label_lab_spawn"
+                              - Dropdown:
+                                  id: "lab_spawn"
+                                  options: ["0", "1", "10", "100", "1000"]
+                                  selected: 0
+                            fill_ratio: 1
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 6]
+                            children:
+                              - Text:
+                                  string: "DELETE / STEP"
+                                  font_size: 15
+                                  color: [195, 195, 195, 255]
+                                  id: "label_lab_delete"
+                              - Dropdown:
+                                  id: "lab_delete"
+                                  options: ["0", "1", "10", "100", "1000"]
+                                  selected: 0
+                            fill_ratio: 1
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 6]
+                            children:
+                              - Text:
+                                  string: "MUTATE / STEP"
+                                  font_size: 15
+                                  color: [195, 195, 195, 255]
+                                  id: "label_lab_mutate"
+                              - Dropdown:
+                                  id: "lab_mutate"
+                                  options: ["0", "1", "10", "100", "1000"]
+                                  selected: 2
+                            fill_ratio: 1
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
+                      children:
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 6]
+                            fill_ratio: 1
+                            children:
+                              - Text:
+                                  id: "label_lab_frames"
+                                  string: "Step limit"
+                                  font_size: 15
+                              - Dropdown:
+                                  id: "lab_frames"
+                                  options: ["4", "120", "300", "600"]
+                                  selected: 1
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 6]
+                            fill_ratio: 1
+                            children:
+                              - Text:
+                                  id: "label_lab_fps"
+                                  string: "Frame cap"
+                                  font_size: 15
+                              - Dropdown:
+                                  id: "lab_fps"
+                                  options: ["Uncapped", "60", "120", "1000"]
+                                  selected: 1
+                  - Container:
+                      flow: "ROW"
+                      content_align: [START, CENTER]
+                      gap: [12, 0]
+                      children:
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 8]
+                            padding: [8, 0]
+                            fill_ratio: 1
+                            children:
+                              - Text:
+                                  id: "label_lab_seconds"
+                                  string: "Duration: 0 seconds"
+                                  font_size: 15
+                              - Slider:
+                                  id: "lab_seconds"
+                                  min: 0
+                                  max: 3
+                                  step: 1
+                                  value: 0
+                              - Container:
+                                  size_box: [0, 12]
+                        - Toggle:
+                            id: "lab_time_enabled"
+                            is_on: false
+                        - Text:
+                            string: "Use duration limit"
+                            font_size: 15
+                            color: [195, 195, 195, 255]
+                  - Text:
+                      string: "The first limit reached ends the run."
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
+                      children:
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 6]
+                            fill_ratio: 1
+                            children:
+                              - Text:
+                                  id: "label_lab_mode"
+                                  string: "Render mode"
+                                  font_size: 15
+                              - SegmentedBar:
+                                  id: "lab_mode"
+                                  options: ["Retained", "Volatile"]
+                                  selected: 0
+                        - Container:
+                            flow: "COLUMN"
+                            gap: [0, 6]
+                            fill_ratio: 1
+                            children:
+                              - Text:
+                                  id: "label_lab_warmup"
+                                  string: "Warm-up"
+                                  font_size: 15
+                              - SegmentedBar:
+                                  id: "lab_warmup"
+                                  options: ["0", "30", "60"]
+                                  selected: 1
+                  - Panel:
+                      size_box: [0, 1]
+                      fill_ratio: 0
+                      color: [69, 69, 75, 255]
+                  - Container:
+                      flow: "ROW"
+                      content_align: [START, CENTER]
+                      gap: [10, 0]
+                      children:
+                        - Checkbox:
+                            id: "lab_close"
+                            checked: false
+                        - Text:
+                            string: "Close sandbox after launching"
+                            font_size: 15
+                            color: [195, 195, 195, 255]
+                  - Button:
+                      id: "lab_run"
+                      size_box: [0, 40]
+                      fill_ratio: 0
+                      content:
+                        - Text:
+                            string: "Run workload"
+                  - Text:
+                      id: "lab_status"
+                      string: "Select presets above. Exact values remain available through the CLI."
+                      font_size: 14
+                      wrap_width: 480
+                      color: [167, 210, 185, 255]
+                id: "lab_controls"
+                fill_ratio: 1
+            - Panel:
+                size_box: [1, 0]
+                color: [72, 72, 78, 255]
+            - Container:
+                flow: "COLUMN"
+                gap: [0, 8]
+                padding: [12, 16]
+                children:
+                  - Text:
+                      string: "Results"
+                      size_box: [0, 36]
+                      text_align: [CENTER, CENTER]
+                      font_size: 20
+                      color: [225, 225, 225, 255]
+                  - Panel:
+                      id: "CardStatus"
+                      flow: "COLUMN"
+                      padding: [10, 14]
+                      gap: [0, 4]
+                      color: [35, 48, 62, 255]
+                      border_radius: 8
+                      children:
+                        - Text:
                             string: "READY"
                             font_size: 24
-                            color: [150, 195, 235, 255]
+                            color: [195, 195, 195, 255]
+                            id: "res_status_badge"
                         - Text:
-                            id: res_scenario_label
                             string: "No completed run loaded"
-                            font_size: 17
-                            color: [190, 207, 230, 255]
-                  - ResultCards:
-                  - Text:
-                      id: res_report_text
-                      string: "Run a workload or load a saved JSON result."
-                      font_size: 16
-                      color: [170, 190, 215, 255]
-                      wrap_width: 610
-                  - Text:
-                      string: "Work is CPU preparation and render submission. Frame interval includes pacing. RAM is sampled process memory; GPU time is not measured."
-                      font_size: 15
-                      color: [145, 165, 190, 255]
-                      wrap_width: 610
-                  - Panel:
-                      id: btn_load_result
-                      size_box: [0, 42]
-                      color: [39, 53, 74, 255]
-                      hover_color: AUTO
-                      press_color: AUTO
-                      border_radius: 7
-                      flow: COLUMN
+                            font_size: 16
+                            color: [195, 195, 195, 255]
+                            id: "res_scenario_label"
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
                       children:
+                        - ResultCard:
+                            card_id: "res_card_count"
+                            card_color: [30, 52, 77, 255]
+                            value_color: [135, 200, 255, 255]
+                            value_id: "res_value_count"
+                            title: "Initial objects"
+                        - ResultCard:
+                            card_id: "res_card_steps"
+                            card_color: [30, 52, 77, 255]
+                            value_color: [135, 200, 255, 255]
+                            value_id: "res_value_steps"
+                            title: "Measured steps"
+                        - ResultCard:
+                            card_id: "res_card_checks"
+                            card_color: [30, 52, 77, 255]
+                            value_color: [135, 200, 255, 255]
+                            value_id: "res_value_checks"
+                            title: "Total checks"
+                      size_box: [0, 76]
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
+                      children:
+                        - ResultCard:
+                            card_id: "res_card_failures"
+                            card_color: [27, 55, 49, 255]
+                            value_color: [107, 224, 196, 255]
+                            value_id: "res_value_failures"
+                            title: "Failed checks"
+                        - ResultCard:
+                            card_id: "res_card_work_mean"
+                            card_color: [27, 55, 49, 255]
+                            value_color: [107, 224, 196, 255]
+                            value_id: "res_value_work_mean"
+                            title: "Avg work / step"
+                        - ResultCard:
+                            card_id: "res_card_work_p95"
+                            card_color: [27, 55, 49, 255]
+                            value_color: [107, 224, 196, 255]
+                            value_id: "res_value_work_p95"
+                            title: "P95 work / step"
+                      size_box: [0, 76]
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
+                      children:
+                        - ResultCard:
+                            card_id: "res_card_frame_mean"
+                            card_color: [48, 36, 66, 255]
+                            value_color: [205, 176, 245, 255]
+                            value_id: "res_value_frame_mean"
+                            title: "Avg frame interval"
+                        - ResultCard:
+                            card_id: "res_card_frame_p95"
+                            card_color: [48, 36, 66, 255]
+                            value_color: [205, 176, 245, 255]
+                            value_id: "res_value_frame_p95"
+                            title: "P95 frame interval"
+                        - ResultCard:
+                            card_id: "res_card_elapsed"
+                            card_color: [48, 36, 66, 255]
+                            value_color: [205, 176, 245, 255]
+                            value_id: "res_value_elapsed"
+                            title: "Elapsed wall time"
+                      size_box: [0, 76]
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
+                      children:
+                        - ResultCard:
+                            card_id: "res_card_cpu"
+                            card_color: [62, 46, 30, 255]
+                            value_color: [240, 197, 130, 255]
+                            value_id: "res_value_cpu"
+                            title: "Process CPU time"
+                        - ResultCard:
+                            card_id: "res_card_rss"
+                            card_color: [62, 46, 30, 255]
+                            value_color: [240, 197, 130, 255]
+                            value_id: "res_value_rss"
+                            title: "Peak process RAM"
+                        - ResultCard:
+                            card_id: "res_card_draws"
+                            card_color: [62, 46, 30, 255]
+                            value_color: [240, 197, 130, 255]
+                            value_id: "res_value_draws"
+                            title: "Draw submissions"
+                      size_box: [0, 76]
+                  - Container:
+                      flow: "ROW"
+                      gap: [12, 0]
+                      children:
+                        - ResultCard:
+                            card_id: "res_card_uploads"
+                            card_color: [30, 52, 77, 255]
+                            value_color: [107, 224, 196, 255]
+                            value_id: "res_value_uploads"
+                            title: "Upload requests"
+                        - ResultCard:
+                            card_id: "res_card_gpu"
+                            card_color: [30, 52, 77, 255]
+                            value_color: [240, 197, 130, 255]
+                            value_id: "res_value_gpu"
+                            title: "GPU time"
+                      size_box: [0, 76]
+                  - Text:
+                      id: "res_report_text"
+                      string: "Run a workload or load a saved JSON result."
+                      font_size: 14
+                      wrap_width: 540
+                      color: [175, 175, 175, 255]
+                  - Text:
+                      string: "Work = CPU preparation and submission. Frame interval includes pacing. GPU time is not measured."
+                      font_size: 13
+                      wrap_width: 540
+                      color: [150, 150, 150, 255]
+                  - Panel:
+                      size_box: [0, 1]
+                      fill_ratio: 0
+                      color: [69, 69, 75, 255]
+                  - Button:
+                      id: "btn_load_result"
+                      fill_ratio: 0
+                      content:
                         - Text:
-                            id: res_import_label
+                            id: "res_import_label"
                             string: "Load result file"
-                            font_size: 18
-                            color: [222, 232, 247, 255]
-                            text_align: CENTER
-                            fill_ratio: 1
+                id: "ResultsCol"
+                fill_ratio: 1
+          fill_ratio: 1

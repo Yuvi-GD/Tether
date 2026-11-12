@@ -26,7 +26,7 @@ int tool_run_layout(const ToolOptions *o, ToolResult *r) {
         return 2;
     }
     tether_init(NULL);
-    Tether_GUID root = tether_widget_create_panel(tether_ecs_get_main_root());
+    Tether_GUID root = tether_ui_panel(tether_ecs_get_main_root());
     tether_ui_set_size(root, 800, 600);
     Tether_Layout *root_layout = tether_ecs_get_component(root, TETHER_COMPONENT_LAYOUT);
     root_layout->flow = TETHER_FLOW_COLUMN;
@@ -36,7 +36,7 @@ int tool_run_layout(const ToolOptions *o, ToolResult *r) {
     double create_start = tool_now_ms();
     for (uint32_t i = 0; i < o->count; i++) {
         if (i % 25 == 0) {
-            row = tether_widget_create_panel(root);
+            row = tether_ui_panel(root);
             if (!tether_ecs_is_valid(row)) {
                 r->failures++;
                 break;
@@ -46,7 +46,7 @@ int tool_run_layout(const ToolOptions *o, ToolResult *r) {
             tether_ui_set_size(row, 0, 30);
             active++;
         }
-        Tether_GUID leaf = tether_widget_create_panel(row);
+        Tether_GUID leaf = tether_ui_panel(row);
         if (!tether_ecs_is_valid(leaf)) {
             r->failures++;
             break;

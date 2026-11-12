@@ -3,6 +3,7 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_registry.h"
 #include "tether/core/tether_components.h"
+#include "tether/ui/tether_ui.h"
 #include "tether/ui/tether_widgets.h"
 #include "tether/engine/tether_engine.h"
 #include "chitra.h"
@@ -61,7 +62,7 @@ static bool append_object(void) {
         return false;
     }
     uint32_t index = run.count;
-    Tether_GUID id = run.render ? tether_widget_create_panel(run.root) : tether_ecs_create_entity();
+    Tether_GUID id = run.render ? tether_ui_panel(run.root) : tether_ecs_create_entity();
     if (!tether_ecs_is_valid(id)) {
         return false;
     }
@@ -131,7 +132,7 @@ static void initial_objects(void) {
 }
 
 static void init_render(void) {
-    run.root = tether_widget_create_panel(tether_ecs_get_main_root());
+    run.root = tether_ui_panel(tether_ecs_get_main_root());
     Tether_Shape *background = tether_ecs_get_component(run.root, TETHER_COMPONENT_SHAPE);
     background->bg_color = (Tether_Color){18, 22, 31, 255};
     tether_widget_show(run.root);
@@ -336,7 +337,7 @@ static void teardown(void) {
 }
 
 static void hierarchy_test(void) {
-    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy));
+    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy), NULL);
     run.r->setup_ms = tool_now_ms() - run.run_started;
     begin_measurement();
     for (uint32_t round = 0; round < run.o->frames; round++) {
@@ -437,7 +438,7 @@ int tool_run(const ToolOptions *o, ToolResult *r) {
     } else {
         tether_ecs_init();
         tether_registry_init();
-        run.component = tether_ecs_register_component_dynamic(sizeof(uint64_t));
+        run.component = tether_ecs_register_component_dynamic(sizeof(uint64_t), NULL);
         if (!strcmp(o->scenario, "hierarchy")) {
             hierarchy_test();
         } else {

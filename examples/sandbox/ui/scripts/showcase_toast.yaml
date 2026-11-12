@@ -1,0 +1,28 @@
+Container:
+  id: "showcase_toast"
+  flow: NONE
+  children:
+    - Panel:
+        flow: ROW
+        content_align: [START, CENTER]
+        anchor_min: [0.5, 0]
+        anchor_max: [0.5, 0]
+        offset: [20, -215, -82, -215]
+        padding: [10, 14]
+        gap: [12, 0]
+        color: [39, 68, 56, 255]
+        border_radius: 6
+        children:
+          - Text:
+              string: "Changes saved."
+              font_size: 16
+              color: [180, 235, 205, 255]
+              fill_ratio: 1
+          - Button:
+              id: "showcase_toast_close"
+              size_box: [100, 34]
+              fill_ratio: 0
+              content:
+                - Text:
+                    string: "Dismiss"
+

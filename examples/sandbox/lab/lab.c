@@ -1,7 +1,6 @@
 #include "app.h"
 #include "lab.h"
 #include "results.h"
-#include "sandbox_ui.h"
 #include "tool.h"
 #include "tether/tether.h"
 #include "tether/core/tether_ecs.h"
@@ -10,7 +9,6 @@
 #include "tether/core/tether_events.h"
 #include "tether/ui/tether_ui.h"
 #include "tether/ui/tether_widgets.h"
-#include "tether/engine/parser/tether_yaml.h"
 #include "chitra.h"
 #include "chitra_table.h"
 #include <stdlib.h>
@@ -31,10 +29,8 @@ enum {
     FPS,
     FIELD_COUNT
 };
-static const char *names[] = {"Scenario", "Objects", "Spawn",  "Delete",     "Mutate", "Step limit",
-                              "Seconds",  "Mode",    "Warmup", "Memory MiB", "FPS cap"};
-static const char *scenarios[] = {"Render benchmark", "ECS benchmark", "Lifecycle test",
-                                  "Hierarchy test", "Rendered UI test"};
+static const char *names[] = {"Workload", "Objects", "Spawn / step", "Delete / step", "Mutate / step",
+                              "Step limit", "Duration", "Render mode", "Warm-up", "Memory (MiB)", "Frame cap"};
 static const char *scenario_args[] = {"render", "ecs", "lifecycle", "hierarchy", "ui"};
 static const uint32_t counts[] = {100, 1000, 10000, 100000, 1000000, 10000000};
 static const uint32_t batches[] = {0, 1, 10, 100, 1000};
@@ -43,8 +39,15 @@ static const uint32_t seconds[] = {0, 5, 10, 30};
 static const uint32_t budgets[] = {1024, 4096, 16384, 32768};
 static const uint32_t warmups[] = {0, 30, 60};
 static const uint32_t fps_values[] = {0, 60, 120, 1000};
-static unsigned selected[FIELD_COUNT] = {0, 1, 0, 0, 2, 1, 0, 0, 1, 0, 1};
-static Tether_GUID labels[FIELD_COUNT], status_label;
+static unsigned selected[FIELD_COUNT];
+static Tether_GUID controls[FIELD_COUNT], labels[FIELD_COUNT], status_label;
+static Tether_GUID time_toggle, close_checkbox;
+static bool refreshing, time_enabled;
+static const char *control_ids[] = {
+    "lab_scenario", "lab_count", "lab_spawn", "lab_delete", "lab_mutate", "lab_frames",
+    "lab_seconds", "lab_mode", "lab_warmup", "lab_budget", "lab_fps"
+};
+static const unsigned lengths[] = {5, 6, 5, 5, 5, 4, 4, 2, 3, 4, 4};
 static ToolProcess process;
 static char result_path[256];
 static unsigned run_number;
@@ -63,7 +66,7 @@ static uint32_t numeric(unsigned field) {
     case FRAMES:
         return frames[i];
     case SECONDS:
-        return seconds[i];
+        return time_enabled ? seconds[i] : 0;
     case WARMUP:
         return warmups[i];
     case BUDGET:
@@ -85,48 +88,81 @@ static bool field_applies(unsigned field) {
     }
     return true;
 }
-static void refresh_field(unsigned field) {
-    char value[100];
-    if (!field_applies(field)) {
-        snprintf(value, sizeof value, "%s: N/A", names[field]);
-    } else if (field == SCENARIO) {
-        snprintf(value, sizeof value, "%s", scenarios[selected[field]]);
-    } else if (field == MODE) {
-        snprintf(value, sizeof value, "%s", selected[field] ? "Volatile" : "Retained");
-    } else {
-        snprintf(value, sizeof value, "%s: %u", names[field], numeric(field));
+static void refresh_fields(void) {
+    refreshing = true;
+    for (unsigned field = 0; field < FIELD_COUNT; ++field) {
+        Tether_GUID control = controls[field];
+        if (field == MODE || field == WARMUP) {
+            tether_ui_set_segment_selected(control, (int)selected[field]);
+        } else if (field == BUDGET) {
+            tether_ui_set_radio_selected(control, (int)selected[field]);
+        } else if (field == SECONDS) {
+            tether_ui_set_slider_value(control, (float)selected[field]);
+        } else {
+            tether_ui_set_dropdown_selected(control, (int)selected[field]);
+            tether_ui_set_dropdown_open(control, false);
+        }
+        bool applicable = field_applies(field) && (field != SECONDS || time_enabled);
+        tether_widget_set_enabled(control, applicable && !process.active);
+        tether_ui_set_text_color(labels[field], applicable
+            ? (Tether_Color){195, 195, 195, 255} : (Tether_Color){120, 120, 120, 255});
+        char caption[80];
+        if (field == SECONDS) {
+            snprintf(caption, sizeof caption, "Duration: %u seconds", numeric(SECONDS));
+        } else {
+            snprintf(caption, sizeof caption, "%s%s", names[field], applicable ? "" : " (not used)");
+        }
+        tether_ui_set_text(labels[field], caption);
     }
-    tether_ui_set_text(labels[field], value);
-    tether_ui_set_text_color(labels[field], field_applies(field)
-                                                ? (Tether_Color){222, 232, 247, 255}
-                                                : (Tether_Color){125, 140, 158, 255});
-}
-static void change_field(Tether_GUID entity, Tether_EventType event, void *data) {
-    (void)entity;
-    (void)event;
-    unsigned field = (unsigned)(uintptr_t)data;
-    if (process.active || !field_applies(field)) {
-        return;
-    }
-    const unsigned lengths[] = {5, 6, 5, 5, 5, 4, 4, 2, 3, 4, 4};
-    selected[field] = (selected[field] + 1) % lengths[field];
-    for (unsigned i = 0; i < FIELD_COUNT; i++) {
-        refresh_field(i);
-    }
-    if (field == SCENARIO) {
-        tether_ui_set_text(
-            status_label,
-            selected[field] == 3
-                ? "Hierarchy: repeat create / detach / destroy. Per-step edits and rendering "
-                  "controls do not apply."
-                : "Click to cycle presets; exact values are accepted by the CLI. Tests check "
-                  "behavior; benchmarks measure work. Other regression checks run through CTest.");
-    }
+    tether_widget_set_enabled(time_toggle, !process.active);
+    tether_widget_set_enabled(close_checkbox, !process.active);
+    refreshing = false;
 }
 
-static void launch_workload(Tether_GUID entity, Tether_EventType event, void *data) {
-    (void)entity;
+static int read_field(unsigned field) {
+    Tether_GUID entity = controls[field];
+    if (field == MODE || field == WARMUP) return tether_ui_get_segment_selected(entity);
+    if (field == BUDGET) return tether_ui_get_radio_selected(entity);
+    if (field == SECONDS) return (int)tether_ui_get_slider_value(entity);
+    return tether_ui_get_dropdown_selected(entity);
+}
+
+static void change_field(Tether_GUID entity, const Tether_Event *event, void *data) {
     (void)event;
+    if (refreshing) return;
+    unsigned field = (unsigned)(uintptr_t)data;
+    (void)entity;
+    int index = read_field(field);
+    /* Dropdown also emits CHANGE on open/close. Do not close it for those events. */
+    if (index == (int)selected[field]) return;
+    if (!process.active && field_applies(field) && (field != SECONDS || time_enabled) &&
+        index >= 0 && (unsigned)index < lengths[field]) {
+        selected[field] = (unsigned)index;
+        if (field == SCENARIO) {
+            refresh_fields();
+        } else if (field == SECONDS) {
+            char caption[64];
+            snprintf(caption, sizeof caption, "Duration: %u seconds", numeric(SECONDS));
+            tether_ui_set_text(labels[field], caption);
+        }
+        return;
+    }
+    /* Restore controls changed while their setting is unavailable or a run is active. */
+    refresh_fields();
+}
+
+static void change_time_limit(Tether_GUID entity, const Tether_Event *event, void *data) {
+    (void)event;
+    (void)data;
+    if (refreshing || process.active) return;
+    time_enabled = tether_ui_get_toggle(entity);
+    if (time_enabled && selected[SECONDS] == 0) selected[SECONDS] = 1;
+    refresh_fields();
+}
+
+static void launch_workload(Tether_GUID entity, const Tether_Event *event_info, void *data) {
+    (void)event_info;
+    (void)entity;
     (void)data;
     if (process.active) {
         return;
@@ -201,68 +237,73 @@ static void launch_workload(Tether_GUID entity, Tether_EventType event, void *da
     } else {
         tether_ui_set_text(status_label, "Running independently. Results appear after exit. "
                                          "Closing this app leaves the workload running.");
-        if (data) {
+        refresh_fields();
+        if (data || tether_ui_get_checked(close_checkbox)) {
             chitra_quit();
         }
     }
 }
 
-static void field_row(Tether_GUID parent, const unsigned *fields, unsigned count) {
-    Tether_GUID row = tether_ui_row(parent, 10.0f);
-    tether_ui_set_size(row, 0.0f, 48.0f);
-    for (unsigned j = 0; j < count; j++) {
-        unsigned i = fields[j];
-        labels[i] = sandbox_ui_button(row, "", change_field, (void *)(uintptr_t)i);
-        refresh_field(i);
+bool lab_bind(void) {
+    for (unsigned i = 0; i < FIELD_COUNT; ++i) {
+        controls[i] = tether_registry_find_entity(control_ids[i]);
+        char label_id[64];
+        snprintf(label_id, sizeof label_id, "label_%s", control_ids[i]);
+        labels[i] = tether_registry_find_entity(label_id);
+        if (!controls[i] || !labels[i]) return false;
+        int index = read_field(i);
+        if (index < 0 || (unsigned)index >= lengths[i]) return false;
+        selected[i] = (unsigned)index;
+        tether_bind_event(controls[i], TETHER_EVENT_CHANGE, change_field, (void *)(uintptr_t)i);
     }
-}
-
-static Tether_GUID controls(Tether_GUID parent) {
-    Tether_GUID root = tether_ui_column(parent, 12.0f);
-    const unsigned workload[] = {SCENARIO}, population[] = {COUNT, BUDGET};
-    const unsigned edits[] = {SPAWN, DELETE_COUNT, MUTATE}, limits[] = {FRAMES, SECONDS};
-    const unsigned rendering[] = {MODE, WARMUP, FPS};
-    field_row(sandbox_ui_section(root, "1 / SELECT WORKLOAD"), workload, 1);
-    Tether_GUID group = sandbox_ui_section(root, "2 / POPULATION & CHANGES PER STEP");
-    field_row(group, population, 2);
-    field_row(group, edits, 3);
-    field_row(sandbox_ui_section(root, "3 / RUN LIMITS (first limit ends the run)"), limits, 2);
-    field_row(sandbox_ui_section(root, "4 / RENDERING"), rendering, 3);
-    sandbox_ui_line(root, 1.0f, (Tether_Color){145, 190, 225, 255});
-    Tether_GUID actions = tether_ui_row(root, 10.0f);
-    tether_ui_set_text_color(actions, (Tether_Color){167, 210, 185, 255});
-    tether_ui_set_size(actions, 0.0f, 48.0f);
-    sandbox_ui_button(actions, "Run workload", launch_workload, NULL);
-    sandbox_ui_button(actions, "Run & close sandbox", launch_workload, (void *)1);
-    status_label = tether_ui_text(
-        root,
-        "Click to cycle presets; exact values are accepted by the CLI. Tests check behavior; "
-        "benchmarks measure work. Other regression checks run through CTest.",
-        16.0f, (Tether_Color){167, 210, 185, 255});
-    Tether_Text *style = tether_ecs_get_component(status_label, TETHER_COMPONENT_TEXT);
-    if (style) {
-        style->wrap_width = 460;
-    }
-    return root;
-}
-
-void lab_register(void) {
-    tether_register_widget("LabControls", controls);
+    status_label = tether_registry_find_entity("lab_status");
+    time_toggle = tether_registry_find_entity("lab_time_enabled");
+    close_checkbox = tether_registry_find_entity("lab_close");
+    Tether_GUID run = tether_registry_find_entity("lab_run");
+    if (!status_label || !time_toggle || !close_checkbox || !run) return false;
+    time_enabled = tether_ui_get_toggle(time_toggle);
+    tether_bind_event(time_toggle, TETHER_EVENT_CHANGE, change_time_limit, NULL);
+    tether_bind_event(run, TETHER_EVENT_CLICK, launch_workload, NULL);
+    refresh_fields();
+    return true;
 }
 
 void lab_smoke_launch(void) {
     smoke = true;
-    selected[SCENARIO] = 2;
-    selected[COUNT] = 0;
-    selected[FRAMES] = 0;
-    launch_workload(0, TETHER_EVENT_CLICK, NULL);
+    /* Exercise actual widget CHANGE bindings, not just the backing C array. */
+    tether_ui_set_dropdown_selected(controls[COUNT], 5);
+    tether_ui_set_radio_selected(controls[BUDGET], 1);
+    tether_ui_set_segment_selected(controls[MODE], 1);
+    tether_ui_set_toggle(time_toggle, true);
+    tether_ui_set_slider_value(controls[SECONDS], 2);
+    bool valid = numeric(COUNT) == 10000000 && numeric(BUDGET) == 4096 &&
+                 selected[MODE] == 1 && numeric(SECONDS) == 10;
+    tether_ui_set_toggle(time_toggle, false);
+    tether_ui_set_segment_selected(controls[MODE], 0);
+    tether_ui_set_radio_selected(controls[BUDGET], 0);
+    tether_ui_set_dropdown_selected(controls[SCENARIO], 2);
+    tether_ui_set_dropdown_selected(controls[COUNT], 0);
+    tether_ui_set_dropdown_selected(controls[FRAMES], 0);
+    tether_ui_set_checked(close_checkbox, true);
+    valid = valid && tether_ui_get_checked(close_checkbox);
+    tether_ui_set_checked(close_checkbox, false);
+    valid = valid && numeric(SECONDS) == 0 && selected[SCENARIO] == 2 &&
+            numeric(COUNT) == 100 && numeric(FRAMES) == 4;
+    printf("Sandbox native-control bindings: %s\n", valid ? "PASSED" : "FAILED");
+    if (!valid) {
+        smoke_exit = 1;
+        smoke_done = true;
+        sandbox_navigate(SANDBOX_RESULTS);
+        return;
+    }
+    launch_workload(0, &(Tether_Event){ .type = TETHER_EVENT_CLICK }, NULL);
 }
 
 void lab_smoke_detach(void) {
     selected[SCENARIO] = 0;
     selected[COUNT] = 0;
     selected[FRAMES] = 2;
-    launch_workload(0, TETHER_EVENT_CLICK, (void *)1);
+    launch_workload(0, &(Tether_Event){ .type = TETHER_EVENT_CLICK }, (void *)1);
     printf("Detached result: %s\n", result_path);
 }
 
@@ -283,6 +324,7 @@ void lab_update(void) {
         if (!loaded && !code) {
             code = 1;
         }
+        refresh_fields();
         sandbox_navigate(SANDBOX_RESULTS);
         tether_ui_set_text(status_label, "Finished. The cards show the completed run. Change "
                                          "parameters to run again, or load a saved report.");
@@ -304,6 +346,14 @@ bool lab_has_geometry(void) {
         return false;
     }
     for (unsigned i = 0; i <= FIELD_COUNT; i++) {
+        if (i < FIELD_COUNT) {
+            Tether_SlotTransform *control = tether_ecs_get_component(controls[i], TETHER_COMPONENT_SLOT_TRANSFORM);
+            if (!control || control->width <= 0 || control->height <= 0 ||
+                control->y < view->y || control->y + control->height > view->y + view->height + 1) {
+                fprintf(stderr, "Lab control geometry failed: %s\n", control_ids[i]);
+                return false;
+            }
+        }
         Tether_GUID id = i < FIELD_COUNT ? labels[i] : status_label;
         Tether_Text *text = tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
         Tether_SlotTransform *position =
@@ -313,6 +363,7 @@ bool lab_has_geometry(void) {
         if (!text || !position || !chitra_table_get_vertices(text->handle, &pipeline, &count) ||
             !count || text->intrinsic_size.x > position->width + 1 || position->y < view->y ||
             position->y + text->intrinsic_size.y > view->y + view->height) {
+            fprintf(stderr, "Lab label geometry failed: %s\n", i < FIELD_COUNT ? control_ids[i] : "status");
             return false;
         }
     }

@@ -20,7 +20,7 @@ Tether eliminates direct pointer chasing across elements through three structura
 
 1. **Entities are IDs, Never Pointers**: UI elements are addressed exclusively through 64-bit handles (`Tether_GUID`). Elements store IDs for all relationships (parents, children, siblings, event targets). Generational checks prevent stale handle lookups.
 2. **Contiguous Component Pools**: Components of the same type live in packed, contiguous arrays that grow geometrically. Iteration sweeps flat memory sequentially, maximizing CPU L1 and L2 cache prefetching.
-3. **Zero-Allocation Steady-State Execution**: Once initialized, layout passes, animations, and render synchronization execute without invoking heap allocators or garbage collectors.
+3. **Allocation-Aware Design**: Component pools grow geometrically and stabilize after initial growth, while `TextDynamic` and pool expansion still use standard C heap allocation; minimizing steady-state allocations is an ongoing goal.
 
 ---
 
@@ -136,11 +136,12 @@ typedef struct Tether_SparseMap {
 } Tether_SparseMap;
 
 typedef struct Tether_DenseArray {
-    void*        data;        /* Flat contiguous component payload */
-    Tether_GUID* entity_map;  /* Maps dense index back to owning Tether_GUID */
-    size_t       element_size;/* Size of one component struct in bytes */
-    uint32_t     count;       /* Active component count */
-    uint32_t     capacity;    /* Allocated buffer capacity */
+    void*        data;         /* Flat contiguous component payload */
+    Tether_GUID* entity_map;   /* Maps dense index back to owning Tether_GUID */
+    size_t       element_size; /* Size of one component struct in bytes */
+    uint32_t     count;        /* Active component count */
+    uint32_t     capacity;     /* Allocated buffer capacity */
+    void*        default_data; /* Optional default template copied on add_component */
 } Tether_DenseArray;
 ```
 
@@ -201,14 +202,14 @@ Tether organizes all component types into a structured three-tier architecture, 
 flowchart TD
     subgraph NativeTether["Native Tether Components (0 to TETHER_COMPONENT_MAX - 1)"]
         direction TB
-        subgraph Tier1["Tier 1: Core Engine Components (Static Compile-Time)"]
-            C1["SlotTransform, RenderTransform, Hierarchy, Visibility, Layout"]
-            C2["Dirty Tags: DIRTY_LAYOUT, DIRTY_VISUAL, DIRTY_HIERARCHY, VOLATILE"]
+        subgraph Tier1["Tier 1: Core Engine Components (0 to TETHER_CORE_COMPONENTS_MAX - 1)"]
+            C1["SlotTransform, RenderTransform, Hierarchy, Visibility"]
+            C2["Overflow, Interactable, Layout, AnchorSlot, FlexSlot"]
         end
-        subgraph Tier2["Tier 2: System UI Components (Static Compile-Time)"]
-            U1["Shape, Text, AnchorSlot, FlexSlot, Image, Interactable, Overflow"]
-            U2["SSO Text Storage: TextWord, TextLabel, TextParagraph, TextDynamic"]
-            U3["Structural Guard: IS_LEAF"]
+        subgraph Tier2["Tier 2: System UI Components (CORE_MAX to TETHER_SYSTEM_COMPONENTS_MAX - 1)"]
+            U1["State Tags: DIRTY_LAYOUT, DIRTY_VISUAL, DIRTY_HIERARCHY, DIRTY_TEXT_CONTENT, VOLATILE, IS_LEAF"]
+            U2["Visual & SSO: Shape, Image, Text, TextWord, TextLabel, TextParagraph, TextDynamic"]
+            U3["Semantic State: VALUE_RANGE, BOOL_STATE, SELECTION_STATE"]
         end
     end
 
@@ -223,41 +224,43 @@ flowchart TD
 ```
 
 ### 1. Tier 1: Core Engine Components (Static Compile-Time)
-Defined within the enum range `0` to `TETHER_CORE_COMPONENTS_MAX - 1`. These components form the bare mathematical and structural baseline required by the core engine kernel:
+Defined within the enum range `0` to `TETHER_CORE_COMPONENTS_MAX - 1`. These components form the structural, spatial, and interaction baseline used across the engine:
 - Spatial layout bounds (`Tether_SlotTransform`)
 - Visual presentation transforms (`Tether_RenderTransform`)
 - Tree hierarchy topology (`Tether_Hierarchy`)
 - Inherited and local visibility (`Tether_Visibility`)
-- Container layout parameters (`Tether_Layout`)
-- Core invalidation tags (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`, `DIRTY_TEXT_CONTENT`, `VOLATILE`)
+- Scissor clipping and overflow policies (`Tether_Overflow`)
+- Pointer interaction and enabled state (`Tether_Interactable`)
+- Container layout parameters and positioning mode (`Tether_Layout`)
+- Container slot constraints (`Tether_AnchorSlot`, `Tether_FlexSlot`)
 
 ### 2. Tier 2: System UI Components (Static Compile-Time)
-Defined within the enum range `TETHER_CORE_COMPONENTS_MAX` to `TETHER_SYSTEM_COMPONENTS_MAX - 1`. These components implement higher-level graphical user interface primitives:
-- Visual vector shapes and borders (`Tether_Shape`)
-- Typography and font metrics (`Tether_Text`)
-- Container slot constraints (`Tether_AnchorSlot`, `Tether_FlexSlot`)
-- Pointer interaction and color state machines (`Tether_Interactable`)
-- Scissor clipping and scroll bounds (`Tether_Overflow`)
+Defined within the enum range `TETHER_CORE_COMPONENTS_MAX` to `TETHER_SYSTEM_COMPONENTS_MAX - 1`. These components implement invalidation tags, graphical primitives, typography storage, and semantic UI widget state:
+- Core invalidation and guard tags (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`, `DIRTY_TEXT_CONTENT`, `VOLATILE`, `IS_LEAF`)
+- Visual vector shapes and borders (`Tether_Shape`), images (`Tether_Image`), and typography metadata (`Tether_Text`)
 - Small String Optimization (SSO) storage tiers (`TextWord`, `TextLabel`, `TextParagraph`, `TextDynamic`)
-- Structural node guards (`TETHER_COMPONENT_IS_LEAF`)
+- Pure ECS semantic widget state (`Tether_ValueRange`, `Tether_BoolState`, `Tether_SelectionState`)
 
 Together, Tier 1 and Tier 2 constitute the **Native Components of Tether**, bounded at compile time by `TETHER_COMPONENT_MAX` (`TETHER_COMPONENT_MAX = TETHER_SYSTEM_COMPONENTS_MAX`).
 
 ### 3. Tier 3: Custom Application Components (Static & Dynamic)
-Tether provides two distinct registration pathways for custom components created outside the native engine:
+Tether provides two distinct registration pathways for custom components created outside the native engine. Both accept an optional `default_data` byte template copied automatically whenever `tether_ecs_add_component()` attaches the component (passing `NULL` leaves non-tag memory zero-initialized):
 
 1. **Compile-Time Static Custom Components**:
    When host applications, games, or internal extensions compile directly alongside Tether, custom component types can be assigned fixed IDs and registered via:
    ```c
-   void tether_ecs_register_component_static(uint32_t component_id, size_t element_size);
+   void tether_ecs_register_component_static(uint32_t component_id, size_t element_size, const void* default_data);
    ```
 2. **Runtime Dynamic Custom Components**:
    When external systems, dynamically loaded plugins, or scripting languages (such as Python, Lua, or JavaScript) run outside the compiled C source without prior compile-time ID knowledge, they register custom types at runtime via:
    ```c
-   /* Registers a dynamic component and returns its allocated ID */
-   uint32_t tether_ecs_register_component_dynamic(size_t element_size);
+   /* Registers a dynamic component with optional default template and returns its allocated ID */
+   uint32_t tether_ecs_register_component_dynamic(size_t element_size, const void* default_data);
    ```
    The engine initializes `next_custom_component_id` to `TETHER_COMPONENT_MAX`. Each call to `tether_ecs_register_component_dynamic()` allocates the next sequential ID, automatically expanding sparse maps and dense arrays as required. Dynamic components reside in the exact same cache-coherent dense arrays as native components, guaranteeing zero memory fragmentation and identical $O(1)$ access times.
+
+### Engine Teardown Cleanup
+During shutdown (`tether_ecs_term()`), the kernel iterates any remaining `Tether_TextDynamic` payloads to free heap-allocated strings, releases all copied `default_data` templates, and frees all sparse maps and dense arrays cleanly.
 
 ### 4. Tag Components (Zero-Size Payloads)
 Any component across Tier 1, Tier 2, or Tier 3 can be registered as a **Tag Component** with `element_size = 0`:
@@ -298,7 +301,7 @@ Tether implements an adaptive, four-tier Small String Optimization (SSO) system 
 
 ```mermaid
 flowchart TD
-    Input["tether_ecs_set_text_string(entity, str)"] --> Check{"String Length"}
+    Input["tether_ui_set_text(entity, str)"] --> Check{"String Length"}
     Check -->|<= 31 bytes| Tier1["Tether_TextWord: 32 bytes inline"]
     Check -->|32 to 127 bytes| Tier2["Tether_TextLabel: 128 bytes inline"]
     Check -->|128 to 511 bytes| Tier3["Tether_TextParagraph: 512 bytes inline"]
@@ -314,9 +317,9 @@ flowchart TD
 | `Tether_TextParagraph` | 512 bytes (`data[512]`) | Flat inline buffer | Dialog messages, notifications, article previews. |
 | `Tether_TextDynamic` | Dynamic capacity | Heap buffer (`malloc`) | Large text documents, logs, dynamic text entry fields. |
 
-### Adaptive Promotion and Demotion
-- `tether_ecs_set_text_string(entity, str)`: Measures string length, frees any existing dynamic heap buffers if downgrading, removes old tier components, and attaches the entity to the most compact tier.
-- `tether_ecs_get_text_string(entity)`: Scans tiers from smallest to largest and returns a direct pointer to the `const char*` buffer without heap allocation or copying.
+### Adaptive Promotion and Demotion (`include/tether/ui/widgets/tether_text.h`)
+- `tether_ui_set_text(entity, str)`: Measures string length, frees any existing dynamic heap buffers if downgrading, removes old tier components, attaches the entity to the most compact tier, and tags `DIRTY_TEXT_CONTENT`, `DIRTY_VISUAL`, and `DIRTY_LAYOUT`.
+- `tether_ui_get_text(entity)`: Scans tiers from smallest to largest and returns a direct pointer to the `const char*` buffer without heap allocation or copying.
 
 ---
 

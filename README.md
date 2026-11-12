@@ -1,7 +1,26 @@
-# Tether UI Engine
-*Version 0.0.2 (Developer Preview)*
+<div align="center">
 
-Tether is an open, modular, zero-allocation universal user interface engine written in pure ISO C99. Engineered around the **"LLVM of User Interfaces"** architectural paradigm, Tether decouples declarative interface authoring from underlying display hardware, establishing an open foundation for interactive graphical software that scales from sub-64 KB bare-metal microcontrollers to high-performance desktop applications, game HUDs, and WebAssembly.
+# Tether UI Engine
+### **TETHER** : TETHER - ECS Toolkit for High-Efficiency Runtime
+
+*Version 0.0.3 (Developer Preview)*
+
+[![Tether Correctness CI](https://github.com/Yuvi-GD/Tether/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuvi-GD/Tether/actions/workflows/ci.yml)
+![Version](https://img.shields.io/badge/version-v0.0.3--preview-0969da)
+![Language](https://img.shields.io/badge/language-C99-orange)
+![Platforms](https://img.shields.io/badge/validated-Windows-555555)
+[![License](https://img.shields.io/badge/license-Apache%202.0-2ea44f)](LICENSE)
+
+[**Quick Start**](#9-building--running) &nbsp;|&nbsp;
+[**Architecture**](#3-cell-block-subsystem-architecture) &nbsp;|&nbsp;
+[**Widget Suite**](#5-built-in-widget-suite) &nbsp;|&nbsp;
+[**Docs Hub**](docs/index.md) &nbsp;|&nbsp;
+[**Contributing**](CONTRIBUTING.md) &nbsp;|&nbsp;
+[**Releases**](https://github.com/Yuvi-GD/Tether/releases)
+
+</div>
+
+Tether is an open-source C engine for building user interface libraries. It combines entities, components, layout, input, and reusable widgets; the sandbox uses YAML and C to build interfaces rendered through Chitra. The project is a developer preview, with portability and additional backends under development.
 
 ---
 
@@ -16,7 +35,7 @@ Digital computing solved media portability decades ago by establishing open, ven
 
 For decades, graphical interfaces have remained trapped inside vendor-locked compilers (Win32, Cocoa, Qt), proprietary game engine codebases, or bloated multi-hundred-megabyte browser engines (Chromium/Electron).
 
-Tether establishes user interfaces as a **universal, open media format**. A single declarative interface definition or compact Ahead-of-Time (AOT) bytecode asset (`.tbc`) describes the complete layout hierarchy, styling rules, typography, and interaction behavior. Any platform embedding the Tether micro-kernel opens and executes that UI asset with **100% behavioral determinism, layout consistency, and interactive fidelity**:
+Tether's long-term vision is a portable, open way to describe interactive interfaces. A future bytecode format (`.tbc`) and support for the following environments are roadmap ideas, not capabilities established by this preview:
 - An automotive touchscreen or medical monitor running an RTOS,
 - A bare-metal microcontroller driving an SPI or parallel LCD,
 - A modern web browser executing WebAssembly via WebGPU or Canvas,
@@ -29,25 +48,25 @@ Tether establishes user interfaces as a **universal, open media format**. A sing
 
 Tether abandons the traditional Document Object Model (DOM), virtual DOM diffing, and deeply nested C++ object-oriented inheritance trees in favor of six foundational systems-level properties:
 
-### 1. Zero-Power Idle State (0% CPU, 0 Draw Calls)
-Unlike immediate-mode toolkits (such as Dear ImGui) that execute continuous frame polling loops (burning 100% CPU and GPU cycles even when the display is completely static), Tether operates on a retained-mode model governed by fine-grained reactive invalidation tags (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`). When no user interaction occurs and animations are at rest, Tether enters an event-driven sleep state, consuming **zero CPU cycles** and issuing **zero GPU draw calls**.
+### 1. Retained State and Invalidation
+Tether retains UI state and uses dirty tags (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`) to identify changes. Volatile entities can also be updated continuously. Idle CPU and GPU usage depend on the application and backend and have not been established as zero.
 
-### 2. Kilobyte-Scale Data-Oriented UI-ECS
-UI components (transforms, shapes, typography, styles, interaction hit-boxes) are organized into flat, type-uniform dense arrays indexed by 64-bit sparse set maps. For a typical user interface containing hundreds of active widgets, Tether's core component data consumes mere **tens of kilobytes** in memory. On bare-metal microcontrollers with software framebuffers, the entire UI system operates comfortably within **sub-64 KB SRAM** constraints.
+### 2. Data-Oriented UI-ECS
+UI components are stored in type-specific dense arrays with sparse lookup. Memory use depends on the scene, component capacities, text, and backend resources; embedded memory targets remain to be measured.
 
-### 3. Zero Steady-State Heap Allocations
-Memory buffers for component pools grow geometrically during initial application startup into pre-sized high-water pools. Once initialized, **zero dynamic memory allocations (`malloc`, `free`) occur during frame loops, layout reflow passes, or input event dispatching**. This eliminates memory fragmentation and eradicates garbage collection micro-stutter (jank) entirely.
+### 3. Managed Component Storage
+Component pools grow as needed, and text may allocate when its contents change. Reducing runtime allocations is a goal, not a guarantee for all operations.
 
 ### 4. Separation of Layout Space from Render Space
-In traditional web browsers and mobile toolkits, modifying a visual property (such as hover scale, a subtle rotation, or an opacity fade) invalidates container layout, triggering costly cascading reflow storms across parent and sibling elements. Tether mathematically decouples layout slot geometry (`Tether_SlotTransform`) from visual GPU transformations (`Tether_RenderTransform`). High-frequency animations execute purely on GPU shaders with **zero CPU layout reflow passes**.
+Tether separates layout geometry (`Tether_SlotTransform`) from presentation (`Tether_RenderTransform`). Some visual updates can avoid layout; text transform changes may rebuild glyph geometry and are not GPU-only operations.
 
 ### 5. Universal 64-Bit Generational Handles (`Tether_GUID`)
-Entities are addressed exclusively by value through 64-bit scalar identifiers containing an array slot index and a generational version counter. Tether never exposes raw, unsafe memory pointers across API boundaries. Stale handles held by foreign scripting languages (Rust, Python, Lua, WebAssembly) fail safely in $O(1)$ constant time via `tether_ecs_is_valid()`, eliminating dangling pointers and use-after-free bugs.
+Entity identifiers contain an index and generation, and `tether_ecs_is_valid()` checks their validity. Component APIs also expose pointers; callers must reacquire them after mutations that can move component storage.
 
-### 6. Limitless Dual Authoring Parity
-Declarative markup (YAML) and compiled code (pure C99) operate with complete parity:
-- Interfaces declared in YAML and interfaces declared imperatively via the fluent `tether_ui` API instantiate the exact same ECS components.
-- Tether supports live runtime UI scene refresh, allowing developers to reload and update declarative definitions in memory during development.
+### 6. YAML and C Authoring
+Declarative YAML and C can use the same registered widget factories:
+- Interfaces declared in YAML and interfaces declared imperatively via the fluent `tether_ui` API instantiate the same underlying ECS components.
+- The Sandbox supports manual UI refresh and reloading declarative YAML scenes during development (by rebuilding the active subtree).
 
 ---
 
@@ -69,7 +88,7 @@ flowchart TD
     end
 
     subgraph Solvers["3. Layout Subsystem"]
-        LayoutInterface["Layout Interface & Strategy Registry"]
+        LayoutInterface["Built-in Layout Processing"]
         LayoutEngine["Layout Engine (Two-Pass Measure/Arrange, Anchor/Flex)"]
     end
 
@@ -98,28 +117,42 @@ Tether isolates all hardware rasterization behind an abstract Render Hardware In
 
 * **Retained Command Table:** UI primitives are tracked in contiguous 16-byte command slots with 64-bit visual sort keys.
 * **Radix Sort Z-Banding:** Coalesces draw calls by pipeline state, scissor clip regions, and texture bindings using high-speed LSD Radix Sort.
-* **Branchless Analytical SDF Primitives:** Evaluates rounded rectangles, uniform corner radii, strokes, and drop shadows directly inside fragment shaders on single instanced quads without polygonal mesh tessellation or vertex buffer explosion.
+* **SDF Primitives:** Draws rounded rectangles and borders with a shape shader.
 * **Dynamic Glyph Atlas:** Integrates Fontstash for high-performance glyph rasterization and texture caching.
 * **Hardware Scissor Clipping:** Nested clipping regions are calculated hierarchically and submitted directly to hardware scissor registers.
 * **Driver-Agnostic Abstraction:** Chitra supports multiple low-level backends (DirectX 11, Apple Metal, OpenGL Core, OpenGL ES) through Sokol.
 
 ---
 
-## 5. Documentation Hub
+## 5. Built-in Widget Suite
+
+Tether ships with built-in widgets and semantic state components (`Tether_ValueRange`, `Tether_BoolState`, `Tether_SelectionState`). YAML exposes a subset of their C API properties:
+
+| Category | Built-in Widgets |
+| :--- | :--- |
+| **Primitives & Containers** | `Container`, `Panel`, `Text`, `tether_list` |
+| **Actions & Inputs** | `Button`, `Toggle`, `Checkbox`, `Radio`, `Slider`, `SegmentedBar` |
+| **Navigation & Disclosure** | `Menu`, `Dropdown`, `ContextMenu`, `Collapsible`, `Switcher` |
+| **Feedback & Status** | `ProgressBar`, Disabled states (`tether_widget_set_enabled`) |
+
+Overlays (`Dropdown`, `Menu`, `ContextMenu`) use CSS-like `TETHER_POSITION_ABSOLUTE` positioning with single-pass draw-order layering (`N++`), escaping parent clip bounds cleanly without reparenting or z-index hacks. Right-click pointer events bubble natively up the hierarchy, and drag-to-select + click-outside dismissal are handled via unified input routing.
+
+---
+
+## 6. Documentation Hub
 
 Comprehensive, production-grade documentation is available in the [`docs/`](docs/) directory:
 
 > [!WARNING]
-> **Developer Preview**: Tether is currently under active development (`v0.0.2-preview`). Architectural specifications, API signatures, and roadmap features reflect preview builds.
+> **Developer Preview**: Tether is currently under active development (`v0.0.3-preview`). Architectural specifications, API signatures, and roadmap features reflect preview builds.
 
 * **[Master Documentation Index](docs/index.md)**: Master navigation hub and ecosystem architecture overview.
-* **[Category A: Project Presentation (10 Chapters)](docs/index.md#category-a-project-presentation)**:
-
+* **[Category A: Project Presentation (10 Chapters)](docs/index.md#category-a-project-presentation)**: Vision, design philosophy, ecosystem architecture, technology comparisons, benchmark methodology, and phased roadmap.
 * **[Category B: Technical & Developer Documentation (14 Chapters)](docs/index.md#category-b-technical-and-developer-documentation)**: Complete engineering manuals covering the ECS Kernel, memory layout, components, invalidation lifecycles, widget registries, layout engines, backend interfaces, GPU rendering, input hit-testing, declarative parsing, language bindings, API reference, benchmarks, and architectural decision records (ADRs).
 
 ---
 
-## 6. Dependencies
+## 7. Dependencies
 
 Tether core requires zero dynamic external runtime libraries beyond the standard C library. The build vendors two submodule dependencies:
 
@@ -130,7 +163,7 @@ Tether core requires zero dynamic external runtime libraries beyond the standard
 
 ---
 
-## 7. Prerequisites
+## 8. Prerequisites
 
 * **CMake:** Version 3.20 or newer across all platforms.
 * **Windows:** Visual Studio 2022 (MSVC with "Desktop development with C++") or LLVM Clang.
@@ -142,7 +175,7 @@ Tether core requires zero dynamic external runtime libraries beyond the standard
 
 ---
 
-## 8. Building & Running
+## 9. Building & Running
 
 ### 1. Clone with Submodules
 ```bash
@@ -188,11 +221,11 @@ Tether provides modular build options:
 
 ### 3. Running Targets
 
-#### Interactive Sandbox Showcase
-The sandbox is a standalone showcase illustrating declarative YAML layouts, C widget composition, runtime scene refresh, and benchmark visualization:
+#### Interactive Sandbox & Widget Gallery
+The sandbox launches into the interactive Widget Gallery (including enabled/disabled control pairs and a right-click context menu), alongside the Lab benchmark workbench and YAML Showcase:
 
 ```bash
-# Launch interactive workbench (Lab & Showcase)
+# Launch interactive sandbox (Widget Gallery, Lab & Showcase)
 # Windows (MSVC)
 .\build\Release\tether_sandbox.exe
 # Linux / macOS (or Ninja)
@@ -206,20 +239,23 @@ The sandbox is a standalone showcase illustrating declarative YAML layouts, C wi
 ```
 
 #### Running the Full Automated Test Suite (CTest)
-Tether validates engine behavior through automated regression and behavior tests covering memory pools, generational handles, layout solvers, spatial hit-testing, and YAML AST parsing:
+Tether validates engine behavior through automated regression and behavior tests covering memory pools, generational handles, layout solvers, widget interactions, spatial hit-testing, and YAML AST parsing & rollback:
 
 ```bash
-# Execute the full 22-test automated validation suite
+# Execute the full automated validation suite (27 tests when rendering tests are enabled)
 ctest --test-dir build -C Release --output-on-failure
+
+# Run headless correctness checks only
+ctest --test-dir build -C Release -L correctness --output-on-failure
 ```
 
 #### Standalone Benchmarking Harness
 ```bash
-# Run ECS churn workloads (10,000 entities, 1,000 iterations)
-.\build\Release\tether_bench.exe --workload ecs_churn --entities 10000 --iterations 1000
+# Run ECS workloads (10,000 entities across 120 measured frames)
+.\build\Release\tether_bench.exe --scenario ecs --count 10000 --frames 120
 
 # Run layout reflow stress testing
-.\build\Release\tether_bench.exe --workload layout_reflow --entities 5000
+.\build\Release\tether_bench.exe --scenario layout --count 5000
 
 # Execute the complete automated benchmark matrix across scale boundaries
 powershell -ExecutionPolicy Bypass -File tests/benchmarks/run_standard.ps1
@@ -227,7 +263,7 @@ powershell -ExecutionPolicy Bypass -File tests/benchmarks/run_standard.ps1
 
 ---
 
-## 9. Phased Roadmap & Priority Areas
+## 10. Phased Roadmap & Priority Areas
 
 Tether is actively progressing toward subsequent developer preview milestones:
 
@@ -240,7 +276,13 @@ Tether is actively progressing toward subsequent developer preview milestones:
 
 ---
 
-## 10. License
+## 11. Contributing
+
+Contributions are welcome. Before opening a Pull Request, please read the [Contributing Guide](CONTRIBUTING.md) for Tether's layer boundaries, engineering rules, local build/test instructions (including AddressSanitizer verification), and PR workflow.
+
+---
+
+## 12. License
 
 Tether is licensed under the [Apache License 2.0](LICENSE).
 
