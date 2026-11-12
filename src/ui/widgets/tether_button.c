@@ -17,8 +17,8 @@ Tether_GUID tether_ui_button(Tether_GUID parent) {
     tether_ui_set_padding(btn, 8.0f, 16.0f, 8.0f, 16.0f);
     tether_ui_set_content_align(btn, TETHER_ALIGN_CENTER, TETHER_ALIGN_CENTER);
     tether_ui_set_flex(btn, 1.0f);
-    tether_ui_set_color(btn, (Tether_Color){45, 109, 190, 255});
-    tether_ui_set_border(btn, 1.0f, (Tether_Color){55, 118, 193, 255}, 7.0f);
+    tether_ui_set_color(btn, (Tether_Color){38, 112, 232, 255});
+    tether_ui_set_border(btn, 1.0f, (Tether_Color){65, 133, 242, 255}, 7.0f);
 
     tether_widget_add_interaction(btn, TETHER_HIT_BLOCK);
 

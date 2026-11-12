@@ -96,8 +96,8 @@ Tether_GUID tether_ui_menu(Tether_GUID parent) {
     tether_ui_set_container(menu, TETHER_FLOW_COLUMN);
     tether_ui_set_gap(menu, 0.0f, 2.0f);
     tether_ui_set_padding(menu, 4.0f, 4.0f, 4.0f, 4.0f);
-    tether_ui_set_color(menu, (Tether_Color){29, 29, 29, 255});
-    tether_ui_set_border(menu, 1.0f, (Tether_Color){79, 79, 79, 255}, 6.0f);
+    tether_ui_set_color(menu, (Tether_Color){27, 27, 30, 255});
+    tether_ui_set_border(menu, 1.0f, (Tether_Color){75, 75, 81, 255}, 6.0f);
     tether_widget_add_interaction(menu, TETHER_HIT_BLOCK);
     tether_widget_set_visibility(menu, TETHER_COLLAPSED);
 
@@ -129,7 +129,7 @@ void tether_ui_menu_set_items(Tether_GUID menu, const char **items, int count) {
         tether_ui_set_size(item, 0.0f, item_h);
         tether_ui_set_padding(item, 4.0f, 10.0f, 4.0f, 10.0f);
         tether_ui_set_content_align(item, TETHER_ALIGN_START, TETHER_ALIGN_CENTER);
-        tether_ui_set_color(item, (Tether_Color){42, 42, 42, 255});
+        tether_ui_set_color(item, (Tether_Color){43, 43, 46, 255});
         tether_ui_set_border(item, 0.0f, (Tether_Color){0, 0, 0, 0}, 4.0f);
         tether_ui_set_flex(item, 0.0f);
 

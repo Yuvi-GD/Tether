@@ -10,7 +10,7 @@ Panel:
         size_box: [480, 0]
         padding: 24
         gap: [0, 14]
-        color: [48, 48, 48, 255]
+        color: [43, 43, 47, 255]
         border_color: [100, 100, 100, 255]
         border_width: 1
         border_radius: 8

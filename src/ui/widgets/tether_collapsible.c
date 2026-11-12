@@ -27,8 +27,8 @@ Tether_GUID tether_ui_collapsible(Tether_GUID parent) {
     tether_ui_set_size(header, 0.0f, 36.0f);
     tether_ui_set_padding(header, 6.0f, 12.0f, 6.0f, 12.0f);
     tether_ui_set_content_align(header, TETHER_ALIGN_START, TETHER_ALIGN_CENTER);
-    tether_ui_set_color(header, (Tether_Color){42, 42, 42, 255});
-    tether_ui_set_border(header, 1.0f, (Tether_Color){79, 79, 79, 255}, 6.0f);
+    tether_ui_set_color(header, (Tether_Color){43, 43, 46, 255});
+    tether_ui_set_border(header, 1.0f, (Tether_Color){75, 75, 81, 255}, 6.0f);
     tether_widget_add_interaction(header, TETHER_HIT_BLOCK);
 
     Tether_GUID arrow = tether_ui_text(header);

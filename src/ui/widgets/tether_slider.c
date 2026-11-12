@@ -53,7 +53,7 @@ Tether_GUID tether_ui_slider(Tether_GUID parent) {
     Tether_GUID slider = tether_ui_progress_bar(parent);
 
     tether_ui_set_size(slider, 0.0f, SLIDER_HEIGHT);
-    tether_ui_set_color(slider, (Tether_Color){54, 54, 54, 255});
+    tether_ui_set_color(slider, (Tether_Color){53, 53, 58, 255});
     tether_ui_set_border(slider, 0.0f, (Tether_Color){0, 0, 0, 0}, SLIDER_RADIUS);
 
     Tether_FlexSlot *flex = (Tether_FlexSlot*)tether_ecs_get_component(slider, TETHER_COMPONENT_FLEX_SLOT);

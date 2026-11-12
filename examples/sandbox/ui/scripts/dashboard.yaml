@@ -1,7 +1,9 @@
 Panel:
   flow: COLUMN
   fill_ratio: 1
-  color: [25, 25, 25, 255]
+  color: [33, 33, 36, 255]
+  padding: 20
+  border_radius: 8
   gap: [0, 12]
   children:
     - Text:
@@ -62,7 +64,7 @@ Panel:
               fill_ratio: 1
               padding: 18
               gap: [0, 10]
-              color: [38, 38, 38, 255]
+              color: [40, 40, 44, 255]
               border_radius: 8
               children:
                 - Text:
@@ -82,7 +84,7 @@ Panel:
               fill_ratio: 1
               padding: 18
               gap: [0, 10]
-              color: [38, 38, 38, 255]
+              color: [40, 40, 44, 255]
               border_radius: 8
               children:
                 - Text:

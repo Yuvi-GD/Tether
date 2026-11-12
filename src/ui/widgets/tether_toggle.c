@@ -15,7 +15,7 @@ static void toggle_update(Tether_GUID entity, bool state_changed) {
     bool is_on = tether_ui_get_bool(entity);
 
     if (state_changed) {
-        tether_ui_set_color(entity, is_on ? (Tether_Color){45, 109, 190, 255} : (Tether_Color){54, 54, 54, 255});
+        tether_ui_set_color(entity, is_on ? (Tether_Color){38, 112, 232, 255} : (Tether_Color){53, 53, 58, 255});
     }
     Tether_Color base = tether_ui_get_color(entity);
     int offset = tether_ui_interaction_offset(entity);

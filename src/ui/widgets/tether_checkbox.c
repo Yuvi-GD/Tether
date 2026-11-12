@@ -15,12 +15,12 @@ static void checkbox_update(Tether_GUID box, bool state_changed) {
     if (!tether_ui_has_bool(box)) return;
     bool checked = tether_ui_get_bool(box);
 
-    Tether_Color border = checked ? (Tether_Color){45, 109, 190, 255} : (Tether_Color){108, 108, 108, 255};
+    Tether_Color border = checked ? (Tether_Color){38, 112, 232, 255} : (Tether_Color){111, 111, 118, 255};
     if (state_changed) {
         tether_ui_set_border(box, 1.5f, border, 4.0f);
         Tether_GUID indicator = tether_widget_get_child_at(box, 0);
         if (indicator != TETHER_INVALID_GUID) {
-            tether_ui_set_color(indicator, checked ? (Tether_Color){45, 109, 190, 255} : (Tether_Color){0, 0, 0, 0});
+            tether_ui_set_color(indicator, checked ? (Tether_Color){38, 112, 232, 255} : (Tether_Color){0, 0, 0, 0});
         }
     }
     Tether_Shape *shape = tether_ecs_get_component(box, TETHER_COMPONENT_SHAPE);
@@ -40,8 +40,8 @@ Tether_GUID tether_ui_checkbox(Tether_GUID parent) {
         flex->align_self_x = TETHER_ALIGN_START;
         flex->align_self_y = TETHER_ALIGN_CENTER;
     }
-    tether_ui_set_color(box, (Tether_Color){42, 42, 42, 255});
-    tether_ui_set_border(box, 1.5f, (Tether_Color){108, 108, 108, 255}, 4.0f);
+    tether_ui_set_color(box, (Tether_Color){43, 43, 46, 255});
+    tether_ui_set_border(box, 1.5f, (Tether_Color){111, 111, 118, 255}, 4.0f);
     tether_widget_add_interaction(box, TETHER_HIT_BLOCK);
     tether_ecs_add_component(box, TETHER_COMPONENT_BOOL_STATE);
 

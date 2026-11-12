@@ -2,7 +2,7 @@ Panel:
   flow: COLUMN
   padding: 20
   gap: [0, 12]
-  color: [45, 45, 45, 255]
+  color: [42, 42, 46, 255]
   border_radius: 8
   children:
     - Text:

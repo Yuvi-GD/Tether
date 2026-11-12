@@ -36,7 +36,7 @@ Container:
         children:
           - SegmentedBar:
               id: "app_navigation"
-              options: ["Widget gallery", "Lab & results", "Showcase"]
+              options: ["Widget Gallery", "Lab Workbench", "Test Showcase"]
               selected: 0
               fill_ratio: 1
     - Container:

@@ -1,40 +1,39 @@
 # The two columns intentionally use the same widgets and content.
 - Panel:
     id: zoo_root
-    color: [25, 25, 25, 255]
+    color: [20, 20, 22, 255]
     flow: COLUMN
     fill_ratio: 1
     padding: [14, 20]
     gap: [0, 10]
     children:
       - Text:
-          string: "Tether / Widget gallery"
+          string: "Widget Gallery"
           font_size: 24
           color: [230, 230, 230, 255]
       - Text:
           string: "Try the controls on the left. The matching examples on the right are disabled."
           font_size: 14
           color: [160, 160, 160, 255]
-      - Container:
+      - Panel:
           flow: ROW
           fill_ratio: 1
-          gap: [14, 0]
+          color: [33, 33, 36, 255]
+          border_radius: 8
           children:
-            - Panel:
+            - Container:
                 id: zoo_left_col
                 fill_ratio: 1
                 flow: COLUMN
-                gap: [0, 7]
-                padding: [12, 14]
-                color: [38, 38, 38, 255]
-                border_color: [68, 68, 68, 255]
-                border_width: 1
-                border_radius: 8
+                gap: [0, 9]
+                padding: [14, 16]
                 children:
                   - Text:
-                      string: "ENABLED"
-                      font_size: 17
-                      color: [170, 210, 250, 255]
+                      string: "Enabled"
+                      size_box: [0, 36]
+                      text_align: [CENTER, CENTER]
+                      font_size: 20
+                      color: [225, 225, 225, 255]
                   - Button:
                       id: zoo_button_enabled
                       fill_ratio: 0
@@ -157,20 +156,21 @@
                                   font_size: 14
                                   wrap_width: 430
             - Panel:
+                size_box: [1, 0]
+                color: [72, 72, 78, 255]
+            - Container:
                 id: zoo_right_col
                 fill_ratio: 1
                 flow: COLUMN
-                gap: [0, 7]
-                padding: [12, 14]
-                color: [38, 38, 38, 255]
-                border_color: [68, 68, 68, 255]
-                border_width: 1
-                border_radius: 8
+                gap: [0, 9]
+                padding: [14, 16]
                 children:
                   - Text:
-                      string: "DISABLED"
-                      font_size: 17
-                      color: [160, 160, 160, 255]
+                      string: "Disabled"
+                      size_box: [0, 36]
+                      text_align: [CENTER, CENTER]
+                      font_size: 20
+                      color: [225, 225, 225, 255]
                   - Button:
                       id: zoo_button_disabled
                       fill_ratio: 0

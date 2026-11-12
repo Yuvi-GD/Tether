@@ -24,11 +24,11 @@ static void radio_update(Tether_GUID radio) {
 
         Tether_GUID ring = tether_widget_get_child_at(row, 0);
         if (ring != TETHER_INVALID_GUID) {
-            tether_ui_set_border(ring, 1.5f, is_selected ? (Tether_Color){45, 109, 190, 255} : (Tether_Color){108, 108, 108, 255}, 10.0f);
+            tether_ui_set_border(ring, 1.5f, is_selected ? (Tether_Color){38, 112, 232, 255} : (Tether_Color){111, 111, 118, 255}, 10.0f);
 
             Tether_GUID dot = tether_widget_get_child_at(ring, 0);
             if (dot != TETHER_INVALID_GUID) {
-                tether_ui_set_color(dot, is_selected ? (Tether_Color){45, 109, 190, 255} : (Tether_Color){0, 0, 0, 0});
+                tether_ui_set_color(dot, is_selected ? (Tether_Color){38, 112, 232, 255} : (Tether_Color){0, 0, 0, 0});
             }
             radio_handle_feedback(row, &(Tether_Event){ .type = TETHER_EVENT_CHANGE }, NULL);
         }
@@ -114,8 +114,8 @@ Tether_GUID tether_ui_add_radio_option(Tether_GUID radio, const char *label) {
     tether_ui_set_container(ring, TETHER_FLOW_ROW);
     tether_ui_set_content_align(ring, TETHER_ALIGN_CENTER, TETHER_ALIGN_CENTER);
     tether_ui_set_size(ring, 20.0f, 20.0f);
-    tether_ui_set_color(ring, (Tether_Color){42, 42, 42, 255});
-    tether_ui_set_border(ring, 1.5f, (Tether_Color){108, 108, 108, 255}, 10.0f);
+    tether_ui_set_color(ring, (Tether_Color){43, 43, 46, 255});
+    tether_ui_set_border(ring, 1.5f, (Tether_Color){111, 111, 118, 255}, 10.0f);
 
     /* Child 0 of Ring: Inner Bullet Dot 10x10 circle, radius 5px, centered */
     Tether_GUID dot = tether_ui_panel(ring);

@@ -16,20 +16,20 @@
           - Slot: "children"
 - Panel:
     id: "AppRoot"
-    color: [25, 25, 25, 255]
+    color: [20, 20, 22, 255]
     flow: COLUMN
     fill_ratio: 1
-    padding: [16, 20]
-    gap: [0, 12]
+    padding: [14, 20]
+    gap: [0, 10]
     children:
       - Text:
-          string: "Tether / Showcase"
+          string: "Test Showcase"
           font_size: 24
-          color: [235, 235, 235, 255]
+          color: [230, 230, 230, 255]
       - Text:
-          string: "Explore composition, interaction and live YAML in one application."
-          font_size: 15
-          color: [175, 175, 175, 255]
+          string: "Explore composition, interactions, and YAML examples."
+          font_size: 14
+          color: [160, 160, 160, 255]
       - SegmentedBar:
           id: "showcase_tabs"
           options: ["Dashboard", "Examples", "YAML playground"]
@@ -49,7 +49,7 @@
                 fill_ratio: 1
                 padding: 20
                 gap: [0, 14]
-                color: [38, 38, 38, 255]
+                color: [33, 33, 36, 255]
                 border_radius: 8
                 children:
                   - Text:
@@ -269,7 +269,7 @@
                 fill_ratio: 1
                 padding: 20
                 gap: [0, 12]
-                color: [38, 38, 38, 255]
+                color: [33, 33, 36, 255]
                 border_radius: 8
                 children:
                   - Container:
@@ -340,7 +340,7 @@
                       fill_ratio: 1
                       padding: 16
                       gap: [0, 8]
-                      color: [27, 27, 27, 255]
-                      border_color: [75, 75, 75, 255]
+                      color: [24, 24, 27, 255]
+                      border_color: [73, 73, 80, 255]
                       border_width: 1
                       border_radius: 6

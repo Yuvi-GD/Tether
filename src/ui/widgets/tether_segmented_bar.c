@@ -22,7 +22,7 @@ static void segmented_bar_update(Tether_GUID bar) {
         if (seg == TETHER_INVALID_GUID) break;
         bool is_selected = (i == selected);
 
-        tether_ui_set_color(seg, is_selected ? (Tether_Color){45, 109, 190, 255} : (Tether_Color){0, 0, 0, 0});
+        tether_ui_set_color(seg, is_selected ? (Tether_Color){38, 112, 232, 255} : (Tether_Color){0, 0, 0, 0});
 
         Tether_GUID txt = tether_widget_get_child_at(seg, 0);
         if (txt != TETHER_INVALID_GUID) {
@@ -45,8 +45,8 @@ Tether_GUID tether_ui_segmented_bar(Tether_GUID parent) {
     tether_ui_set_container(bar, TETHER_FLOW_ROW);
     tether_ui_set_gap(bar, 2.0f, 0.0f);
     tether_ui_set_padding(bar, 3.0f, 3.0f, 3.0f, 3.0f);
-    tether_ui_set_color(bar, (Tether_Color){32, 32, 32, 255});
-    tether_ui_set_border(bar, 1.0f, (Tether_Color){75, 75, 75, 255}, 7.0f);
+    tether_ui_set_color(bar, (Tether_Color){28, 28, 31, 255});
+    tether_ui_set_border(bar, 1.0f, (Tether_Color){70, 70, 76, 255}, 7.0f);
 
     return bar;
 }

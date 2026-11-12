@@ -42,7 +42,7 @@ Tether_GUID tether_ui_progress_bar(Tether_GUID parent) {
         flex->fill_ratio = 0.0f;
     }
 
-    tether_ui_set_color(track, (Tether_Color){54, 54, 54, 255});
+    tether_ui_set_color(track, (Tether_Color){53, 53, 58, 255});
     tether_ui_set_border(track, 0.0f, (Tether_Color){0, 0, 0, 0}, BAR_RADIUS);
 
     tether_ecs_add_component(track, TETHER_COMPONENT_VALUE_RANGE);
@@ -50,7 +50,7 @@ Tether_GUID tether_ui_progress_bar(Tether_GUID parent) {
     Tether_GUID fill = tether_ui_panel(track);
     tether_ui_set_anchor(fill, 0.0f, 0.0f, 0.0f, 1.0f);
     tether_ui_set_offsets(fill, 0.0f, 0.0f, 0.0f, 0.0f);
-    tether_ui_set_color(fill, (Tether_Color){45, 109, 190, 255});
+    tether_ui_set_color(fill, (Tether_Color){38, 112, 232, 255});
     tether_ui_set_border(fill, 0.0f, (Tether_Color){0, 0, 0, 0}, BAR_RADIUS);
 
     return track;
