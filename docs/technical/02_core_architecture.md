@@ -26,7 +26,7 @@ flowchart TD
     subgraph Cells["Modular Subsystem Cells"]
         Authoring["Authoring Cell (Declarative YAML, AST Parser, Scene IR)"]
         UI["Widget Library Cell (Base Controls, Custom Widgets, Layout Rules)"]
-        Registry["Central Registry Cell (Widgets, Aliases, Layout Strategies, Function Bindings)"]
+        Registry["Central Registry Cell (Widgets, Aliases, Fonts)"]
         Engine["Engine Orchestrator (Transforms, Hierarchy, Invalidation, Frame Pipeline)"]
         Input["Input & Events Cell (Pointer Normalization, Reverse DFS Hit-Testing)"]
         Kernel["ECS Kernel Cell (Sparse Sets, Dense Arrays, GUIDs, SSO Memory)"]
@@ -62,7 +62,7 @@ flowchart TD
 | **Host Application** | Owns business logic, application domain state, pre-init setup, and outer configuration. | User Application Code |
 | **Authoring Cell** | Parses declarative markup into an AST and compiles the scene into ECS entities. | `include/tether/engine/parser/` |
 | **Widget Library Cell** | Composes controls out of pure data components without class inheritance. | `include/tether/ui/` |
-| **Central Registry Cell** | Central directory for widget factories, string aliases, layout strategies, and function bindings. | `include/tether/core/` |
+| **Central Registry Cell** | Central directory for widget factories, string aliases, and fonts. | `include/tether/core/` |
 | **Engine Orchestrator** | Coordinates scene hierarchy, spatial bounds, invalidation flags, and frame timing. | `include/tether/engine/` |
 | **Input & Events Cell** | Normalizes pointer events, performs reverse DFS hit-testing, and routes callbacks. | `include/tether/core/` |
 | **ECS Kernel Cell** | High-performance, data-oriented memory management (Sparse Sets, Dense Arrays). | `include/tether/core/` |
@@ -126,33 +126,9 @@ Tether establishes a clean compile-time boundary via `TETHER_COMPONENT_MAX`:
 
 ## 3. The Central Registry System
 
-The Central Registry (`include/tether/core/tether_registry.h`) is the modular backbone of Tether, providing four distinct registry services that decouple authoring, layout, and event handling:
+The registry in `include/tether/core/tether_registry.h` stores widget factories, entity aliases, and font registrations. Event callbacks are maintained by `tether_events.c`.
 
-```
-+-------------------------------------------------------------------------+
-|                         THE CENTRAL REGISTRY                            |
-+-------------------------------------------------------------------------+
-| 1. WIDGET REGISTRY: Maps string names ("Button") to creation factories  |
-| 2. ALIAS REGISTRY:  Maps human-readable names to 64-bit Entity GUIDs    |
-| 3. LAYOUT STRATEGY: Maps container types to Measure & Arrange functions |
-| 4. FUNCTION BINDING:Maps declarative event hooks to host C callbacks    |
-+-------------------------------------------------------------------------+
-```
-
-### 1. Widget Factory Registry
-Maps human-readable widget names (such as `"Button"`, `"Panel"`, `"Text"`) to factory functions (`Tether_WidgetCreateFn`). When declarative markup references a widget type, the authoring system queries this registry to instantiate the appropriate component assembly.
-
-### 2. String-ID / Alias Registry
-Binds human-readable string aliases to 64-bit entity GUIDs (`tether_registry_alias_entity`). This keeps entity identity pure and numeric inside the ECS Kernel while allowing declarative markup and host code to query, manipulate, and style entities by name (`tether_registry_find_entity`).
-
-### 3. Layout Strategy Registry (Container-Agnostic Layout)
-The layout engine does not hardcode container behavior. Instead, it queries a registry of layout strategies bound to specific container components:
-- **`MeasureFn` (Bottom-Up Pass)**: Reports the natural intrinsic dimensions of leaf content (e.g. text measuring or image aspect ratios) or aggregates child bounds.
-- **`ArrangeFn` (Top-Down Pass)**: Positions children within allocated boundaries according to container distribution rules (e.g. flex distribution or canvas anchoring).
-- Custom containers (such as a hexagonal grid or dockable panel) register their own `measure` and `arrange` functions without modifying core engine source code.
-
-### 4. Function and Event Binding Registry
-Maps string identifiers declared in markup (such as `on_click: handle_login`) to host C function pointers. This enables clean, event-driven data binding where UI markup connects directly to application logic without embedding programming language runtimes or heavy script engines into visual files.
+Layout strategies and named YAML action bindings are future design ideas described in the [roadmap](../presentation/10_roadmap_and_community.md); the current layout solver handles its flow modes directly.
 
 ---
 
@@ -222,7 +198,7 @@ A central architectural pillar in Tether is the strict mathematical decoupling b
 ### Why Decoupling is Essential
 In traditional DOM and UI frameworks, animating an element (such as a hover bounce, scale transition, or rotation) modifies bounding box properties, triggering a costly **layout reflow**. Reflow ripples through parent and sibling nodes, consuming CPU cycles and dropping frames.
 
-In Tether, continuous visual animations, hover scale effects, and rotations update `RenderTransform` directly and mark the entity dirty for visual synchronization. The layout solver is completely bypassed, ensuring zero CPU reflow cost during visual transitions.
+In Tether, non-layout presentation updates (`RenderTransform` offsets and opacity, or color updates) mark `DIRTY_VISUAL` without dirtying `DIRTY_LAYOUT`. Note that changing text rotation, scale, or pivot also sets `DIRTY_TEXT_CONTENT` so glyph geometry can be rebuilt on the CPU.
 
 ---
 
@@ -365,7 +341,7 @@ int main(void) {
     app_pre_init();
 
     /* 2. Configure Application and Lifecycle Hooks */
-    Tether_App_Config config = {
+    Tether_Config config = {
         .width = 1280,
         .height = 720,
         .title = "Tether Application",
@@ -441,7 +417,7 @@ sequenceDiagram
 | :--- | :--- | :--- |
 | **Modular Cell-Block Design** | Allows independent testing, extension, and swapping of layout, rendering, or parsing subsystems without ripple effects. | Rigid vertical multi-tier stack (tightly coupled, leaky abstractions, difficult to embed). |
 | **Pure C99 Data-Oriented ECS** | Maximizes CPU cache locality, eliminates heap fragmentation, and provides $O(1)$ memory access via sparse sets. | Object-Oriented inheritance tree (virtual call overhead, pointer chasing, severe heap fragmentation). |
-| **Separation of Transforms** | Visual animations, hover effects, and rotations run at zero CPU reflow cost. | Unified bounding box (every visual change invalidates parent and sibling layout). |
+| **Separation of Transforms** | Layout (`SlotTransform`) and visual offsets (`RenderTransform`) stay separate; non-text visual changes bypass layout. | Unified bounding box (every visual change invalidates parent and sibling layout). |
 | **Primitives / Containers / Slots** | Provides clear separation of concerns between visual rendering, parent layout context, and child behavior. | Monolithic widget definitions where rendering, container rules, and child behavior are tangled together. |
 | **Visible vs. Non-Visible Taxonomy** | Clear functional boundary: visible components render pixels; non-visible components define layout, structure, and interaction. | Monolithic component structs that mix visual pixels and interaction logic. |
 | **Central Registry Architecture** | Modular directories for widgets, aliases, container layout strategies, and event bindings. | Hardcoded switch statements throughout core engine code. |

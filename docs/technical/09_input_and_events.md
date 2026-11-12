@@ -9,11 +9,11 @@
 User interfaces are fundamentally reactive. When a user clicks a button, drags a slider, or hovers over a menu, raw platform events must be translated into spatial queries, state machine transitions, visual updates, and application callbacks.
 
 Tether decouples input processing from OS-specific windowing loops through a three-stage pipeline:
-1. **Event Normalization**: Native platform window messages (Win32, SDL3, WebAssembly) are converted into normalized `Tether_Pointer_Event` structures.
-2. **Hierarchical Spatial Query (`tether_hit_test`)**: A reverse depth-first search (DFS) with $O(1)$ bounding box culling traverses the scene tree, respecting hit behaviors and Z-index stacking order.
-3. **State Transition & Event Dispatch (`tether_input_process_event`)**: The engine tracks active hover and press states, auto-flags visual dirty tags for luminance transitions, and dispatches registered event callbacks.
+1. **Event Normalization**: Native platform window messages (via Sokol `sokol_app` in the bundled Chitra backend, or custom platform adapters) are converted into normalized `Tether_Pointer_Event` structures.
+2. **Hierarchical Spatial Query (`tether_hit_test`)**: A reverse depth-first search (DFS) with priority routing (`tether_input_set_route`), disabled-subtree culling (`is_enabled`), bounding-box culling that still descends into `ABSOLUTE`/`FIXED` overlay children, and hit-behavior policies.
+3. **State Transition & Event Dispatch (`tether_input_process_event`)**: Tracks hover, press, drag, click, and right-click parent bubbling, and dispatches `Tether_Event` payloads through a reentrant-safe event registry (`tether_bind_event`, `tether_bind_pointer_event`).
 
-This chapter details the input data structures, the spatial culling algorithm, interaction components (`Tether_Interactable`), event callback bindings (`tether_bind_event`), and future focus/keyboard architecture.
+This chapter details the input data structures, spatial hit-testing, `Tether_Interactable`, temporary input routing, and event callback bindings.
 
 ---
 
@@ -22,7 +22,7 @@ This chapter details the input data structures, the spatial culling algorithm, i
 ```mermaid
 flowchart TD
     subgraph PlatformLayer["Platform Window Layer (OS / Backend)"]
-        OSMsg["OS Window Messages\n(WM_MOUSEMOVE, SDL_EVENT_MOUSE_BUTTON_DOWN)"]
+        OSMsg["OS Window Messages\n(Sokol sapp_event or custom platform adapter)"]
         Hook["Backend Hook: tether_on_input(&pointer_event)"]
     end
 
@@ -148,29 +148,28 @@ flowchart TD
 
 ### Algorithmic Steps
 
-1. **Reverse Root-Level Iteration**:
-   `tether_hit_test(x, y)` queries root entities from the `TETHER_COMPONENT_HIERARCHY` dense pool in reverse order (`overlay_root` first, then `main_root`). This guarantees that floating dropdowns, popups, and tooltips intercept clicks before the underlying canvas.
-2. **Early Visibility Pruning**:
-   If an entity possesses `Tether_Visibility` with `computed_state` equal to `TETHER_HIDDEN` or `TETHER_COLLAPSED`, the function returns `TETHER_INVALID_GUID` immediately, pruning its entire subtree from evaluation.
-3. **$O(1)$ Spatial Bounding Box Culling**:
+1. **Priority Route & Reverse Root-Level Iteration**:
+   If a temporary input route (`tether_input_set_route()`) is active (used by popups, dropdowns, and context menus), `tether_hit_test(x, y)` evaluates `g_route` first. Otherwise it queries root entities in `TETHER_COMPONENT_HIERARCHY` in reverse order (`overlay_root` before `main_root`).
+2. **Enabled & Visibility Pruning**:
+   If an entity has `Interactable.is_enabled == false`, or `Visibility.computed_state` equals `TETHER_HIDDEN` or `TETHER_COLLAPSED`, `hit_test_tree()` returns `TETHER_INVALID_GUID` immediately and prunes the entire subtree.
+3. **$O(1)$ Spatial Bounding Box Culling with Overlay Child Descent**:
    The cursor position is tested against `Tether_SlotTransform`:
    ```c
-   if (x < st->x || x > st->x + st->width || y < st->y || y > st->y + st->height) {
-       return TETHER_INVALID_GUID;
-   }
+   bool inside_self = (x >= st->x && x <= st->x + st->width && y >= st->y && y <= st->y + st->height);
    ```
-   If the cursor is outside the node's layout rectangle, the entire subtree is rejected in a single comparison.
+   If the cursor is outside the container rectangle, normal relative children are culled immediately, while any child using `TETHER_POSITION_ABSOLUTE` or `TETHER_POSITION_FIXED` is still tested so floating popups can catch hits outside their parent card bounds.
 4. **Reverse DFS Traversal (Topmost Z-Order First)**:
-   Because siblings are drawn in chronological order (first child to last child), the last child has the highest Z-index. The hit tester walks backwards from `h->last_child` along `prev_sibling`, evaluating topmost elements first.
+   Because siblings are drawn from `first_child` to `last_child`, the hit tester walks backwards from `h->last_child` along `prev_sibling`, evaluating topmost elements first.
 5. **Hit-Behavior Resolution**:
-   - `TETHER_HIT_BLOCK` (Default): The element intercepts the pointer event if children did not capture it, stopping propagation to elements behind.
-   - `TETHER_HIT_IGNORE`: Transparent pass-through. Pointer clicks pass directly through the element and all of its descendants (used for decorative icons, background panels, or non-interactive text labels).
-   - `TETHER_HIT_CHILD_ONLY`: Structural layout containers (such as transparent rows or columns) allow their interactive children to be clicked, but ignore clicks on their empty internal space.
-   - `TETHER_HIT_SELF_ONLY`: Captures clicks on the container background, skipping child evaluation.
+   Entities without a `Tether_Interactable` component default to `TETHER_HIT_CHILD_ONLY`.
+   - `TETHER_HIT_BLOCK`: Intercepts the pointer event if children did not capture it, stopping propagation behind.
+   - `TETHER_HIT_IGNORE`: Transparent pass-through for the element and all descendants.
+   - `TETHER_HIT_CHILD_ONLY`: Containers let interactive children receive hits without catching empty background space.
+   - `TETHER_HIT_SELF_ONLY`: Captures hits on itself and skips evaluating children.
 
 ---
 
-## 5. Interaction State Machine (`Tether_Interactable`)
+## 5. Interaction State Machine & Input Routing
 
 The interactive lifecycle of widgets is tracked by `Tether_Interactable`:
 
@@ -182,52 +181,46 @@ typedef enum {
     TETHER_HIT_CHILD_ONLY = 3
 } Tether_HitBehavior;
 
-typedef enum {
-    TETHER_COLOR_MODE_NONE = 0,
-    TETHER_COLOR_MODE_AUTO = 1,
-    TETHER_COLOR_MODE_MANUAL = 2
-} Tether_ColorMode;
-
 typedef struct Tether_Interactable {
-    uint8_t is_hovered;
-    uint8_t is_pressed;
-    uint8_t has_focus;
-    
+    bool is_enabled;
+    bool is_hovered;
+    bool is_pressed;
+    bool has_focus;
     Tether_HitBehavior hit_behavior;
-    
-    Tether_ColorMode hover_color_mode;
-    Tether_Color hover_color;
-    Tether_ColorMode press_color_mode;
-    Tether_Color press_color;
 } Tether_Interactable;
 ```
+
+### Priority Input Routing (`tether_input_set_route` / `tether_input_clear_route`)
+Transient overlays such as open dropdowns and context menus register a single priority route target and observer callback:
+```c
+typedef void (*Tether_InputRouteCallback)(Tether_GUID entity, const Tether_Pointer_Event *event,
+                                         Tether_GUID hit, Tether_GUID pressed);
+void tether_input_set_route(Tether_GUID entity, Tether_InputRouteCallback callback);
+void tether_input_clear_route(Tether_GUID entity);
+```
+During `tether_input_process_event()`, the router receives the resolved `hit` and `g_pressed` entities so an open menu or dropdown can close cleanly on an outside click or escape interaction. Destroying a routed entity clears `g_route` automatically.
 
 ### State Transitions inside `tether_input_process_event`
 
 When pointer events are processed:
 
-#### 1. Hover State Transitions
-The engine maintains a static tracker `g_hovered`:
-- If the current hit target differs from `g_hovered`:
-  - On the previous entity: `old_i->is_hovered = 0`, tags `TETHER_COMPONENT_DIRTY_VISUAL`, and dispatches `TETHER_EVENT_HOVER_EXIT`.
-  - On the new entity: `new_i->is_hovered = 1`, tags `TETHER_COMPONENT_DIRTY_VISUAL`, and dispatches `TETHER_EVENT_HOVER_ENTER`.
-  - Updates `g_hovered = hit`.
+#### 1. Drag & Hover Transitions
+- **Drag (`TETHER_POINTER_MOVE`)**: If `g_pressed` is valid, the engine dispatches `TETHER_EVENT_DRAG` with `TETHER_MOUSE_BUTTON_LEFT` to `g_pressed` before hover transition checks (powering sliders and continuous drag controls).
+- **Hover (`hit != g_hovered`)**: Clears `is_hovered` and dispatches `TETHER_EVENT_HOVER_EXIT` on the previous target, sets `is_hovered = 1` and dispatches `TETHER_EVENT_HOVER_ENTER` on the new hit target, and tags `TETHER_COMPONENT_DIRTY_VISUAL`.
 
-#### 2. Press and Release Transitions
-The engine maintains a static tracker `g_pressed`:
-- **Pointer Down (Left Button)**:
-  - If a valid interactive target is hit, `p->is_pressed = 1`, tags `TETHER_COMPONENT_DIRTY_VISUAL`, and dispatches `TETHER_EVENT_PRESS`.
-  - Records `g_pressed = hit`.
-- **Pointer Up (Left Button)**:
-  - If an entity was pressed, `p->is_pressed = 0`, tags `TETHER_COMPONENT_DIRTY_VISUAL`, and dispatches `TETHER_EVENT_RELEASE`.
-  - **Click Resolution**: If the cursor is released over the **exact same entity** that received the pointer down (`g_pressed == hit`), the engine dispatches `TETHER_EVENT_CLICK`.
-  - Resets `g_pressed = TETHER_INVALID_GUID`.
+#### 2. Press, Release, Click & Right-Click Bubbling
+- **Left Button (`TETHER_MOUSE_BUTTON_LEFT`)**:
+  - Down: Sets `p->is_pressed = 1`, records `g_pressed = hit`, tags `DIRTY_VISUAL`, and dispatches `TETHER_EVENT_PRESS`.
+  - Up: Clears `p->is_pressed = 0`, dispatches `TETHER_EVENT_RELEASE`, and if `g_pressed == hit`, dispatches `TETHER_EVENT_CLICK`.
+- **Right Button (`TETHER_MOUSE_BUTTON_RIGHT`)**:
+  - Down: Tracks `g_right_pressed` (falling back to `main_root` if empty canvas was clicked) and dispatches `TETHER_EVENT_PRESS`.
+  - Up: Dispatches `TETHER_EVENT_RELEASE`. If released over the pressed target, dispatches `TETHER_EVENT_CLICK` and **bubbles upward through `Hierarchy.parent` links** until reaching the root, allowing parent panels or workspaces to open context menus cleanly.
 
 ---
 
 ## 6. Event Binding and Callback Dispatch (`tether_events.h`)
 
-Applications connect business logic to UI events using C function pointers:
+Applications connect business logic to UI events using normalized `Tether_Event` payloads:
 
 ```c
 typedef enum {
@@ -235,22 +228,31 @@ typedef enum {
     TETHER_EVENT_HOVER_EXIT,
     TETHER_EVENT_PRESS,
     TETHER_EVENT_RELEASE,
-    TETHER_EVENT_CLICK
+    TETHER_EVENT_CLICK,
+    TETHER_EVENT_DRAG,
+    TETHER_EVENT_CHANGE
 } Tether_EventType;
 
-typedef void (*Tether_EventCallback)(Tether_GUID entity, Tether_EventType type, void* user_data);
+typedef struct {
+    Tether_EventType type;
+    Tether_MouseButton button;
+    float x, y;
+} Tether_Event;
+
+typedef void (*Tether_EventCallback)(Tether_GUID entity, const Tether_Event *event, void* user_data);
 
 void tether_bind_event(Tether_GUID entity, Tether_EventType type,
                        Tether_EventCallback callback, void* user_data);
+void tether_bind_pointer_event(Tether_GUID entity, Tether_EventType type, Tether_MouseButton button,
+                               Tether_EventCallback callback, void* user_data);
 void tether_unbind_event(Tether_GUID entity, Tether_EventType type);
+void tether_unbind_callback(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback);
 void tether_dispatch_event(Tether_GUID entity, Tether_EventType type);
+void tether_dispatch_event_data(Tether_GUID entity, const Tether_Event *event);
 ```
 
-### High-Performance Storage
-Event bindings are stored in a compact flat array (`src/core/tether_events.c`):
-- **Memory Packing**: Multiple bindings exist contiguously without linked list overhead.
-- **Constant-Time Removal**: Unbinding an event utilizes Swap-and-Pop ($O(1)$) deallocation.
-- **Direct Dispatch**: When an event fires, `tether_dispatch_event()` iterates the flat array and invokes matching callbacks directly, bypassing deep object-oriented inheritance listener chains.
+- **`tether_bind_event` vs `tether_bind_pointer_event`**: `tether_bind_event()` binds left-button pointer actions (or unfiltered hover/`TETHER_EVENT_CHANGE` events). `tether_bind_pointer_event()` lets callers bind specific mouse buttons such as `TETHER_MOUSE_BUTTON_RIGHT`.
+- **Reentrant-Safe Storage (`src/core/tether_events.c`)**: Bindings live in a flat contiguous array (`Tether_EventBinding`). Outside dispatch, removals use $O(1)$ Swap-and-Pop; during nested dispatch (`g_dispatch_depth > 0`), removed entries are nulled and compacted once the outermost dispatch finishes, while newly added bindings take effect on the next dispatch. Destroying the target entity halts further delivery to it immediately.
 
 ---
 

@@ -8,7 +8,7 @@
 
 Most graphical user interface frameworks are optimized for a single computing domain. Web frameworks (Electron, React) target desktop and cloud applications at the cost of massive resource consumption. Immediate-mode toolkits (Dear ImGui) target game engine debug menus at the cost of continuous power drain. Embedded GUI toolkits (LVGL, TouchGFX) target microcontrollers at the cost of rigid, proprietary authoring pipelines.
 
-Tether is architected to transcend these artificial boundaries. By separating data-oriented state management, constraint solving, and hardware rasterization into decoupled cells, Tether scales seamlessly across five major computing domains:
+Tether is architected to span these domains by separating data-oriented state management, constraint solving, and hardware rasterization into decoupled cells. In **`v0.0.3-preview`**, desktop utilities (`Windows` CI + `Chitra`) and host-driven loop hooks (`tether_on_*`) are active, while bare-metal microcontrollers, `.tbc` pre-cooking, and spatial VR backends represent target domains on the [roadmap](10_roadmap_and_community.md):
 1. **Desktop Creative Tools and Developer Utilities**
 2. **Embedded Touchscreens, Automotive, and Medical Devices**
 3. **AAA Game HUDs and Interactive Viewports**
@@ -45,14 +45,14 @@ Developers building desktop utilities frequently resort to web runtimes (Electro
 - Sluggish multi-second cold startup times.
 
 ### The Tether Solution
-- **Kilobyte-Scale Core Data**: The internal ECS component tables for hundreds of active widgets consume mere tens of kilobytes in contiguous memory.
-- **Zero-Power Idle State**: In steady-state operation, Tether wakes only when user input occurs or when host telemetry triggers an invalidation tag. When the display is static, Tether consumes zero CPU cycles and issues zero GPU draw calls.
-- **Rapid Prototyping with Live Hot-Reload**: Developers can build complex desktop interfaces in declarative YAML, modifying layout, colors, and typography in real time using the Sandbox showcase without restarting the application.
-- **Instant Cold Boot**: Standalone desktop applications built with Tether launch instantaneously in under $50\text{ milliseconds}$.
+- **Compact Core Data**: Internal ECS component pools store widgets in contiguous C structs rather than per-node heap objects or V8 heaps.
+- **Retained Dirty-Flag Sync**: In steady state, unchanged frames report `tether_did_draw() == false` and avoid re-running engine sync work, while idle power consumption depends on the host and backend loop.
+- **Rapid Prototyping with Scene Reload**: Developers can author UI in declarative YAML and trigger manual refresh or playground reloads in the Sandbox without recompiling (automatic file-watched hot-reload is future work).
+- **Fast Native Startup**: Direct C99 initialization avoids browser process trees and heavy VM bootstrap delays.
 
 ---
 
-## 3. Embedded Touchscreens, Automotive, and Medical Devices
+## 3. Embedded Touchscreens, Automotive, and Medical Devices (Target Architecture)
 
 Resource-constrained embedded platforms, including microcontrollers (STM32, ESP32, NXP i.MX, Raspberry Pi RP2040) and real-time operating systems (FreeRTOS, Zephyr, embedded Linux), operate under severe hardware limits.
 
@@ -61,11 +61,11 @@ Traditional desktop UI toolkits cannot boot on microcontrollers due to memory fr
 
 ### The Tether Solution
 - **Pipeline 1 (Pure C Imperative Mode)**:
-  Bypasses the YAML parser and filesystem dependencies entirely. The user interface is constructed directly in pure C99 code (`tether_ui_panel`, `tether_ui_button`, `tether_ui_text`).
-- **Pre-Sized Static Component Pools**:
-  Memory capacities are pre-allocated during initialization. During active runtime, Tether executes zero dynamic heap allocations (`malloc`, `free`), guaranteeing that the application will never encounter out-of-memory crashes or fragmentation failures during operation.
-- **Strict SRAM Budgeting**:
-  A complete, multi-screen embedded UI with dozens of buttons, status gauges, and text displays fits comfortably within strict microcontroller internal SRAM budgets ($< 64\text{ KB}$).
+  Bypasses filesystem and YAML dependencies, constructing scenes directly in C99 (`tether_ui_panel()`, `tether_ui_button()`, `tether_ui_text()`).
+- **Pre-Sized Static Pools (Roadmap Target)**:
+  Fixed capacity pools paired with eliminating dynamic allocations aim to prevent fragmentation and OOM hazards during long embedded uptimes.
+- **Strict SRAM Target**:
+  The target embedded profile aims for sub-$64\text{ KB}$ static ECS SRAM budgets (unmeasured in the desktop `v0.0.3-preview`; see the [roadmap](10_roadmap_and_community.md)).
 - **Custom Framebuffer Drivers**:
   Tether connects directly to custom SPI, I2C, or parallel LCD display drivers via the simple `Tether_Backend` interface, writing pixels directly to hardware framebuffers without requiring an operating system or GPU.
 
@@ -81,15 +81,15 @@ Game developers often struggle with UI integration:
 - Pure immediate-mode toolkits (Dear ImGui) lack advanced multi-pass layout constraints (proportional flexbox, auto-wrapping text, anchor docking) and force 100% continuous CPU polling.
 
 ### The Tether Solution
-- **Sub-Millisecond Frame Times**: By storing all UI data in contiguous dense arrays, Tether processes layout and visual synchronization with extreme CPU cache efficiency, completing frame passes in fractions of a millisecond.
-- **Zero Garbage Collection (GC) Stutter**: Being written in pure C99, Tether generates zero garbage-collection churn. Frame rates remain rock-solid across hours of continuous gameplay.
-- **Zero-Reflow Visual Animations**: In-game HUD elements frequently pulse, scale on hover, or fade out. Tether's mathematical separation of `SlotTransform` (layout geometry) from `RenderTransform` (GPU visual offsets) ensures that animations execute purely on the GPU without triggering CPU layout reflow passes.
+- **Cache-Friendly Dense Storage**: Storing UI data in contiguous dense arrays enables linear traversal during layout and visual sync (measure specific workloads with `tether_bench`).
+- **Zero Garbage Collection (GC) Stutter**: Being written in C99, Tether has zero tracing GC pauses.
+- **Decoupled Transform Updates**: Separating `SlotTransform` from `RenderTransform` allows visual offsets, opacity, and shape animations without invalidating container layout bounds (note: text transforms rebuild CPU-side glyph geometry today).
 - **Analytical SDF Vector Graphics**: Chitra's Signed Distance Field (SDF) rasterizer renders smooth vector shapes and crisp typography at arbitrary display resolutions (1080p, 4K, ultrawide) without requiring multi-resolution raster asset swapping.
 - **Host-Driven Frame Ticking**: Games do not relinquish control of their main loop to Tether. The game engine simply invokes `tether_on_frame(width, height)` during its existing render pass.
 
 ---
 
-## 5. Spatial Computing and Virtual/Augmented Reality (VR/AR)
+## 5. Spatial Computing and Virtual/Augmented Reality (VR/AR - Target Architecture)
 
 Spatial computing viewports (such as VR headsets, AR glasses, and 3D simulation cockpits) require interfaces that can exist as 2D flat projections or as interactive 3D virtual panels positioned within world space.
 
@@ -133,22 +133,22 @@ Web and mobile frameworks experience notorious dependency churn:
 
 ### The Long-Term Stability of Pure C99
 - **The Timelessness of ISO C99**: C99 is one of the most stable, widely supported computing standards in existence. A Tether C99 codebase written today will compile and execute without modification on operating systems and compilers twenty years from now.
-- **Zero Third-Party Dependency Trees**: Tether core requires zero external runtime libraries beyond standard C library math and memory functions.
+- **Minimal Dependency Footprint**: Core ECS/layout code depends only on standard C99 headers, while default desktop builds vendor lightweight `libyaml` (for optional YAML authoring) and `chitra` cleanly.
 - **Verifiable Memory Safety**: The combination of generational GUID handles, contiguous dense memory pools, and zero heap allocations on frame loops eliminates the vast majority of memory corruption vulnerabilities common to legacy C/C++ codebases.
 
 ---
 
 ## 7. Practical Capabilities Matrix
 
-| Application Requirement | Traditional UI Solutions | How Tether Meets the Need |
+| Application Requirement | Traditional UI Solutions | How Tether Approaches the Need (Preview + Roadmap) |
 | :--- | :--- | :--- |
-| **Instant Cold Boot** | Multi-second delays (Chromium / V8 startup) | Sub-$50\text{ ms}$ startup; direct C initialization |
-| **Low Steady-State RAM** | $200\text{ MB} - 500+\text{ MB}$ (Electron) | Kilobyte-scale core data arrays; sub-$64\text{ KB}$ on bare metal |
-| **Zero-Power Battery Conservation** | Continuous background polling | Retained-mode dirty tag invalidation; 0 draw calls when static |
-| **Deterministic Frame Pacing** | Periodic GC stutter spikes | Zero heap allocations on frame loop; rock-solid frame times |
-| **Rapid Prototyping** | Recompile required on C++ toolkits | Declarative YAML markup with live Sandbox hot-reloading |
-| **Multi-Language Interoperability** | Complex C++ vtable wrappers | Scalar 64-bit integer GUIDs over standard C calling conventions |
-| **Microcontroller Suitability** | Impossible without extensive rewrites | Pipeline 1 (Pure C) with custom framebuffer drivers |
+| **Fast Cold Boot** | Multi-second delays (Chromium / V8 startup) | Direct native C99 initialization without browser VM overhead |
+| **Low Core Footprint** | $200\text{ MB} - 500+\text{ MB}$ (Electron) | Contiguous ECS structs (sub-$64\text{ KB}$ bare-metal SRAM target on roadmap) |
+| **Idle Efficiency** | Continuous immediate-mode rebuilds | Retained dirty tags (`tether_did_draw() == false` when static) |
+| **Predictable Pacing** | Periodic tracing GC stutter spikes | Zero tracing GC; steady-state zero-alloc audit ongoing |
+| **Rapid Prototyping** | Recompile required on C++ toolkits | Declarative YAML markup with manual Sandbox scene reload |
+| **Multi-Language Interoperability** | Complex C++ vtable wrappers | Scalar 64-bit `Tether_GUID` C ABI (foreign bindings on roadmap) |
+| **Microcontroller Suitability** | Impossible without extensive rewrites | Pipeline 1 (Pure C) with custom framebuffer drivers (roadmap target) |
 
 ---
 

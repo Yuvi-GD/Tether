@@ -214,7 +214,7 @@ sequenceDiagram
 ### Hook Responsibilities
 
 1. **`tether_on_init()`**:
-   Initializes the ECS kernel, dual roots (`main_root`, `overlay_root`), the Central Registry, and registers built-in widgets (`Panel`, `Text`, `Button`). Finally, it invokes the user's `config->on_init` callback.
+   Initializes the ECS kernel, dual roots (`main_root`, `overlay_root`), the Central Registry, and registers all 15 built-in primitive and widget factories (`Container`, `Panel`, `Text`, `Button`, `ProgressBar`, `Slider`, `Toggle`, `Checkbox`, `Radio`, `SegmentedBar`, `Menu`, `Dropdown`, `ContextMenu`, `Collapsible`, `Switcher`). Finally, it invokes the user's `config->on_init` callback.
 2. **`tether_on_frame(width, height)`**:
    The primary engine frame loop. Evaluates layout reflows, recomputes global Z-indices and scissor clipping slots, synchronizes dirty visual handles with `g_rhi`, flushes dirty tags, and marks the frame dirty if rendering is required.
 3. **`tether_on_post_frame()`**:
@@ -273,23 +273,9 @@ Tether_Backend g_backend = {
 };
 ```
 
-4. In your CMake build definition, link your custom backend file instead of `src/backends/chitra_backend.c`:
+4. Replace `src/backends/chitra_backend.c` in the `TETHER_SOURCES` list with the custom backend and configure the required dependencies. The current build has no backend-selection option; adding a source with `target_sources()` alone does not remove the Chitra adapter.
 
-```cmake
-# Building Tether with ThorVG backend
-add_library(tether_thorvg STATIC
-    src/tether.c
-    src/core/tether_ecs.c
-    src/core/tether_registry.c
-    src/engine/tether_engine.c
-    src/engine/tether_layout.c
-    src/ui/tether_ui.c
-    src/ui/tether_widgets.c
-    src/backends/thorvg_backend.c # Replaces chitra_backend.c
-)
-```
-
-The resulting binary runs with 100% feature parity, running identical layout algorithms, widget factories, and input event dispatchers across any hardware platform.
+The adapter must implement the callbacks used by the engine. Rendering and platform behavior need validation for each backend.
 
 ---
 

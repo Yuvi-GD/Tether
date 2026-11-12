@@ -58,92 +58,89 @@ typedef struct Tether_Backend {
 extern Tether_Backend g_backend;
 ```
 
-By compiling against a concrete backend file (e.g., `src/backends/chitra_backend.c`), Tether binds to the target platform at link time with zero dynamic dispatch overhead. Replacing the backend requires only swapping the backend source file in the CMake build configuration.
+By compiling against a concrete backend file (e.g., `src/backends/chitra_backend.c`), Tether binds to the target platform at link time with minimal indirection. Replacing the backend requires swapping `src/backends/chitra_backend.c` in `TETHER_SOURCES` inside [CMakeLists.txt](../../CMakeLists.txt) and linking required dependencies.
 
 ---
 
-### 2. Embedded and Bare-Metal Execution Pathways
+### 2. Future Embedded & Bare-Metal Targets (Roadmap)
 
-Tether is explicitly architected to support resource-constrained microcontrollers and bare-metal displays (e.g., STM32, ESP32, NXP i.MX, Raspberry Pi RP2040):
+Tether's architecture avoids direct OS or GPU calls in `src/core/`, `src/engine/`, and `src/ui/` so embedded deployments can be pursued in future milestones:
 
 ```mermaid
 flowchart LR
     Firmware["Embedded Firmware (C/C++)"] --> ImpUI["Pipeline 1: Pure C Imperative UI\n(tether_ui_panel, tether_ui_text)"]
-    ImpUI --> ECSKernel["Tether ECS Kernel\n(Pre-sized Static Pools)"]
-    ECSKernel --> Framebuffer["Custom Framebuffer Backend\n(16-bit 565 / 32-bit Framebuffer)"]
-    Framebuffer --> Display["SPI / Parallel LCD Screen"]
+    ImpUI --> ECSKernel["Tether ECS Kernel\n(Static-Sized Pool Goal)"]
+    ECSKernel -.-> Framebuffer["Planned Custom Framebuffer Backend"]
+    Framebuffer -.-> Display["SPI / Parallel LCD Screen"]
 ```
 
-#### Embedded Operating Invariants
-1. **Zero Dynamic Allocation in Steady State**:
-   Using **Pipeline 1 (Pure C Imperative UI)**, Tether bypasses the YAML parser entirely. The ECS dense arrays are pre-sized during initialization using fixed capacities. Once initialized, the engine executes zero heap allocations (`malloc`, `free`) during steady-state frame execution.
-2. **Standard C99 Dependencies Only**:
-   The core ECS kernel and layout solver depend only on standard ISO C99 headers (`stdint.h`, `stdbool.h`, `stddef.h`, `math.h`). They do not require a POSIX environment, C runtime filesystem, or threading libraries.
-3. **SRAM Budget Predictability**:
-   A complete Tether UI hierarchy of 200 interactive widgets requires less than $64\text{ KB}$ of contiguous memory for all component arrays, fitting comfortably within microcontroller internal SRAM.
+#### Planned Embedded Targets (Not Yet Validated)
+1. **Steady-State Allocation Tuning**:
+   Constructing UI via C APIs (`Pipeline 1`) avoids YAML/libyaml dependencies, while reducing runtime pool/text allocations for hard embedded budgets remains future work.
+2. **Portable C Dependencies**:
+   Core ECS and layout modules rely primarily on standard C headers (`stdint.h`, `stdbool.h`, `stddef.h`, `math.h`, `stdlib.h`, `string.h`); non-Windows and bare-metal targets are not yet validated in CI.
+3. **SRAM Budget Measurement**:
+   Compact sub-$64\text{ KB}$ SRAM operation on microcontrollers is a design goal and has not yet been measured in `v0.0.3-preview`.
 
 ---
 
 ## 3. Architectural Decision Records (ADRs)
 
 ### ADR-01: Data-Oriented ECS over C++ OOP Class Hierarchy
-- **Status**: Accepted and Verified.
-- **Context**: Traditional UI frameworks (Qt, wxWidgets, DOM) model UI elements as deep inheritance trees (`Widget -> Frame -> Container -> Button`). This model incurs scattered heap allocations, cache-miss pointer chasing, large per-object overhead, and fragile base class coupling.
-- **Decision**: Tether adopts a data-oriented Entity Component System (ECS) where entities are simple 64-bit integer GUIDs and component data is stored in contiguous dense arrays indexed via sparse sets.
+- **Status**: Adopted in `v0.0.3-preview`.
+- **Context**: Traditional UI frameworks (Qt, wxWidgets, DOM) model UI elements as deep inheritance trees (`Widget -> Frame -> Container -> Button`), spreading objects across the heap and coupling state to base classes.
+- **Decision**: Tether uses a data-oriented Entity Component System (ECS) where entities are 64-bit integer GUIDs and component data is stored in contiguous dense arrays indexed via sparse sets.
 - **Consequences**:
-  - Linear iteration over components achieves maximum hardware CPU cache locality.
-  - Zero vtable indirection overhead.
-  - New properties or third-party behaviors can be attached to entities dynamically without modifying base engine structs.
+  - Sequential array iteration improves CPU cache locality and avoids vtable indirection.
+  - Component pointers returned by lookup APIs can move during pool growth or swap-and-pop deletion and must be re-queried after structural mutations.
 
 ---
 
-### ADR-02: Retained-Mode ECS with Reactive Invalidation over Pure Immediate Mode
-- **Status**: Accepted and Verified.
-- **Context**: Pure immediate-mode UI (Dear ImGui) constructs and renders UI elements unconditionally every frame. While ergonomically simple, it results in continuous CPU/GPU utilization, preventing host devices from entering low-power idle states. Conversely, Web Virtual DOM frameworks incur heavy garbage-collection overhead diffing trees in high-level runtimes.
-- **Decision**: Tether combines retained ECS state storage with reactive invalidation tags (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `VOLATILE`).
+### ADR-02: Retained-Mode ECS with Dirty-Flag Sync over Pure Immediate Mode
+- **Status**: Adopted in `v0.0.3-preview`.
+- **Context**: Immediate-mode UI reconstructs UI state every frame. Retaining state allows static scenes to skip redundant engine passes while still offering `VOLATILE` mode for continuous updates.
+- **Decision**: Tether combines retained ECS state storage with dirty flags (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`, `VOLATILE`).
 - **Consequences**:
-  - When the UI is static, the engine skips layout computation and GPU draw submission entirely (`tether_did_draw() == false`), achieving zero-power steady state.
-  - Retains the performance benefits of cached spatial scene graphs for fast hit-testing without paying the power penalty of unconstrained continuous rendering.
+  - When no dirty flags or `VOLATILE` entities are active, `tether_engine_frame()` skips sync work (`tether_did_draw() == false`).
+  - Overall process sleep/idle CPU depends on the host loop and backend; retained component storage consumes baseline memory between frames.
 
 ---
 
 ### ADR-03: Separation of Layout Space from Render Space
-- **Status**: Accepted and Verified.
-- **Context**: In traditional DOM and mobile UI engines, mutating visual properties (such as hover scale, continuous animations, or visual rotations) invalidates container layout, triggering costly reflow passes across parent and sibling containers.
-- **Decision**: Decouple layout slot geometry (`Tether_SlotTransform`) from visual GPU rendering transformations (`Tether_RenderTransform`).
+- **Status**: Adopted in `v0.0.3-preview` (GPU-only text transforms remain future work).
+- **Context**: Coupling layout geometry with visual offsets can cause layout invalidation whenever visual transforms change.
+- **Decision**: Separate layout slot geometry (`Tether_SlotTransform`) from presentation offsets (`Tether_RenderTransform`).
 - **Consequences**:
-  - High-frequency visual animations (translation offsets, scale factors, rotation angles, opacity fading) execute purely on the GPU during visual synchronization without touching layout geometry.
-  - Layout reflow passes occur strictly when structural container dimensions, padding, or flex weights change.
+  - Non-text visual changes (`RenderTransform`, shape colors) mark `DIRTY_VISUAL` without triggering layout reflow.
+  - Text rotation, scale, and pivot updates also flag `DIRTY_TEXT_CONTENT` and rebuild glyph geometry on the CPU.
 
 ---
 
 ### ADR-04: Stateless Layout Solver Architecture (Vinyasa Design)
-- **Status**: Accepted and Verified.
-- **Context**: Coupling persistent layout state directly inside scene graph nodes increases memory footprint per node and leads to complex state synchronization bugs during incremental reflow.
-- **Decision**: Decouple persistent scene definitions in the ECS from the layout calculation engine. The layout solver executes on-demand against calculation roots, allocating temporary scratch memory from a transient arena (`vin_context.scratch`) and communicating with the host through `vin_host` bridge hooks.
+- **Status**: Proposed / Roadmap (`src/engine/tether_layout.c` currently runs the built-in two-pass solver).
+- **Context**: Decoupling persistent ECS storage from transient layout calculation allows layout rules to evolve independently.
+- **Decision**: Integrate the standalone Vinyasa solver through `vin_host` and transient scratch memory (`vin_context.scratch`) in a future milestone.
 - **Consequences**:
-  - Persistent UI nodes remain compact and cache-efficient.
-  - Layout calculations are completely stateless: scratch arenas are reset at the conclusion of the layout pass, eliminating intermediate memory fragmentation.
+  - Keeps layout calculation separated from persistent ECS ownership; not yet wired into `v0.0.3-preview`.
 
 ---
 
-### ADR-05: 64-Bit Scalar GUIDs over Raw Pointers for Foreign FFI Interop
-- **Status**: Accepted and Verified.
-- **Context**: Exposing raw memory pointers to foreign language bindings (Rust, Python, Lua, WebAssembly) leads to severe use-after-free crashes when an entity is destroyed on the C side while foreign handles remain alive.
-- **Decision**: Represent entities exclusively as scalar 64-bit integer GUIDs composed of a 32-bit slot index and a 32-bit generational version counter.
+### ADR-05: 64-Bit Scalar GUIDs over Raw Entity Pointers
+- **Status**: Adopted in `v0.0.3-preview`.
+- **Context**: Storing raw entity object pointers across callbacks or external handles risks use-after-free bugs when elements are destroyed.
+- **Decision**: Represent entities as scalar 64-bit integer GUIDs composed of a 32-bit slot index and a 32-bit generational version counter.
 - **Consequences**:
-  - Stale references held by foreign garbage collectors or asynchronous threads fail safely in $O(1)$ time via `tether_ecs_is_valid()` without dereferencing freed memory.
-  - Handles can be passed across language boundaries by value with zero marshaling cost.
+  - Stale handles fail safely in $O(1)$ time via `tether_ecs_is_valid()`.
+  - Component lookups still go through the sparse-set index, and component data pointers must be re-queried after structural ECS mutations.
 
 ---
 
-### ADR-06: Format-Agnostic Scene IR with Bundled YAML Frontend
-- **Status**: Accepted and Verified.
-- **Context**: Hardcoding the engine to a single declarative file format limits integration flexibility in environments that already standardize on JSON, XML, or custom domain-specific formats.
-- **Decision**: Decouple syntactic parsing from semantic tree instantiation. The parser produces a format-neutral tree of `Tether_ASTNode` records (scalars, sequences, mappings), with YAML serving as the default bundled frontend.
+### ADR-06: Format-Agnostic Scene AST with Bundled YAML Frontend
+- **Status**: Adopted in `v0.0.3-preview`.
+- **Context**: Parsing directly into widgets couples file syntax tightly to UI instantiation.
+- **Decision**: Parse YAML into `Tether_ASTNode` trees (supporting `$var`, `$slot`, template caching, recursion limit `64`, and entity cleanup on load failure) before widget instantiation (`tether_yaml_widgets.c`).
 - **Consequences**:
-  - Alternative parsers (JSON, XML, HTML) can target the same intermediate representation with zero modifications to engine internals.
-  - Enables seamless bidirectional interoperability between declarative files and compiled host code.
+  - Enables future non-YAML parsers or AOT bytecode tools to target the same instantiation model, while YAML currently exposes a subset of the C APIs.
 
 ---
 
@@ -151,22 +148,22 @@ flowchart LR
 
 | Design Aspect | Current Architecture | Strategic Rationale | Trade-off / Limitation |
 | :--- | :--- | :--- | :--- |
-| **Threading Model** | Single-threaded UI main loop | Eliminates mutex contention on ECS dense arrays; maximizes single-core L1/L2 cache locality. | Worker threads must marshal UI mutations to the main thread via message queues or `on_frame` callbacks. |
-| **Memory Model** | Retained ECS dense pools | Enables instant spatial hit testing and zero-power reactive rendering without recomputing scene trees each frame. | Consumes slightly more baseline RAM than pure immediate-mode toolkits (which discard state each frame). |
-| **Text Rasterization** | Backend-driven glyph cache | Keeps core engine lightweight and avoids linking large typography engines directly into the kernel. | Advanced OpenType complex script shaping (e.g. Arabic, Devanagari) requires backend HarfBuzz integration. |
-| **Dynamic Components** | Dynamic ID allocation pool | Permits runtime component registration by plugins without recompiling core engine headers. | Dynamic component IDs require dynamic lookup versus fixed compile-time enum constants. |
+| **Threading Model** | Single-threaded UI main loop | Avoids mutex contention on ECS dense arrays and simplifies C ergonomics. | Worker threads must marshal UI updates onto the UI thread (`on_frame`). |
+| **Memory Model** | Retained ECS dense pools | Preserves scene state across frames and skips unchanged sync passes (`tether_did_draw() == false`). | Retains component memory between frames; pool growth and `TextDynamic` allocate dynamically. |
+| **Text Rasterization** | Backend-driven glyph cache | Keeps core engine independent of rasterizers. | Complex bidirectional/ligature shaping awaits external shaping integration (e.g., HarfBuzz). |
+| **Dynamic Components** | Runtime slot registration (`tether_ecs_register_component_dynamic`) | Lets applications register custom component structs cleanly. | Bounds capped by `TETHER_MAX_REGISTERED_COMPONENTS`. |
 
 ---
 
 ## 5. Architectural Comparison Summary
 
-| Architectural Property | Tether Design | Traditional OOP (Qt / wxWidgets) | Immediate Mode (Dear ImGui) | Web DOM / Electron |
+| Architectural Property | Tether Design (`v0.0.3-preview`) | Traditional OOP (Qt / wxWidgets) | Immediate Mode (Dear ImGui) | Web DOM / Electron |
 | :--- | :---: | :---: | :---: | :---: |
 | **Data Architecture** | Contiguous ECS Dense Arrays | Scattered Heap Node Graphs | Transient Stack Buffers | Heap Node Tree with V8 Objects |
-| **Steady-State Power** | **Zero Idle CPU** (Reactive) | Partial Idle (Event-driven) | Continuous 100% GPU/CPU polling | High idle power (Chromium loop) |
-| **Memory Footprint** | $< 1\text{ MB}$ (Bare-metal capable) | $15 - 50\text{ MB}$ | $< 5\text{ MB}$ | $150 - 500+\text{ MB}$ |
-| **Foreign Language Interop** | Pure C99 Scalar ABI | Complex C++ Wrappers / SIP | C++ Wrappers (cimgui) | Node.js IPC / WebSockets |
-| **Animation Impact on Layout** | **Zero reflow** (RenderTransform) | Triggers parent reflow | Reconstructs full UI each frame | Triggers CSS layout reflow |
+| **Update Model** | Retained Dirty Flags (`tether_did_draw` skips unchanged frames) | Event-driven | Continuous per-frame submission | DOM / Chromium event loops |
+| **Memory Strategy** | Compact ECS structs + Chitra backend resources | $15 - 50\text{ MB}$ | $< 5\text{ MB}$ | $150 - 500+\text{ MB}$ |
+| **Foreign Language Interop** | C99 Scalar GUID ABI (bindings on roadmap) | Complex C++ Wrappers / SIP | C++ Wrappers (`cimgui`) | Node.js IPC / WebSockets |
+| **Layout Separation** | Separated `SlotTransform` vs `RenderTransform` (text rebuilds glyphs) | Combined widget layout | Immediate per-frame cursor | CSS box layout coupling |
 
 ---
 

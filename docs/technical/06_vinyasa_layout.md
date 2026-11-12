@@ -45,21 +45,23 @@ Attached to an entity when it acts as a parent managing children:
 
 ```c
 typedef struct {
-    Tether_Flow flow;          /* NONE (Canvas), ROW, or COLUMN */
+    Tether_Flow flow;             /* COLUMN, ROW, or NONE (Canvas) */
+    Tether_PositionMode position; /* RELATIVE, ABSOLUTE, or FIXED */
     Tether_Align content_align_x;
     Tether_Align content_align_y;
-    Tether_Edges padding;      /* Top, Right, Bottom, Left */
-    Tether_Vec2 gap;           /* Inter-child spacing */
-    Tether_Vec2 size_box;      /* Explicit bounds; (0,0) denotes auto/shrink-wrap */
-    uint8_t wrap;              /* Automatic content wrapping */
-    float measured_width;      /* Output from Pass 1 (Measure) */
-    float measured_height;     /* Output from Pass 1 (Measure) */
+    Tether_Edges padding;         /* Top, Right, Bottom, Left */
+    Tether_Vec2 gap;              /* Inter-child spacing */
+    Tether_Vec2 size_box;         /* Explicit bounds; (0,0) denotes auto/shrink-wrap */
+    uint8_t wrap;                 /* Automatic content wrapping */
+    float measured_width;         /* Output from Pass 1 (Measure) */
+    float measured_height;        /* Output from Pass 1 (Measure) */
 } Tether_Layout;
 ```
 
 - **`TETHER_FLOW_NONE` (Canvas Mode)**: Children are positioned independently using absolute or anchored coordinates.
 - **`TETHER_FLOW_ROW` (Flex Row)**: Children are placed sequentially along the horizontal X axis.
 - **`TETHER_FLOW_COLUMN` (Flex Column)**: Children are stacked sequentially along the vertical Y axis.
+- **`Tether_PositionMode` (`RELATIVE`, `ABSOLUTE`, `FIXED`)**: Configures overlay stacking and parent scissor clip escaping during hierarchy sync (`sync_hierarchy_recursive`). While `RELATIVE` widgets participate normally in parent flow and inherit parent clipping, `ABSOLUTE` and `FIXED` subtrees advance into a separate upper Z-band (`abs_z`) and clear `clip = 0` so popups and floating menus render cleanly over surrounding cards without reordering the hierarchy.
 
 ### 3. Slot Settings
 Slot components are attached to child entities to configure how they behave relative to their parent container's layout mode:
@@ -103,7 +105,7 @@ Tether executes layout tree resolution through two ordered recursive passes:
 ```mermaid
 flowchart TD
     Start["tether_layout_process_all(screen_w, screen_h)"] --> Roots["Iterate Scene Roots\n(main_root, overlay_root)"]
-    
+
     subgraph Pass1["Pass 1: Bottom-Up Intrinsic Measure"]
         M1["Post-Order Recursive Walk (Children before Parents)"]
         M2["Measure Text Leaf Intrinsic Sizes (unbounded wrap_width)"]
@@ -187,7 +189,7 @@ Layout recalculation is strictly reactive. The solver is invoked inside `tether_
 ```mermaid
 flowchart TD
     Trigger["Mutation Event"] --> Check{"What was modified?"}
-    
+
     Check -- size_box, padding, gap, fill_ratio, anchors --> TagLayout["Tag DIRTY_LAYOUT on Entity & Parent"]
     Check -- Visibility -> COLLAPSED or <- COLLAPSED --> TagBoth["Tag DIRTY_LAYOUT & DIRTY_VISUAL"]
     Check -- Reparenting or Detach --> TagHier["Tag DIRTY_HIERARCHY & DIRTY_LAYOUT on Parent"]
@@ -196,15 +198,15 @@ flowchart TD
 ```
 
 ### Complete Separation of Render Transforms
-Modifying visual offsets, hover scale zoom effects ($1.05\times$), rotations, or opacity writes exclusively to `Tether_RenderTransform` and flags `TETHER_COMPONENT_DIRTY_VISUAL`. 
+Visual changes can use `Tether_RenderTransform` and visual invalidation. Direct changes to text rotation, scale, or pivot also require `DIRTY_TEXT_CONTENT` so glyph geometry can be rebuilt.
 
-Because `Tether_SlotTransform` remains untouched, **the entire layout solver is completely bypassed**. Animations execute at GPU frame rates without invoking CPU bounding box re-measurement or sibling reflow passes.
+A visual-only change need not alter layout geometry. Text transforms are applied to CPU-side glyph vertices; they are not exclusively GPU operations.
 
 ---
 
-## 5. The Layout Strategy Registry
+## 5. Proposed Layout Strategy Registry
 
-To prevent `src/engine/tether_layout.c` from accumulating monolithic conditional statements as new container types are added, Tether architecturally decouples container mathematics into a **Layout Strategy Registry**:
+To prevent `src/engine/tether_layout.c` from accumulating monolithic conditional statements as new container types are added, a future design could decouple container mathematics into a **Layout Strategy Registry**. The current solver handles its flow modes directly:
 
 ```c
 typedef void (*Tether_LayoutMeasureFn)(Tether_GUID entity, void* layout_data);
@@ -219,10 +221,10 @@ typedef struct {
 ```
 
 ### Decoupled Execution Model
-Instead of hardcoding `if (flow == TETHER_FLOW_ROW) ... else if (flow == TETHER_FLOW_COLUMN)`, the engine queries the strategy registry:
-1. When traversing an entity during Pass 1, the solver identifies its container component ID and delegates to its registered `measure` function pointer.
-2. During Pass 2, the solver delegates to its registered `arrange` function pointer.
-3. This architecture enables third-party developers, plugins, and game engines to implement custom container types (such as Docking grids, Radial menus, Splitters, and Masonry flows) without modifying core engine source files.
+A proposed registry could dispatch measurement and arrangement as follows:
+1. When traversing an entity during Pass 1, the solver would identify its container component ID and delegate to its registered `measure` function pointer.
+2. During Pass 2, the solver would delegate to its registered `arrange` function pointer.
+3. This proposed architecture could enable third-party developers, plugins, and game engines to implement custom container types (such as Docking grids, Radial menus, Splitters, and Masonry flows) without modifying core engine source files.
 
 ---
 
@@ -233,8 +235,8 @@ The future of Tether's layout pipeline centers on the integration of **Vinyasa**
 ### 1. On-Demand Calculation Model
 In layout engine design, debates between "immediate-mode" and "retained-mode" often confuse application presentation with mathematical resolution:
 - **Layout is On-Demand**: Layout does not need to run continuously every frame, nor does it require permanent caching. It is a pure mathematical calculation that executes **only when needed** (e.g., when `DIRTY_LAYOUT` tags indicate mutations or when display boundaries change).
-- **Engineered for High-Frequency Frame Execution**: Because layout is on-demand, interactive interfaces (such as live window resizing, splitter dragging, or animated layout reflows) may trigger layout resolution every single frame. Vinyasa is optimized specifically for this scenario: zero heap allocations during calculation, linear traversal over contiguous memory, and bounded sub-millisecond execution times.
-- **Stateless Operation**: Vinyasa does **not store persistent data**. It maintains no internal persistent tree, no retain cache, and no dirty change trackers. 
+- **Engineered for High-Frequency Frame Execution**: Because layout is on-demand, interactive interfaces (such as live window resizing, splitter dragging, or animated layout reflows) may trigger layout resolution every single frame. Vinyasa is optimized specifically for this scenario: zero heap allocations during calculation, linear traversal over contiguous memory, and execution time that must be measured for each workload.
+- **Stateless Operation**: Vinyasa does **not store persistent data**. It maintains no internal persistent tree, no retain cache, and no dirty change trackers.
 - **Host Ownership**: Tether retains complete ownership of entity identity (`Tether_GUID`), scene graph hierarchy, component storage, input handling, and rendering.
 - **Root-Independent Calculation**: Any supplied node is treated as the calculation root for that pass. Vinyasa does not need to know whether ancestors exist elsewhere in the host hierarchy, enabling localized sub-tree layout recalculations.
 

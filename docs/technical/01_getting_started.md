@@ -37,7 +37,7 @@ git submodule update --init --recursive
 
 ## 3. Building and Running the Sandbox Showcase
 
-The bundled **Tether Sandbox** provides an interactive demonstration of live UI layouts, real-time FPS/frame-time metrics, dynamic ECS component inspectors, and the declarative YAML hot-reload system.
+The bundled **Tether Sandbox** provides an interactive showcase, widget gallery, YAML playground, and a Lab for launching workloads and reviewing reports. Refresh and playground actions reload YAML; there is no automatic file watcher.
 
 ### Step 1: Configure CMake
 ```powershell
@@ -89,9 +89,9 @@ static unsigned int g_click_count = 0;
 static bool g_update_pending = false;
 
 /* Event Callback: Triggered when the user clicks the button */
-static void on_button_clicked(Tether_GUID entity, Tether_EventType type, void* user_data) {
+static void on_button_clicked(Tether_GUID entity, const Tether_Event* event, void* user_data) {
     (void)entity;
-    (void)type;
+    (void)event;
     (void)user_data;
     g_click_count++;
     g_update_pending = true;
@@ -103,29 +103,33 @@ static void on_app_init(void) {
     tether_font_register("Roboto-Regular", "Font/Roboto-Regular.ttf");
 
     /* 2. Create the root column container attached to the main scene root */
-    g_app_root = tether_ui_column(tether_ecs_get_main_root(), 16.0f);
+    g_app_root = tether_ui_panel(tether_ecs_get_main_root());
+    tether_ui_set_container(g_app_root, TETHER_FLOW_COLUMN);
+    tether_ui_set_gap(g_app_root, 0.0f, 16.0f);
     tether_ui_set_padding(g_app_root, 24.0f, 24.0f, 24.0f, 24.0f);
     tether_ui_set_color(g_app_root, (Tether_Color){24, 30, 42, 255}); /* Dark slate background */
 
     /* 3. Add a header text label */
-    Tether_GUID header = tether_ui_text(g_app_root, "Welcome to Tether", 28.0f, (Tether_Color){240, 244, 250, 255});
+    Tether_GUID header = tether_ui_text(g_app_root);
+    tether_ui_set_text(header, "Welcome to Tether");
+    tether_ui_set_text_size(header, 28.0f);
+    tether_ui_set_text_color(header, (Tether_Color){240, 244, 250, 255});
     tether_ui_set_size(header, 0.0f, 40.0f);
 
     /* 4. Add dynamic counter text */
-    g_counter_label = tether_ui_text(g_app_root, "Button clicks: 0", 20.0f, (Tether_Color){160, 180, 210, 255});
+    g_counter_label = tether_ui_text(g_app_root);
+    tether_ui_set_text(g_counter_label, "Button clicks: 0");
+    tether_ui_set_text_size(g_counter_label, 20.0f);
+    tether_ui_set_text_color(g_counter_label, (Tether_Color){160, 180, 210, 255});
     tether_ui_set_size(g_counter_label, 0.0f, 32.0f);
 
     /* 5. Add an interactive button with a click callback */
-    Tether_GUID btn = tether_ui_button(
-        g_app_root,
-        "Click Me",
-        18.0f,
-        (Tether_Color){45, 105, 215, 255}, /* Blue accent */
-        on_button_clicked,
-        NULL
-    );
+    Tether_GUID btn = tether_ui_button(g_app_root);
+    tether_ui_set_button_label(btn, "Click Me");
+    tether_ui_set_button_color(btn, (Tether_Color){45, 105, 215, 255}); /* Blue accent */
     tether_ui_set_size(btn, 160.0f, 48.0f);
     tether_ui_set_flex(btn, 0.0f); /* Keep fixed button size */
+    tether_bind_event(btn, TETHER_EVENT_CLICK, on_button_clicked, NULL);
 
     /* 6. Realize the widget hierarchy into the render tree */
     tether_widget_show(g_app_root);
@@ -152,7 +156,7 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
-    Tether_App_Config config = {
+    Tether_Config config = {
         .width = 800,
         .height = 600,
         .title = "Tether - Pure C Getting Started",
@@ -177,7 +181,7 @@ Tether allows declaring UI structure, styles, and nesting declaratively in **YAM
 ```yaml
 Panel:
   flow: COLUMN
-  gap: 16
+  gap: [0, 16]
   padding: 24
   color: "#181e2a"
   children:
@@ -196,10 +200,13 @@ Panel:
 
     - Button:
         id: "action_btn"
-        caption: "Toggle Status"
-        font_size: 18
         color: "#2d69d7"
         size_box: [180, 48]
+        fill_ratio: 0
+        content:
+          - Text:
+              string: "Toggle Status"
+              font_size: 18
 ```
 
 ### Step 2: Load and Bind Events in `main_yaml.c`
@@ -216,9 +223,9 @@ Panel:
 static Tether_GUID g_scene_root = TETHER_INVALID_GUID;
 static bool g_toggle_state = false;
 
-static void on_toggle_clicked(Tether_GUID entity, Tether_EventType type, void* user_data) {
+static void on_toggle_clicked(Tether_GUID entity, const Tether_Event* event, void* user_data) {
     (void)entity;
-    (void)type;
+    (void)event;
     (void)user_data;
 
     g_toggle_state = !g_toggle_state;
@@ -258,7 +265,7 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
-    Tether_App_Config config = {
+    Tether_Config config = {
         .width = 800,
         .height = 600,
         .title = "Tether - Declarative YAML Getting Started",

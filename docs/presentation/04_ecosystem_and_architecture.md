@@ -26,8 +26,8 @@ flowchart TD
     end
 
     subgraph Solvers["3. Layout Subsystem"]
-        LayoutInterface["Layout Interface & Strategy Registry"]
-        Vinyasa["Vinyasa Layout Engine (Stateless Scratch-Arena Solver)"]
+        LayoutInterface["Two-Pass Layout Solver (tether_layout.c)"]
+        Vinyasa["Vinyasa Layout Engine (Planned Integration & Strategy Registry)"]
     end
 
     subgraph Drivers["4. Hardware & Graphics Subsystems"]
@@ -57,9 +57,9 @@ Tether is divided into six distinct subsystem cells:
 | :--- | :--- | :--- | :---: |
 | **ECS Kernel** | Manages 64-bit entity GUIDs, sparse maps, and contiguous dense component arrays. | Owns raw contiguous heap buffers; zero widget knowledge. | Completely Abstract |
 | **Engine Systems** | Tracks spatial transforms (`SlotTransform`, `RenderTransform`), tree hierarchy, invalidation tags (`DIRTY_*`), and input events. | Operates directly over Kernel dense arrays. | Completely Abstract |
-| **Central Registry & UI** | Maps string aliases to GUIDs, registers widget constructors, and registers layout strategies. | Owns string hash table and function pointer tables. | Completely Abstract |
-| **Authoring & Parsing** | Converts declarative YAML into an intermediate format-neutral AST and instantiates live ECS entities. | Temporary parse buffers; copies strings into ECS SSO tiers. | Completely Abstract |
-| **Layout Solver** | Resolves container constraints (flex, canvas anchors, padding, gaps, text wrapping). | Stateless; utilizes temporary scratch arenas during passes. | Completely Abstract |
+| **Central Registry & UI** | Maps string aliases to GUIDs, registers widget constructors (`tether_register_widget()`), and manages fonts. | Owns alias map, widget registry, and font table. | Completely Abstract |
+| **Authoring & Parsing** | Converts declarative YAML into an intermediate format-neutral AST and instantiates live ECS entities. | Temporary parse buffers + template cache; copies strings into ECS SSO/dynamic tiers. | Completely Abstract |
+| **Layout Solver** | Resolves built-in two-pass container constraints (flex, canvas anchors, padding, gaps, text wrapping). | Traverses ECS hierarchy and `SlotTransform` / `Layout` pools (Vinyasa scratch solver on roadmap). | Completely Abstract |
 | **Backend Driver** | Window creation, OS input normalization, and graphics hardware rasterization. | Owns GPU vertex buffers, swapchains, device contexts, and font textures. | Hardware Specific |
 
 ---
@@ -88,27 +88,27 @@ flowchart LR
         C_Sort["64-Bit Radix Sort Batching"]
     end
 
-    TetherCore <-->|"Layout Hooks: vin_host"| Vinyasa
+    TetherCore -.->|"Planned Hooks: vin_host"| Vinyasa
     TetherCore -->|"Tether_Backend VTable"| Chitra
 ```
 
 ### 1. Tether Core (The State Kernel)
 - **Role**: Manages UI entity lifecycles, contiguous component arrays, parent-child hierarchies, invalidation tags, and event dispatching.
 - **Invariants**: Tether Core contains zero calls to operating system windowing APIs (Win32, Cocoa, X11) and zero calls to graphics APIs (DirectX, Metal, Vulkan, OpenGL). It operates purely on mathematical coordinates, colors, and entity IDs.
-- **Portability**: Pure ISO C99. Runs identically on an x86-64 server, an ARM mobile processor, or an 8-bit microcontroller.
+- **Portability**: Built in ISO C99 (preview CI validates Windows; embedded and cross-OS validation continues along the roadmap).
 
 ### 2. Chitra (The GPU Rendering Engine)
 - **Role**: Tether's default, high-performance 2D GPU rendering engine.
 - **Capabilities**:
-  - Translates abstract draw commands into GPU primitives using analytical Signed Distance Field (SDF) shaders (no mesh tessellation or GPU pipeline stalls).
+  - Translates retained shape/text handles into GPU quad geometry rendered with Signed Distance Field (SDF) rounded-rectangle shaders.
   - Maintains dynamic font glyph atlases via Fontstash.
-  - Implements 64-bit visual key radix sorting, coalescing non-overlapping shapes and text into single instanced draw calls (Z-banding).
-  - Handles windowing and OS event interception through Sokol or SDL3.
-- **Isolation**: Chitra operates behind the `Tether_Backend` interface. Tether does not assume Chitra is the only renderer; Chitra is an independent, modular graphics library that can be used outside Tether.
+  - Implements 64-bit visual key radix sorting, grouping draw slots into clean state-batched draws.
+  - Handles windowing and OS event interception through Sokol (`sokol_app` / `sokol_gfx`).
+- **Isolation**: Chitra operates behind the `Tether_Backend` interface (`src/backends/chitra_backend.c`). Tether does not assume Chitra is the only renderer; Chitra is an independent graphics library that can be used outside Tether.
 
-### 3. Vinyasa (The Stateless Layout Engine)
-- **Role**: Standalone, on-demand layout solver.
-- **Capabilities**:
+### 3. Vinyasa (Planned Standalone Layout Engine)
+- **Role**: Standalone, on-demand layout solver targeted for upcoming integration (replacing/extending the built-in `tether_layout.c` solver).
+- **Target Capabilities**:
   - Stateless mathematical resolution: Vinyasa does not store a persistent scene tree or widget objects.
   - Operates on calculation roots using temporary scratch arenas (`vin_context.scratch`) that reset immediately after the layout pass.
   - Supports multi-reference relative coordinate resolution: positioning children relative to parent allocated slots, parent self geometry, or global screen roots.
@@ -172,8 +172,8 @@ sequenceDiagram
 1. **Input Normalization & Spatial Query**: The backend delivers a normalized `Tether_Pointer_Event`. The input system executes a reverse-DFS traversal, culling non-intersecting bounding boxes in $O(1)$ time per branch, and dispatches callbacks.
 2. **On-Demand Layout Solve**: If structural layout flags are dirty (`DIRTY_LAYOUT`), the layout engine executes bottom-up intrinsic measurement and top-down spatial arrangement, writing final pixel bounds to `Tether_SlotTransform`.
 3. **Z-Ordering and Scissor Clipping**: The engine traverses the scene hierarchy to calculate global draw orders (monotonic Z-indices) and computes intersected hardware scissor rectangles for overflow containers.
-4. **Visual Synchronization**: Entities with `DIRTY_VISUAL` flags update their visual properties in the backend draw list, applying visual `RenderTransform` offsets directly to GPU vertex streams.
-5. **Zero-Power Throttling**: Transient dirty tags are flushed. If no visual state changed and no continuous `VOLATILE` entities are active, the engine sleeps, issuing zero GPU draw calls.
+4. **Visual Synchronization**: Entities with `DIRTY_VISUAL` flags update their visual properties (`shape` and `text` backend handles), applying presentation offsets while rebuilding CPU text glyphs where needed.
+5. **Idle Skip**: Transient dirty tags are cleared while `VOLATILE` entities stay active for continuous updates. If nothing changed, `tether_did_draw()` reports `false`.
 
 ---
 
@@ -181,8 +181,8 @@ sequenceDiagram
 
 Tether's cell-block architecture ensures that third-party applications have the exact same privileges as built-in engine modules:
 - **Custom Components**: Applications register new data structs at runtime via `tether_ecs_register_component_dynamic()`, sharing the same contiguous dense arrays as native engine components.
-- **Custom Layout Strategies**: Developers register custom container mathematics (such as radial menus, hexagonal grids, or docking splitters) via `tether_layout_register_strategy()`.
-- **Custom Widgets**: Any C function adhering to `Tether_WidgetCreateFn` can be registered with the Central Registry, making it instantly instantiable in declarative YAML files.
+- **Custom Widgets**: Any C function adhering to `Tether_WidgetCreateFn` can be registered with the Central Registry (`tether_register_widget()`), making it instantiable by name in declarative YAML files.
+- **Custom Layout Strategies (Planned)**: Registering custom container mathematics (such as radial menus, hexagonal grids, or docking splitters) via a future Strategy Registry extension (`see` [Chapter 10](10_roadmap_and_community.md)).
 
 ---
 

@@ -23,11 +23,14 @@ include/tether/
   │   ├── tether_engine.h          # Engine frame synchronization and redraw scheduling
   │   ├── tether_layout.h          # Layout solver execution
   │   └── parser/
-  │       ├── tether_yaml.h        # Declarative YAML scene file loader
-  │       └── tether_yaml_ast.h    # Format-agnostic Abstract Syntax Tree model
+  │       ├── tether_yaml.h        # Declarative YAML scene file loader & cleanup
+  │       ├── tether_yaml_ast.h    # Format-agnostic Abstract Syntax Tree model
+  │       └── tether_yaml_widgets.h# Built-in YAML widget property adapters
   ├── ui/
   │   ├── tether_ui.h              # Fluent UI convenience builder and property setters
-  │   └── tether_widgets.h         # Built-in widget factories and visibility management
+  │   ├── tether_widgets.h         # Base containers, visibility, enabled state & lifecycle
+  │   ├── tether_list.h            # Logical selection list container
+  │   └── widgets/                 # Modular widget headers (button, slider, dropdown, menu, ...)
   └── utils/
       └── tether_hashmap.h         # High-performance Robin Hood hash table utility
 ```
@@ -82,7 +85,7 @@ The primary entry point for standalone applications. Initializes the engine (if 
 ```c
 void tether_queue_redraw(void);
 ```
-Explicitly requests a screen redraw on the subsequent frame. Used to wake the zero-power throttling loop when asynchronous tasks or worker threads mutate UI state.
+Requests a screen redraw on a subsequent frame. The current API does not establish thread-safe UI mutation or cross-thread wakeup; marshal UI changes to the UI thread.
 
 #### `tether_did_draw`
 ```c
@@ -195,7 +198,7 @@ Moves `entity` to the tail of its parent's child chain, guaranteeing highest loc
 ```c
 void* tether_ecs_add_component(Tether_GUID entity, int component_id);
 ```
-Attaches a component to `entity`. Allocates memory at the tail of the dense array and updates the sparse map in $O(1)$ time. Returns a pointer to the uninitialized memory block.
+Attaches a component to `entity`, growing the dense array if needed. A new non-tag component receives its registered default data, or zero-initialized data if no default was supplied. Returns a pointer to the component; later ECS mutations may invalidate it.
 
 #### `tether_ecs_get_component`
 ```c
@@ -211,15 +214,15 @@ Removes the component from `entity` using $O(1)$ Swap-and-Pop.
 
 #### `tether_ecs_register_component_static`
 ```c
-void tether_ecs_register_component_static(uint32_t component_id, size_t element_size);
+void tether_ecs_register_component_static(uint32_t component_id, size_t element_size, const void* default_data);
 ```
-Initializes a dense array pool for a fixed compile-time component ID.
+Initializes a dense array pool for a fixed compile-time component ID, optionally storing a `default_data` template copied whenever `tether_ecs_add_component()` attaches the component (passing `NULL` zeroes new slots).
 
 #### `tether_ecs_register_component_dynamic`
 ```c
-uint32_t tether_ecs_register_component_dynamic(size_t element_size);
+uint32_t tether_ecs_register_component_dynamic(size_t element_size, const void* default_data);
 ```
-Dynamically registers a custom component type for plugins or third-party extensions. Returns the newly assigned component ID.
+Dynamically registers a custom component type with an optional `default_data` template for plugins or third-party extensions. Returns the newly assigned component ID.
 
 ---
 
@@ -263,41 +266,60 @@ const char* tether_font_get_name(uint32_t font_id);
 
 ---
 
-## 5. UI Convenience and Widget APIs (`tether_ui.h`, `tether_widgets.h`)
+## 5. UI Convenience and Widget APIs (`tether_ui.h`, `tether_widgets.h`, `tether_list.h`)
 
-### Fluent UI Builders (`tether_ui.h`)
+### Primitives & Built-In Widget Constructors (`tether_ui.h` & `widgets/*.h`)
 
 ```c
-Tether_GUID tether_ui_panel(Tether_GUID parent, Tether_Color bg_color, float radius);
-Tether_GUID tether_ui_row(Tether_GUID parent, float gap_x);
-Tether_GUID tether_ui_column(Tether_GUID parent, float gap_y);
-Tether_GUID tether_ui_text(Tether_GUID parent, const char* string, float font_size, Tether_Color color);
-Tether_GUID tether_ui_button(Tether_GUID parent, const char* caption, float font_size,
-                             Tether_Color bg_color, Tether_EventCallback callback, void* user_data);
+Tether_GUID tether_widget_create_container(Tether_GUID parent);
+Tether_GUID tether_ui_panel(Tether_GUID parent);
+Tether_GUID tether_ui_text(Tether_GUID parent);
+Tether_GUID tether_ui_button(Tether_GUID parent);
+Tether_GUID tether_ui_progress_bar(Tether_GUID parent);
+Tether_GUID tether_ui_slider(Tether_GUID parent);
+Tether_GUID tether_ui_toggle(Tether_GUID parent);
+Tether_GUID tether_ui_checkbox(Tether_GUID parent);
+Tether_GUID tether_ui_radio(Tether_GUID parent);
+Tether_GUID tether_ui_segmented_bar(Tether_GUID parent);
+Tether_GUID tether_ui_menu(Tether_GUID parent);
+Tether_GUID tether_ui_dropdown(Tether_GUID parent);
+Tether_GUID tether_ui_context_menu(Tether_GUID parent);
+Tether_GUID tether_ui_collapsible(Tether_GUID parent);
+Tether_GUID tether_ui_switcher(Tether_GUID parent);
 ```
 
-### Property Setters
+### Property, Layout & State Setters (`tether_ui.h`)
 
 | Function Signature | Description |
 | :--- | :--- |
+| `void tether_ui_set_container(Tether_GUID entity, Tether_Flow flow)` | Sets container flow mode (`NONE`, `ROW`, `COLUMN`). |
+| `void tether_ui_set_position(Tether_GUID entity, Tether_PositionMode position)` | Sets `RELATIVE`, `ABSOLUTE`, or `FIXED` overlay positioning mode. |
+| `void tether_ui_set_content_align(Tether_GUID entity, Tether_Align align_x, Tether_Align align_y)` | Configures child alignment inside a flow container. |
 | `void tether_ui_set_size(Tether_GUID entity, float width, float height)` | Sets explicit layout dimensions. `0` indicates auto shrink-wrap. |
 | `void tether_ui_set_padding(Tether_GUID entity, float top, float right, float bottom, float left)` | Sets container inner padding in pixels. |
 | `void tether_ui_set_gap(Tether_GUID entity, float gap_x, float gap_y)` | Sets spacing between sequential child elements. |
 | `void tether_ui_set_flex(Tether_GUID entity, float fill_ratio)` | Sets flex expansion ratio along parent layout flow axis. |
 | `void tether_ui_set_color(Tether_GUID entity, Tether_Color bg_color)` | Sets background shape fill color. |
+| `void tether_ui_set_active_color(Tether_GUID entity, Tether_Color color)` | Sets transient hover/press highlight fill (`active_bg`); reset with `tether_ui_reset_active_color()`. |
 | `void tether_ui_set_border(Tether_GUID entity, float width, Tether_Color color, float radius)` | Configures border stroke thickness, color, and corner radius. |
 | `bool tether_ui_set_text(Tether_GUID entity, const char* string)` | Updates text string content, automatically invalidating layout and visual tags. |
-| `const char* tether_ui_get_text(Tether_GUID entity)` | Reads the text string attached to an entity or its primary text child. |
+| `const char* tether_ui_get_text(Tether_GUID entity)` | Reads the text string attached to an entity. |
 | `void tether_ui_set_text_color(Tether_GUID entity, Tether_Color color)` | Updates font render color. |
+| `bool tether_ui_set_bool(Tether_GUID entity, bool value)` | Mutates `Tether_BoolState` (`get_bool`, `toggle_bool` also provided). |
+| `bool tether_ui_set_value(Tether_GUID entity, float value)` | Clamps and updates `Tether_ValueRange` (`set_range`, `get_value` also provided). |
 
 ---
 
-### Visibility Controls (`tether_widgets.h`)
+### Visibility, Enabled State & Lifecycle (`tether_widgets.h`)
 
 ```c
 void tether_widget_set_visibility(Tether_GUID entity, Tether_VisibilityState state);
 bool tether_widget_is_visible(Tether_GUID entity);
 bool tether_widget_is_collapsed(Tether_GUID entity);
+void tether_widget_set_enabled(Tether_GUID entity, bool enabled);
+bool tether_widget_is_enabled(Tether_GUID entity);
+void tether_widget_show(Tether_GUID entity);
+void tether_widget_hide(Tether_GUID entity);
 void tether_widget_destroy(Tether_GUID entity);
 ```
 
@@ -317,14 +339,26 @@ typedef enum {
     TETHER_EVENT_HOVER_EXIT,
     TETHER_EVENT_PRESS,
     TETHER_EVENT_RELEASE,
-    TETHER_EVENT_CLICK
+    TETHER_EVENT_CLICK,
+    TETHER_EVENT_DRAG,
+    TETHER_EVENT_CHANGE
 } Tether_EventType;
 
-typedef void (*Tether_EventCallback)(Tether_GUID entity, Tether_EventType type, void* user_data);
+typedef struct {
+    Tether_EventType type;
+    Tether_MouseButton button;
+    float x, y;
+} Tether_Event;
+
+typedef void (*Tether_EventCallback)(Tether_GUID entity, const Tether_Event *event, void* user_data);
 
 void tether_bind_event(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback, void* user_data);
+void tether_bind_pointer_event(Tether_GUID entity, Tether_EventType type, Tether_MouseButton button,
+                               Tether_EventCallback callback, void* user_data);
 void tether_unbind_event(Tether_GUID entity, Tether_EventType type);
+void tether_unbind_callback(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback);
 void tether_dispatch_event(Tether_GUID entity, Tether_EventType type);
+void tether_dispatch_event_data(Tether_GUID entity, const Tether_Event *event);
 ```
 
 ---
@@ -333,27 +367,33 @@ void tether_dispatch_event(Tether_GUID entity, Tether_EventType type);
 
 ```c
 typedef enum {
-    TETHER_POINTER_DOWN,
+    TETHER_POINTER_DOWN = 0,
     TETHER_POINTER_UP,
     TETHER_POINTER_MOVE
-} Tether_Pointer_Type;
+} Tether_Pointer_EventType;
 
 typedef enum {
-    TETHER_MOUSE_BUTTON_NONE = 0,
-    TETHER_MOUSE_BUTTON_LEFT,
+    TETHER_MOUSE_BUTTON_LEFT = 0,
     TETHER_MOUSE_BUTTON_RIGHT,
-    TETHER_MOUSE_BUTTON_MIDDLE
-} Tether_Mouse_Button;
+    TETHER_MOUSE_BUTTON_MIDDLE,
+    TETHER_MOUSE_BUTTON_NONE
+} Tether_MouseButton;
 
 typedef struct Tether_Pointer_Event {
-    Tether_Pointer_Type type;
-    Tether_Mouse_Button button;
+    Tether_Pointer_EventType type;
+    Tether_MouseButton button;
     float x;
     float y;
 } Tether_Pointer_Event;
 
+typedef void (*Tether_InputRouteCallback)(Tether_GUID entity, const Tether_Pointer_Event *event,
+                                         Tether_GUID hit, Tether_GUID pressed);
+
 void        tether_input_process_event(const Tether_Pointer_Event* event);
 Tether_GUID tether_hit_test(float x, float y);
+void        tether_input_get_pointer_pos(float* out_x, float* out_y);
+void        tether_input_set_route(Tether_GUID entity, Tether_InputRouteCallback callback);
+void        tether_input_clear_route(Tether_GUID entity);
 ```
 
 ---
@@ -362,8 +402,9 @@ Tether_GUID tether_hit_test(float x, float y);
 
 ```c
 Tether_GUID tether_yaml_load(const char* filepath, Tether_GUID parent);
+void        tether_yaml_term(void);
 ```
-Parses a declarative YAML scene file and attaches the resulting entity hierarchy to `parent`. If `parent` is `TETHER_INVALID_GUID`, the scene is attached directly to the main root. Returns the root entity of the loaded scene, or `TETHER_INVALID_GUID` on syntax failure.
+Parses a declarative YAML scene file and attaches the resulting entity hierarchy to `parent`. If `parent` is `TETHER_INVALID_GUID`, the scene attaches to the main root. On a detected load failure, the loader destroys recorded entities and removes their aliases. Template definitions registered or replaced during the load are not rolled back. Call `tether_yaml_term()` on the UI thread (outside a load) to free cached template definitions.
 
 ---
 
@@ -396,7 +437,8 @@ In `src/main.c`:
 
 static void on_init(void) {
     Tether_GUID root = tether_ecs_get_main_root();
-    tether_ui_panel(root, (Tether_Color){40, 44, 52, 255}, 0.0f);
+    Tether_GUID panel = tether_ui_panel(root);
+    tether_ui_set_color(panel, (Tether_Color){40, 44, 52, 255});
 }
 
 int main(void) {
@@ -464,32 +506,35 @@ tether_on_cleanup();
 
 ### Pattern 3: Custom Backend Driver Implementation
 
-To run Tether on a custom rendering and windowing stack (e.g., ThorVG, Raylib, Skia, or bare-metal embedded framebuffers), implement the `Tether_Backend` interface and expose the global symbol `g_backend`:
+The following is an illustrative outline for a custom backend, not a complete runnable implementation. The backend must implement every callback required by the engine and replace the existing Chitra backend in the build:
 
 ```c
 #include <tether/backends/tether_backend.h>
 
-static void custom_init(int w, int h, const char* title) { /* Initialize window/device */ }
-static void custom_begin_frame(void)                     { /* Prepare render target */ }
-static void custom_end_frame(void)                       { /* Present backbuffer */ }
-static void custom_draw_rect(float x, float y, float w, float h, Tether_Color color, float radius) {
-    /* Issue rectangle draw call to custom graphics pipeline */
+static void custom_run(Tether_Config* config)              { /* Enter host loop, call tether_on_* hooks */ }
+static void custom_get_size(uint32_t* w, uint32_t* h)      { /* Query viewport dimensions */ }
+static void custom_mark_dirty(void)                        { /* Schedule frame presentation */ }
+static uint32_t custom_shape_create(void)                  { /* Allocate retained backend shape handle */ return 1; }
+static bool custom_shape_set_bounds(uint32_t h, float x, float y, float w, float height) {
+    /* Update retained shape geometry */
+    return true;
 }
 
 static Tether_System_API custom_system_api = {
-    .init = custom_init,
-    .begin_frame = custom_begin_frame,
-    .end_frame = custom_end_frame,
-    /* Populate remaining system callbacks */
+    .run = custom_run,
+    .get_size = custom_get_size,
+    .mark_dirty = custom_mark_dirty,
+    /* Populate remaining system, clip, and draw-order callbacks */
 };
 
 static Tether_Shape_API custom_shape_api = {
-    .draw_rect = custom_draw_rect,
-    /* Populate remaining shape callbacks */
+    .create = custom_shape_create,
+    .set_bounds = custom_shape_set_bounds,
+    /* Populate remaining shape property callbacks */
 };
 
 static Tether_Text_API custom_text_api = {
-    /* Populate text rendering and measurement callbacks */
+    /* Populate font, measurement, and text property callbacks */
 };
 
 Tether_Backend g_backend = {
@@ -499,7 +544,7 @@ Tether_Backend g_backend = {
 };
 ```
 
-Link this implementation into your application; Tether will communicate directly with your custom driver with zero overhead.
+See the backend interface chapter for integration constraints. The current CMake configuration includes the Chitra adapter by default.
 
 ---
 

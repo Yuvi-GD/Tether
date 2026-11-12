@@ -34,7 +34,7 @@ flowchart TD
         Sandbox["Sandbox Frontend (Import & Results UI)"]
     end
 
-    TestSuite -->|Automated CI/CD| CTestPass["CTest 22/22 Passing"]
+    TestSuite --> CTestPass["CTest correctness and rendering tests"]
     BenchCLI --> Workloads
     StdMatrix --> BenchCLI
     Workloads --> JSONOut
@@ -51,7 +51,7 @@ The test suite is organized into modular layers reflecting system boundaries:
 | Directory | Scope & Responsibility | Execution Environment | Primary Target |
 | :--- | :--- | :---: | :--- |
 | `tests/unit/` | Pure CPU logic, ECS memory pools, generational indices, swap-and-pop, base component contracts. | Headless (CI / Console) | `tether_ecs_test`, `tether_behavior_test` |
-| `tests/integration/` | Declarative YAML lexer, AST parsing, environment substitution, template slots, report serialization. | Headless (CI / Console) | `yaml_ast_test`, `report_test` |
+| `tests/integration/` | Declarative YAML lexer, AST parsing, widget construction/rollback (`yaml_load_test`), template slots, report serialization. | Headless (CI / Console) | `yaml_ast_test`, `yaml_load_test`, `report_test` |
 | `tests/rendering/` | GPU backbuffer presentation, retained vs. volatile dirty flags, hierarchical clipping, color states. | Interactive Desktop / GPU | `ui_contract_test` |
 | `tests/support/` | Shared harness utilities: high-resolution timers, process management, JSON reporting, platform bridges. | Shared Static Library | `tether_test_support` |
 | `tests/runners/` | Standalone CLI binaries that run parameterized workloads and produce performance reports. | CLI / Script Automation | `tether_test.exe`, `tether_bench.exe` |
@@ -68,7 +68,7 @@ Validates fundamental ECS guarantees under stress:
 - **Cascading Destruction**: Asserts that deleting a parent entity recursively destroys its full subtree, freeing all attached components and recycling slot indices.
 
 ### 2. Behavioral Contract Scenarios (`tests/unit/behavior_test.c`)
-Tests discrete engine subsystems across five isolated scenarios:
+Tests discrete engine subsystems across isolated scenarios:
 
 ```powershell
 # Run individual behavior scenarios via CLI
@@ -77,26 +77,30 @@ Tests discrete engine subsystems across five isolated scenarios:
 ./build/Release/tether_behavior_test input
 ./build/Release/tether_behavior_test lifetime
 ./build/Release/tether_behavior_test text
+./build/Release/tether_behavior_test widgets
+./build/Release/tether_behavior_test menu_interaction
+./build/Release/tether_behavior_test event_contract
+./build/Release/tether_behavior_test disabled
 ```
 
 - **`layout`**: Verifies that flex column and row containers calculate slot bounds correctly according to inner padding, gap, and child dimensions.
-- **`visibility`**: Verifies the three visibility states:
-  - `TETHER_VISIBLE`: Layout space allocated, visual render active.
-  - `TETHER_HIDDEN`: Layout space preserved, visual render skipped.
-  - `TETHER_COLLAPSED`: Layout space zeroed, visual render skipped, siblings reflowed.
-- **`input`**: Simulates pointer move, down, and up events; validates hover and press state transitions and verifies bounding box hit culling.
+- **`visibility`**: Verifies `TETHER_VISIBLE`, `TETHER_HIDDEN`, and `TETHER_COLLAPSED` layout and rendering propagation.
+- **`input`**: Simulates pointer move, down, and up events; validates hover/press transitions and bounding box hit culling.
 - **`lifetime`**: Tests allocation limits, entity recycling from `free_indices`, and double-free rejection.
-- **`text`**: Validates the 4-tier Small String Optimization (SSO) storage, asserting that strings $\le 63$ bytes remain inline without heap allocations.
+- **`text`**: Validates the 4-tier Small String Optimization (SSO) storage and dynamic buffer cleanup.
+- **`widgets`**: Validates built-in widget state components (`Slider`, `Toggle`, `Checkbox`, `Radio`, `SegmentedBar`, `Dropdown`, `Collapsible`, `Switcher`).
+- **`menu_interaction`**: Verifies priority input routing (`tether_input_set_route`), `POSITION_ABSOLUTE` Z-order/clip escape, and menu selection/dismissal.
+- **`event_contract`**: Verifies right-click bubbling, `Tether_Event` payloads, and reentrant callback unbinding (`g_dispatch_depth`).
+- **`disabled`**: Verifies `tether_widget_set_enabled()` dims compound subtrees and blocks hit-testing cleanly.
 
 ---
 
 ## 4. Integration and Parser Testing
 
-### Declarative AST Recovery (`tests/integration/yaml_ast_test.c`)
-Ensures that declarative scene definitions parse reliably and fail gracefully:
-- **Syntax Error Recovery**: Feeds malformed YAML inputs (unclosed quotes, invalid indentation, illegal characters) and verifies that the engine returns `TETHER_INVALID_GUID` without crashing or leaking memory.
-- **Template Slot Injection**: Asserts that caller-provided children are mounted cleanly into template `Slot:` nodes.
-- **Dynamic Property Substitution**: Validates that `$variable` tokens in YAML are correctly resolved from property dictionaries at instantiation time.
+### Declarative AST & Widget Construction (`tests/integration/yaml_ast_test.c`, `yaml_load_test.c`)
+Ensures that declarative scene definitions parse reliably, construct built-in widgets accurately, and roll back cleanly on errors:
+- **Syntax Error Recovery (`yaml_parse_recovery`)**: Exercises malformed YAML inputs and parser recovery.
+- **Widget Construction & Rollback (`yaml_construction`)**: Exercises built-in YAML widget properties, `$variable` / template slot substitution, recursion limits, and transactional cleanup on invalid definitions.
 
 ### Report Integrity (`tests/integration/report_test.c`)
 Verifies that benchmark telemetry structures serialize to valid JSON conforming to the Tether report schema, ensuring compatibility with the Sandbox Lab importer.
@@ -106,16 +110,13 @@ Verifies that benchmark telemetry structures serialize to valid JSON conforming 
 ## 5. Rendering and Contract Validation
 
 ### Retained vs. Volatile Modes (`tests/rendering/ui_contract_test.c`)
-Validates the reactive invalidation pipeline against a live graphics backend:
-- **Retained Invalidation**: Tests that an unchanged scene issues zero draw calls on subsequent frames (`tether_did_draw() == false`).
-- **Dirty Flag Triggering**: Mutating an element's size or color marks `DIRTY_LAYOUT` or `DIRTY_VISUAL`, ensuring the subsequent frame executes redraw (`tether_did_draw() == true`).
-- **Volatile Continuous Mode**: When the root container is tagged with `TETHER_COMPONENT_VOLATILE`, the engine bypasses dirty caching and renders continuously every frame.
+Exercises retained and volatile scenes against a live Chitra backend. Checks cover text updates and transforms, wrapping and layout on resize, nested clips, and YAML loading and failure recovery. A volatile entity retains its dirty layout and visual tags; tagging a root alone does not make every descendant volatile.
 
 ---
 
 ## 6. Controlled Benchmarks and Workloads
 
-The standalone runner `tether_bench.exe` executes controlled stress workloads to measure frame stability, memory footprint, and CPU/GPU scaling:
+The standalone runner `tether_bench.exe` executes controlled ECS, layout, and rendering workloads. Render runs measure CPU-side work and submission counters, not GPU execution time:
 
 ```powershell
 # Run a 10,000-entity retained render workload for 120 frames
@@ -126,18 +127,18 @@ The standalone runner `tether_bench.exe` executes controlled stress workloads to
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :---: | :--- |
-| `--scenario` | String | `render` | Workload target: `render`, `layout`, or `ecs`. |
+| `--scenario` | String | Required | Workload target: `render`, `layout`, or `ecs`. |
 | `--mode` | String | `retained` | Render pipeline mode: `retained` (reactive dirty flagging) or `volatile` (continuous per-frame render). |
-| `--count` | Integer | `1000` | Baseline active entity count maintained in the scene. |
+| `--count` | Integer | `1000` | Requested initial workload population; actual active counts are recorded. |
 | `--spawn` | Integer | `0` | Number of new entities created per frame. |
 | `--delete` | Integer | `0` | Number of entities destroyed per frame (exercising Swap-and-Pop churn). |
 | `--mutate` | Integer | `0` | Number of entities modified per frame (triggering invalidation tags). |
 | `--frames` | Integer | `120` | Number of measured sample frames. |
-| `--warmup` | Integer | `30` | Number of unmeasured initial warmup frames to stabilize GPU pipeline caches. |
-| `--fps` | Integer | `0` | Target frame cap (0 = unconstrained). |
-| `--seed` | Integer | `1` | Deterministic random seed for reproducible churn profiles. |
-| `--memory-mib` | Integer | `512` | Maximum allocated memory ceiling in megabytes. |
-| `--output` | String | `report` | Target directory or file path for JSON telemetry. |
+| `--warmup` | Integer | `30` | Requested render warm-up frames; actual warm-up is recorded. |
+| `--fps` | Integer | `60` | Render pacing: `0` requests VSync; positive values set a manual cap. |
+| `--seed` | Integer | `1` | Seed for deterministic colors; operation order is not randomized. |
+| `--memory-mib` | Integer | `1024` | Conservative preflight workload budget in MiB, not a hard process-memory limit. |
+| `--output` | String | Automatic | JSON file path; the default is under the executable's `report` directory. |
 
 ---
 
@@ -153,40 +154,23 @@ To obtain reproducible performance comparisons across engine versions, Tether pr
 The standard matrix executes:
 1. **ECS Fixed-Count Mutation**: Evaluates raw linear iteration across dense pools at 1K, 10K, and 100K entities.
 2. **High-Churn Lifecycle**: Measures throughput under simultaneous rapid creation and deletion ($32\text{ spawn} / 32\text{ delete}$ per frame).
-3. **25% Population Churn**: Mutates a quarter of the scene tree each frame to measure partial dirty-tree reflow performance.
-4. **GPU Rendering Stress**: Measures frame time percentiles (p50, p95, p99) in both retained and volatile modes.
+3. **25% Population Mutation**: Mutates a quarter of the requested ECS population per step without spawning or deleting.
+4. **Rendering Stress**: Optionally records work times, frame intervals, and submission counters in retained and volatile modes.
 
 ---
 
 ## 7. Performance Profiling and Methodology
 
-### 1. Frame Time Dissection
-Tether benchmarks split execution time into three discrete instrumentation phases:
+### 1. Timing Boundaries
+`work_ms` covers each update through the post-frame callback, including mutations, engine work, and graphics submission where applicable; it excludes the following pacing interval. Rendered frame intervals measure spacing between update starts and include intervening pacing. The layout workload separately records time inside `tether_layout_process_all`; other workloads do not isolate layout or visual synchronization. GPU execution time is not measured.
 
-$$\text{Total Frame Time} = t_{\text{layout}} + t_{\text{visual\_sync}} + t_{\text{gpu\_present}}$$
+### 2. Idle Behavior
+The rendering benchmark forces presentation and is not an idle-power test. Neither the benchmark nor its redraw status establishes zero process CPU usage or an operating-system sleep guarantee.
 
-```mermaid
-flowchart LR
-    StartFrame["Frame Start"] --> LayoutPass["1. Layout Solver Pass\n(tether_layout_process_all)"]
-    LayoutPass --> VisualSync["2. Visual Sync Pass\n(resolve_color, scissor, draw list)"]
-    VisualSync --> GPUPresent["3. GPU Draw & Present\n(Chitra RHI submit)"]
-    GPUPresent --> FrameEnd["Frame Complete"]
-```
+### 3. Memory Measurements
+Reports record process resident memory at sampled boundaries, including a sampled peak when available. These readings are not allocator ownership, VRAM, an OS high-water mark, or proof that destroying objects returns pool capacity to its starting value. Query failures are reported as unavailable.
 
-- **$t_{\text{layout}}$**: Evaluates container sizing and slot offsets. Skipped entirely when `DIRTY_LAYOUT` is absent.
-- **$t_{\text{visual\_sync}}$**: Synchronizes interaction states and builds draw command lists. Skipped when `DIRTY_VISUAL` is absent.
-- **$t_{\text{gpu\_present}}$**: Submits GPU commands and presents the swapchain backbuffer.
-
-### 2. Zero-Power Verification
-To verify that Tether achieves zero idle CPU usage in steady state, the test suite asserts:
-1. When no input events occur and no animation components are active, `tether_did_draw()` returns `false`.
-2. The engine frame loop sleeps on OS wait primitives without busy-waiting.
-
-### 3. Memory Tracking and Leak Prevention
-The test harness tracks memory allocations using high-water mark counters:
-- **Baseline Allocation**: Measures baseline heap memory following `tether_ecs_init()`.
-- **Stress Allocation**: Measures peak memory under peak entity population ($N = 100,000$).
-- **Steady-State Reclamation**: Confirms that destroying the entities restores memory to baseline capacity without fragmentation leaks.
+See [Measurement methodology](../../tests/docs/methodology.md) for exact boundaries, report fields, failure states, and reproducibility guidance.
 
 ---
 

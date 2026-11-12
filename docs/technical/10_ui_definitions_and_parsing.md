@@ -14,7 +14,7 @@ There are no artificial barriers between declarative files, host programming lan
 - **Polyglot Fluidity**: Developers can declare structural layout in markup, attach rapid iteration event handlers in Python or Lua, and execute compute-heavy rendering or layout routines in native C or C++ without abstraction penalties.
 - **Format-Neutral Foundation**: While YAML is Tether's default bundled format due to its clean indentation syntax, the parsing engine is decoupled: HTML, XML, or JSON parsers can feed the same AST and Scene IR.
 
-This chapter details Tether's declarative scene schema, format-agnostic AST pipeline, template slots and variable injection, and the **4-Pipeline Deployment System** spanning from live hot-reloading to Ahead-of-Time (AOT) bytecode compilation.
+This chapter details Tether's declarative scene schema, format-agnostic AST pipeline, template slots and variable injection, and how manual YAML loading fits alongside planned future compilation pipelines (`.tbc`).
 
 ---
 
@@ -68,19 +68,23 @@ Tether uses a clean, indentation-based YAML format that eliminates XML tag noise
       - Panel:
           flow: ROW
           gap: [8, 0]
-          content_align_y: CENTER
+          content_align: [START, CENTER]
           children:
             - Button:
                 id: refresh_button
-                string: "Refresh Diagnostics"
                 color: [97, 175, 239, 255]
-                flex: 1.0
+                fill_ratio: 1.0
+                content:
+                  - Text:
+                      string: "Refresh Diagnostics"
             
             - Button:
                 id: shutdown_button
-                string: "Halt"
                 color: [224, 108, 117, 255]
-                flex: 0.0
+                fill_ratio: 0.0
+                content:
+                  - Text:
+                      string: "Halt"
 ```
 
 ### Core Schema Properties
@@ -89,19 +93,22 @@ Tether uses a clean, indentation-based YAML format that eliminates XML tag noise
 | :--- | :--- | :--- |
 | `id` | String | Assigns a human-readable alias in the Central Registry (`tether_registry_alias_entity`). |
 | `flow` | String | Container rule: `NONE` (Canvas), `ROW` (Flex Row), or `COLUMN` (Flex Column). |
+| `content_align` | Align / `[x, y]` | Container alignment along X and Y (`START`, `CENTER`, `END`, `FILL`, `AUTO`). |
 | `size_box` | Float / `[w, h]` | Explicit layout bounds. `0` denotes auto/shrink-wrap. |
-| `padding` | Float / `[t, r, b, l]` | Inner container padding in pixels. |
+| `padding` | Float / `[t, r, b, l]` | Inner container padding in pixels (1, 2, 3, or 4 values). |
 | `gap` | Float / `[gap_x, gap_y]` | Spacing between consecutive children along the flow axis. |
 | `color` | String / `[r, g, b, a]` | Background fill color for shapes, or text color for typography. |
 | `border_color` | String / `[r, g, b, a]` | Outer boundary stroke color. |
 | `border_width` | Float | Border stroke thickness in pixels. |
 | `border_radius` | Float / `[t, r, b, l]` | Rounded corner radii. |
-| `flex` | Float | Proportional flex weight along parent flow axis. |
+| `fill_ratio` | Float | Proportional flex weight along parent flow axis (`align_self` also supported). |
 | `overflow` | String | Scissor clipping: `CLIP`, `VISIBLE`, `WRAP`, or `SCROLL`. |
 | `visibility` | String | Visibility state: `visible`, `hidden`, or `collapsed`. |
 | `hit_behavior` | String | Pointer collision policy: `BLOCK`, `IGNORE`, `SELF_ONLY`, or `CHILD_ONLY`. |
 | `opacity` | Float | Multiplicative visual opacity ($0.0$ to $1.0$). |
 | `rotation` | Float | GPU visual rotation in degrees around render pivot. |
+| `content` | Sequence | Applies properties recursively onto pre-built compound child slots (e.g., `Button` label). |
+| Widget properties | Varies | Handled by `tether_yaml_widgets.c` (`min`/`max`/`step`/`value`, `checked`/`is_on`, `options`/`selected`/`open`/`type`, `title`, `active`). |
 
 ---
 
@@ -142,11 +149,12 @@ Tether supports componentization directly within declarative markup without exte
 
 ---
 
-## 5. Parser Architecture and AST (`tether_yaml_ast.h`)
+## 5. Parser Architecture and AST (`tether_yaml_ast.h`, `tether_yaml_widgets.h`)
 
-Parsing executes in two decoupled stages:
-1. **Syntactic Analysis (`tether_yaml_ast.c`)**: Converts raw text into a format-neutral tree of `Tether_ASTNode` records using an embedded libyaml scanner.
-2. **Semantic Instantiation (`tether_yaml.c`)**: Evaluates environments and instantiates live ECS entities through the Central Registry.
+Parsing executes in three modular stages:
+1. **Syntactic Analysis (`tether_yaml_ast.c`)**: Converts raw text into a format-neutral tree of `Tether_ASTNode` records using libyaml. Reusable `- Widget:` templates clone their AST subtree independently (`tether_ast_clone()`) so documents can be freed immediately after instantiation while cached definitions stay valid until `tether_yaml_term()`.
+2. **Semantic Instantiation (`tether_yaml.c`)**: Evaluates `$var` and slot environments, enforces recursion/template safety, and spawns live entities through `tether_create_widget()`.
+3. **Widget Property Binding (`tether_yaml_widgets.c`)**: Applies widget-specific properties (`options`, `selected`, `open`, `type`, `min`, `max`, `step`, `value`, `checked`, `is_on`, `title`, `active`) via `tether_yaml_apply_widget_properties()` in dependency order.
 
 ```c
 typedef enum {
@@ -211,16 +219,16 @@ Tether makes no architectural distinction between entities spawned by declarativ
 
 ---
 
-## 6. The 4-Pipeline Deployment System
+## 6. Deployment Pipelines (Current vs. Roadmap)
 
-To serve use cases ranging from resource-constrained microcontrollers to rapid desktop prototyping, Tether defines a **4-Pipeline Deployment System**:
+To support different runtime environments over time, Tether separates C construction, runtime YAML loading, and planned compiled assets:
 
 ```mermaid
 flowchart LR
-    P1["Pipeline 1: Pure C Imperative\n(No Parser, Zero Overhead, Hardcoded UI)"]
-    P2["Pipeline 2: Declarative YAML\n(Live Hot-Reload, Rapid Iteration)"]
-    P3["Pipeline 3: Pre-cooked Scene IR\n(Binary AST Deserialization)"]
-    P4["Pipeline 4: AOT Bytecode / C Codegen\n(Future .tbc Cooker -> Static C Headers)"]
+    P1["Pipeline 1: C Imperative (`Current`)\n(Direct C APIs, No YAML Parser)"]
+    P2["Pipeline 2: Declarative YAML (`Current`)\n(tether_yaml_load + Manual Reload)"]
+    P3["Pipeline 3: Pre-cooked Scene IR (`Roadmap`)\n(Binary AST Deserialization)"]
+    P4["Pipeline 4: AOT Bytecode / C Codegen (`Roadmap`)\n(Future .tbc Cooker -> Static Headers)"]
 
     subgraph RuntimeEngine["Tether Runtime Engine"]
         ECS["ECS Kernel & Registries"]
@@ -228,27 +236,27 @@ flowchart LR
 
     P1 -->|Direct API Calls| ECS
     P2 -->|tether_yaml_load| ECS
-    P3 -->|Binary Deserializer| ECS
-    P4 -->|Zero-Allocation Boot| ECS
+    P3 -.->|Planned Binary Loader| ECS
+    P4 -.->|Planned AOT Boot| ECS
 ```
 
 ### Pipeline Comparison Matrix
 
-| Pipeline | Source Format | Parser Overhead | Memory Allocation | Best Use Case |
-| :--- | :--- | :---: | :---: | :--- |
-| **1. Pure C Code** | C Source Code | None ($0\text{ bytes}$) | Contiguous ECS dense arrays only | Embedded systems, microcontrollers, maximum runtime performance. |
-| **2. Declarative YAML** | UTF-8 `.yaml` | Lexer + AST pass | Dynamic during load pass | Desktop tooling, rapid UI iteration, live hot-reloading during development. |
-| **3. Pre-cooked Scene IR** | Pre-parsed AST | Binary unpack pass | Reduced heap churn | Mobile apps, faster cold-boot loading times. |
-| **4. AOT Bytecode (`.tbc`)** | Compiled Bytecode / C | None ($0\text{ bytes}$) | Pre-sized static memory | Production shipping games, zero-parser runtime deployments. |
+| Pipeline | Status | Source Format | Parser Overhead | Memory Behavior | Intended Use Case |
+| :--- | :---: | :--- | :---: | :---: | :--- |
+| **1. Pure C Code** | Implemented | C Source Code | None | Contiguous ECS dense arrays | Programs wanting pure C without YAML dependencies. |
+| **2. Declarative YAML** | Implemented | UTF-8 `.yaml` | Lexer + AST pass | Allocates parse structures, clones templates (`tether_yaml_term` frees cache) | Desktop tools, UI prototyping, manual scene reload. |
+| **3. Pre-cooked Scene IR** | Roadmap | Pre-parsed AST | Planned binary unpack | Planned lower parse overhead | Faster cold boot without text lexing. |
+| **4. AOT Bytecode (`.tbc`)** | Roadmap | Compiled Bytecode / C | Planned none | Planned static-friendly tables | Zero-parser embedded / production deployments. |
 
 ---
 
-## 7. Error Recovery and Robustness
+## 7. Error Recovery, Transactional Rollback, and Robustness
 
-User interface parsers must be resilient against syntax errors, incomplete files during live editing, and missing assets:
-- **Missing Keys & Bad Conversions**: Unknown properties produce non-fatal diagnostic warnings without halting tree instantiation.
-- **Malformed Markup Recovery**: If a child block fails parsing, the parent container preserves valid siblings and completes layout.
-- **Safe Fallback**: Any parse failure returns `TETHER_INVALID_GUID`, allowing host applications to display error placeholders or preserve previous stable scene states.
+User interface parsers must remain resilient against malformed files, invalid widget properties, and deep/cyclic template definitions:
+- **Reentrancy & Depth Limits**: `tether_yaml_load()` rejects reentrant loads from callbacks while loading is active, and `instantiate_node()` enforces a hard recursion depth ceiling of `64` levels to prevent stack exhaustion on cyclic `$slot` or template expansions.
+- **Template Lifetime Separation**: Cached `- Widget:` templates store deep clones via `tether_ast_clone()`, allow replacement only at top-level load depth (`template_depth == 0`), and release all cached definitions cleanly during `tether_yaml_term()`.
+- **Entity Cleanup on Failure**: When a detected load failure occurs, the loader walks recorded entities in reverse order, removes their aliases, destroys their widget subtrees, and returns `TETHER_INVALID_GUID`. Cached template definitions registered or replaced during the failed load are not rolled back. Property validation is limited to checks implemented by the parser and widget adapters.
 
 ---
 

@@ -13,11 +13,11 @@ Just as the LLVM project transformed compiler construction by providing reusable
 Tether fundamentally rejects the notion that a modern user interface must require multi-gigabyte browser runtimes, hundreds of megabytes of memory, complex object-oriented inheritance trees, or continuous 100% CPU polling loops.
 
 ### The Tether Mission
-To establish an open, modular, pure C standard for graphical user interfaces that guarantees:
-- **Absolute Predictability**: Explicit, deterministic memory management with zero steady-state heap allocation and zero garbage-collection pauses.
-- **Universal Portability**: A pure ISO C99 Application Binary Interface (ABI) that embeds natively into any host language (C, C++, Rust, Python, Zig, Lua) without wrapper friction.
-- **Hardware Decoupling**: Complete isolation between scene hierarchy, layout constraint solving, and pixel rasterization, allowing renderers and windowing toolkits to be hot-swapped at link time.
-- **True Reactive Zero-Power Operation**: Retained-mode dirty state tracking that sleeps when static, drawing pixels only when inputs or data models change.
+To establish an open, modular, pure C standard for graphical user interfaces engineered toward:
+- **Absolute Predictability**: Explicit memory ownership via ECS pools, generational handles, and moving toward zero steady-state heap allocations with zero garbage-collection pauses.
+- **Universal Portability**: A pure ISO C99 Application Binary Interface (ABI) structured to embed into host languages (C, C++, Rust, Python, Zig, Lua) as bindings and platform coverage expand (CI currently validates Windows).
+- **Hardware Decoupling**: Clean separation between scene hierarchy, layout solving, and pixel rasterization behind `Tether_Backend`, allowing drivers to be swapped at link time.
+- **Reactive Invalidation**: Retained-mode dirty state tracking (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`) that skips redundant work when static (`tether_did_draw() == false`), laying the foundation for low-power idle loops.
 
 ```mermaid
 flowchart TD
@@ -133,34 +133,34 @@ Whether authored in human-readable declarative YAML or compiled into compact Ahe
 - A high-end desktop workstation running DirectX 11 or Metal,
 - An AAA game engine viewport in Unreal, Unity, or a custom engine,
 
-...the Tether UI asset opens and executes with **absolute behavioral determinism, layout consistency, and interactive fidelity**, requiring zero platform rewrites. Tether is engineered to be the universal open format for interactive user interfaces.
+...the Tether UI asset opens and executes with **consistent layout behavior, deterministic semantics, and native performance**, without platform rewrites. In the current `v0.0.3-preview` developer preview, scenes run via YAML and the C API on Windows with the Chitra backend, while `.tbc` AOT bytecode, Vinyasa integration, and additional platform backends remain active [roadmap](10_roadmap_and_community.md) milestones toward this open-format vision.
 
 ---
 
 ## 4. Tether's Core Architectural Identity
 
-Tether's identity is defined by six non-negotiable systems-level properties:
+Tether's identity centers on six core systems-level architectural properties (noting where `v0.0.3-preview` is still progressing toward final targets):
 
-### 1. Zero-Allocation Steady State
-Tether never executes heap allocations (`malloc`, `free`) during steady-state frame rendering or layout computation. Memory buffers for components grow via geometric reallocation during initialization, stabilizing into high-water mark pools. Once initialized, the engine operates completely allocation-free.
+### 1. Zero-Allocation Steady State (Target Architecture)
+Tether is designed to eliminate dynamic allocation churn during steady-state frame rendering and layout computation. Component pools grow geometrically via `realloc` during structural expansion and stabilize at high-water capacity, while SSO inline tiers keep typical strings off the heap. Note that `TextDynamic` uses heap storage for strings over 512 bytes, and full steady-state zero-allocation auditing across all paths remains an ongoing [roadmap](10_roadmap_and_community.md) milestone.
 
 ### 2. Data-Oriented Entity Component System (UI-ECS)
 Tether stores all UI data in flat, type-uniform dense arrays indexed by sparse maps. Iterating over widgets during layout or visual synchronization sweeps through contiguous memory blocks, maximizing CPU L1/L2 cache line hits and eliminating vtable indirection.
 
 ### 3. Retained-Mode with Reactive Invalidation
-Tether preserves the scene graph across frames. Subsystems update only what is flagged as dirty (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`). When no user input occurs and animations are idle, Tether consumes zero CPU cycles and issues zero GPU draw calls.
+Tether preserves the scene graph across frames. Subsystems update only what is flagged as dirty (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`). When no changes, resizes, or `VOLATILE` redraws occur, `tether_engine_frame()` skips redundant sync work (`tether_did_draw() == false`), with total idle CPU/GPU behavior governed by the host event loop and backend.
 
 ### 4. Separation of Layout Space from Render Space
-Layout bounds (`SlotTransform`) and visual GPU transformations (`RenderTransform`) are mathematically decoupled. High-frequency visual animations (hover scale, rotations, translation offsets, opacity fades) execute directly on the GPU without triggering expensive layout reflow passes in parent or sibling containers.
+Layout bounds (`SlotTransform`) and presentation transformations (`RenderTransform`) are decoupled so visual animations (offsets, colors, shape transforms, opacity) avoid triggering layout reflow passes in parent or sibling containers. (Note: in `v0.0.3-preview`, text transforms rebuild CPU-side glyph geometry via `DIRTY_TEXT_CONTENT`.)
 
 ### 5. Universal 64-Bit Scalar GUIDs
-Entities are identified by simple 64-bit integer values (`Tether_GUID`) containing an index and a generational version counter. Tether never exposes raw, unsafe heap pointers to host applications or foreign bindings. Stale entity handles fail safely in $O(1)$ time without memory corruption.
+Entities are identified by scalar 64-bit integer values (`Tether_GUID`) containing an index and a generational version counter. Safe across foreign bindings, stale entity handles fail in $O(1)$ time via `tether_ecs_is_valid()`. (Internal C component getters can still return raw array pointers that C callers should re-query after dense-array mutations.)
 
-### 6. Limitless Dual Authoring & Polyglot Parity
-Declarative markup (YAML) and compiled code (C99) operate with complete parity:
-- A button declared in YAML and a button created via `tether_ui_button()` instantiate the exact same ECS components.
-- An entity declared in YAML can be queried, animated, or reparented in C via `tether_registry_find_entity()`.
-- Compiled code and dynamic scripts (Python, Lua) communicate seamlessly across the C ABI without artificial restrictions.
+### 6. Dual Authoring & Polyglot Parity
+Declarative markup (YAML) and compiled code (C99) share the exact same runtime representation:
+- A button declared in YAML and a button created via `tether_ui_button()` instantiate the same ECS components through the widget factory registry (YAML currently exposes a subset of C API properties as coverage grows).
+- An entity declared in YAML with an `id:` can be queried, updated, or reparented in C via `tether_registry_find_entity()`.
+- Future foreign-language bindings (Python, Rust, Lua, Zig) can talk natively to this same scalar C99 ABI.
 
 ---
 
@@ -168,20 +168,20 @@ Declarative markup (YAML) and compiled code (C99) operate with complete parity:
 
 Tether's modular cell-block architecture enables it to scale across hardware domains that traditional UI frameworks cannot touch:
 
-| Hardware Domain | Typical Constraints | Tether Deployment Strategy |
+| Hardware Domain | Typical Constraints | Tether Strategy & Preview Status |
 | :--- | :--- | :--- |
-| **Bare-Metal Microcontrollers** | $64\text{ KB} - 512\text{ KB}$ SRAM, no OS, SPI/Parallel LCDs | **Pipeline 1 (Pure C Imperative)**: No parser, pre-sized static ECS arrays, direct custom framebuffer driver. Sub-$64\text{ KB}$ SRAM footprint for core UI data. |
-| **Embedded Touchscreens & IoT** | Automotive dashboards, medical monitors, Linux/RTOS displays | **Pipeline 3 / 4 (Pre-cooked Scene IR / AOT Bytecode)**: Sub-second cold boot, zero runtime parser overhead, hardware-accelerated vector graphics. |
-| **Desktop Creative Tools & Utilities** | Windows, macOS, Linux desktop software, telemetry dashboards | **Pipeline 2 (Declarative YAML)**: Rapid iteration, live YAML hot-reloading, rich typography, zero-power idle state. Tether's core memory remains in the kilobyte range, while external memory is dictated strictly by host graphics driver allocations (swapchains and font textures) rather than runtime framework bloat. |
-| **AAA Game HUDs & Editor Overlays** | 60-240 FPS frame budget, strict sub-millisecond CPU frame times | **Managed Embedded Loop (`tether_on_*`)**: Ticked directly by the game engine loop; 2D UI composited directly over 3D game viewports. |
-| **Spatial Computing (VR / AR)** | High-resolution 3D world space, stereo viewports, low latency | **Spatial Texture Projection**: Tether renders UI trees onto isolated offscreen GPU textures, which the 3D engine projects onto 3D virtual geometry. |
+| **Bare-Metal Microcontrollers** | $64\text{ KB} - 512\text{ KB}$ SRAM, no OS, SPI/Parallel LCDs | **Roadmap (Pipeline 1 - Pure C)**: No parser, pre-sized static ECS arrays, custom software framebuffer driver targeting compact SRAM footprints. |
+| **Embedded Touchscreens & IoT** | Automotive dashboards, medical monitors, Linux/RTOS displays | **Roadmap (Pipeline 3/4 - `.tbc` Bytecode)**: Pre-cooked IR / AOT bytecode (`tether_cooker`) for fast cold boot without runtime text parsing. |
+| **Desktop Creative Tools & Utilities** | Windows (CI validated), macOS, Linux desktop software | **Active in `v0.0.3-preview` (Pipeline 2 - YAML + C)**: Rapid iteration, manual YAML reload in the Sandbox, SDF shapes + Fontstash typography via Chitra, retained invalidation without browser-runtime bloat. |
+| **AAA Game HUDs & Editor Overlays** | 60-240 FPS frame budgets, custom host loops | **Supported Hooks (`tether_on_*`)**: Ticked directly by a host game engine loop (`tether_on_init`, `tether_on_input`, `tether_on_frame`, `tether_on_cleanup`), paired with custom backends. |
+| **Spatial Computing (VR / AR)** | 3D world space, stereo viewports, low latency | **Roadmap (Spatial Projection)**: Custom backend rendering Tether scenes into offscreen GPU textures for 3D engines. |
 
 ### Memory and Binary Footprint Realities
 Tether is engineered to be transparent about physical memory usage:
-- **Core ECS Memory (Kilobytes)**: Tether's internal entity tables, sparse maps, and component pools represent pure C structs. Hundreds of live, interactive UI elements consume mere tens of kilobytes in contiguous dense arrays.
-- **Compact Binary Footprint**: The compiled Tether C library is lightweight (a few hundred kilobytes), avoiding the tens of megabytes of bundled runtime baggage common to modern UI toolkits.
-- **Bare-Metal & Microcontroller Environments**: On bare-metal microcontrollers and embedded displays with software framebuffers, the entire UI system operates comfortably within strict SRAM constraints ($< 64\text{ KB}$).
-- **Hardware Acceleration and System RAM**: When running on desktop operating systems with full hardware acceleration (DirectX 11 via Chitra, Metal, or Vulkan), any additional resident memory is allocated by the underlying OS graphics subsystem and GPU drivers (such as swapchain backbuffers, OS window handles, and GPU font atlas textures). Tether itself never adds framework bloat, delivering orders-of-magnitude lower memory consumption than web-based or heavy OOP stacks.
+- **Core ECS Memory**: Tether's entity tables, sparse maps, and component pools are compact C structs packed in dense arrays; resident footprint depends on scene size, string tiers (`TextDynamic` uses heap storage for long strings), and pool capacities.
+- **Compact Native Library**: The compiled Tether C library avoids multi-megabyte VM or browser framework runtimes.
+- **Bare-Metal & Embedded Environments (Target)**: Sub-$64\text{ KB}$ static SRAM operation with custom framebuffer drivers is an architectural target to measure and validate on future embedded builds.
+- **Hardware Acceleration and System RAM**: On desktop operating systems via Chitra/Sokol, swapchain backbuffers, OS window handles, and font atlas textures are managed by the OS graphics stack and GPU drivers.
 
 ---
 

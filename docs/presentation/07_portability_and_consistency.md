@@ -12,7 +12,7 @@ Cross-platform software development has historically forced engineers to accept 
 
 Tether resolves this dilemma through a clean separation of responsibilities:
 - **Tether Core** is a 100% platform-agnostic, dependency-free ISO C99 micro-kernel. It operates solely on mathematical coordinates, entity IDs, and abstract component arrays. It contains zero operating system headers (`windows.h`, `X11/Xlib.h`) and zero graphics API calls (`d3d11.h`, `vulkan.h`, `gl.h`).
-- **Hardware and OS Drivers** are isolated behind a minimal, 12-function C interface (`Tether_Backend`). Replacing the rendering subsystem or porting to a novel real-time operating system requires implementing this contract without modifying a single line of Tether Core.
+- **Hardware and OS Drivers** are isolated behind a clean 3-table C interface (`Tether_Backend`: `.system`, `.shape`, `.text`). Replacing the rendering subsystem or porting to a new OS requires implementing this contract without modifying Tether Core.
 
 This chapter details Tether's portability architecture, its multi-tiered hardware support, its philosophy of semantic consistency over pixel-perfect dogma, and its pluggable driver model.
 
@@ -34,11 +34,11 @@ flowchart TD
         Transforms["Spatial Hierarchy (SlotTransform & RenderTransform)"]
         Invalidation["Reactive Invalidation Tags (DIRTY_LAYOUT, DIRTY_VISUAL)"]
         EventHub["Input Event Normalization & Spatial Hit-Testing"]
-        Layout["Vinyasa Layout Engine (Stateless Scratch-Arena Constraint Solver)"]
+        Layout["Two-Pass Layout Solver (Planned Vinyasa Scratch Solver)"]
     end
 
     subgraph Layer3["3. Pluggable Backend Driver Interface (C Function VTable)"]
-        DriverContract["Tether_Backend Contract (12 Function Pointers)"]
+        DriverContract["Tether_Backend Contract (System, Shape, Text API Tables)"]
     end
 
     subgraph Layer4["4. Hardware & Platform Execution Layer"]
@@ -67,30 +67,29 @@ flowchart TD
 
 Tether's minimal requirements allow it to deploy across a wide spectrum of hardware:
 
-### Tier 1: Desktop Operating Systems
-- **Target Environments**: Microsoft Windows 10/11 (x86-64, ARM64), Linux (x86-64, ARM64), macOS (Apple Silicon, Intel x86-64).
-- **Default Backend**: **Chitra GPU Engine**.
-- **Display Pipeline**: Analytical Signed Distance Field (SDF) procedural vector shaders, dynamic Fontstash glyph caching, and instanced draw batching.
-- **Windowing & Events**: Handled via lightweight platform glue (Sokol, SDL3, or direct Win32/X11/Wayland event loops).
-- **Resource Profile**: Kilobyte-scale core component data. Hardware acceleration memory (DirectX 11 swapchain backbuffers, device context, and font atlas textures) is managed directly by the host operating system and GPU driver.
+### Tier 1: Desktop Operating Systems (`v0.0.3-preview` Focus)
+- **Target Environments**: Microsoft Windows 10/11 (validated in CI with MSVC and Clang ASan); Linux (X11/OpenGL) and macOS (Cocoa/Metal) configurations exist in `CMakeLists.txt` via Chitra/Sokol and await CI validation.
+- **Default Backend**: **Chitra GPU Engine** (`src/backends/chitra_backend.c`).
+- **Display Pipeline**: SDF rounded-rectangle/border shaders, dynamic Fontstash glyph caching, and 64-bit radix-sorted draw batching.
+- **Windowing & Events**: Integrated via Sokol (`sokol_app` / `sokol_gfx`) in the bundled Chitra backend.
+- **Resource Profile**: Flat C ECS arrays; hardware acceleration memory (swapchains, device contexts, and font atlas textures) is managed directly by the OS windowing system and GPU driver.
 
-### Tier 2: Embedded Systems and Real-Time Operating Systems (RTOS)
+### Tier 2: Embedded Systems and Real-Time Operating Systems (Roadmap Target)
 - **Target Environments**: Embedded Linux (Raspberry Pi, Toradex, Yocto), FreeRTOS, Zephyr RTOS, NuttX.
 - **Use Cases**: Industrial automation HMIs, medical monitoring devices, automotive dashboard instrumentation.
-- **Backend Strategy**: OpenGL ES 2.0/3.0, ThorVG vector graphics, or direct Linux Direct Rendering Manager (DRM/KMS) hardware plane blitting.
-- **Resource Profile**: Sub-megabyte binary, zero runtime heap allocations during steady-state rendering, deterministic frame execution times.
+- **Backend Strategy**: Custom `Tether_Backend` adapters targeting OpenGL ES 2.0/3.0, ThorVG vector graphics, or Linux Direct Rendering Manager (DRM/KMS).
+- **Resource Goal**: Sub-megabyte binary, steady-state zero-alloc tuning, and deterministic frame pacing (unvalidated in preview).
 
-### Tier 3: Bare-Metal Microcontrollers (No OS)
+### Tier 3: Bare-Metal Microcontrollers (Roadmap Target)
 - **Target Environments**: ARM Cortex-M (Cortex-M4, Cortex-M7), ESP32-S3, RISC-V microcontrollers.
 - **Use Cases**: Smart home control panels, handheld testing equipment, hardware synthesizers, low-power appliances.
-- **Backend Strategy**: **Pipeline 1 (Pure C Imperative)**. Direct memory-mapped software rasterization to SPI, I8080, or parallel LCD displays.
-- **Resource Profile**: **Sub-64 KB SRAM operation**. Pre-allocated static component tables, zero dynamic memory allocations, and format-neutral AST bypass.
+- **Backend Strategy**: **Pipeline 1 (Pure C Imperative)** paired with a software framebuffer driver for SPI, I8080, or parallel LCD displays.
+- **Resource Goal**: Sub-64 KB static SRAM operation without AST/YAML parser overhead (roadmap target, not yet measured).
 
-### Tier 4: WebAssembly (WASM)
+### Tier 4: WebAssembly (WASM - Roadmap Target)
 - **Target Environments**: Modern web browsers (Chrome, Firefox, Safari, Edge).
-- **Backend Strategy**: Compiled via Emscripten targeting WebAssembly with a WebGPU or WebGL2 rendering driver.
+- **Backend Strategy**: Emscripten builds targeting WebGL2/WebGPU via Sokol or custom JS/WASM `Tether_Backend` glue.
 - **Use Cases**: High-performance interactive web tools, CAD viewers, embedded playground sandboxes.
-- **Resource Profile**: Native C99 performance running inside the browser sandbox without DOM or JavaScript overhead.
 
 ---
 
@@ -104,19 +103,17 @@ In real-world systems, pixel-perfect rendering across disparate screens is a phy
 - **Color Gamuts and Tone Mapping**: Discrepancies between standard sRGB, Display P3, and Rec. 2020 color spaces.
 - **OS Text Hinting and Antialiasing**: Operating systems apply differing font rasterization algorithms (Windows ClearType, macOS grayscale smoothing, Linux FreeType hinting).
 
-### What Tether Guarantees: Semantic and Behavioral Consistency
-Instead of pursuing rigid pixel dogma, Tether guarantees absolute **structural, mathematical, and behavioral consistency**:
+### Design Goals: Semantic and Behavioral Consistency
+Instead of pursuing rigid pixel dogma, Tether designs for **structural, mathematical, and behavioral consistency** across backends (cross-platform hardware parity remains to be tested as additional targets come online):
 
-#### 1. Layout Constraint Determinism
-Layout calculation is strictly deterministic. A flex container configured with a 30% width ratio, 12-pixel padding, and auto-wrapping calculates identical bounding box geometry on an x86-64 Windows workstation and an ARM Cortex-M microcontroller.
+#### 1. Layout Determinism
+A given Tether scene runs the same layout algorithm across builds for consistent relative geometry, subject to per-platform font metrics and floating-point behavior.
 
-#### 2. Interaction State Machine Determinism
-User interaction states follow an exact, platform-agnostic state transition machine:
-- `DEFAULT` -> `HOVERED` -> `PRESSED` -> `FOCUSED` -> `DISABLED`.
-- Hit-test bounds and input event bubbling resolve consistently regardless of whether the input originates from a physical mouse, a capacitive touchscreen, a gamepad, or a virtual spatial pointer.
+#### 2. Normalized Interaction Routing
+The input subsystem normalizes pointer events and resolves widget states (normal, hover, pressed, disabled) consistently inside core ECS (`v0.0.3-preview` exercises mouse/pointer input; full keyboard focus navigation, gamepad, and spatial pointers await expansion).
 
-#### 3. Resolution-Independent Vector Fidelity
-Chitra's default renderer uses procedural **Signed Distance Fields (SDF)** to render rounded rectangles, borders, and vector icons directly inside fragment shaders. Shapes render smoothly at any display resolution or scale factor without pixelation or polygon tessellation artifacts.
+#### 3. Resolution-Independent SDF Shapes
+Chitra uses Signed Distance Field (SDF) shaders for rounded rectangles and borders so card primitives scale cleanly with display density (arbitrary vector icon pipelines and multi-backend parity remain roadmap items).
 
 ### The Universal Media Paradigm: The PNG, MP3, and PDF of User Interfaces
 
@@ -138,54 +135,39 @@ Tether redefines UI as a **universal, self-contained interactive media asset**. 
 
 ## 5. The `Tether_Backend` Interface: Link-Time Driver Swapping
 
-Tether achieves total decoupling from hardware through the `Tether_Backend` contract table. The core engine never links against DirectX, Metal, Vulkan, or OpenGL. Instead, it interacts with hardware through a lightweight structure of function pointers:
+Tether achieves total decoupling from hardware through the `Tether_Backend` contract table (`include/tether/backends/tether_backend.h`). The core engine never links against DirectX, Metal, Vulkan, or OpenGL directly. Instead, it interacts with hardware through three structured API tables bound to the global `g_backend` (`g_rhi`) symbol:
 
 ```c
-typedef struct Tether_Backend {
-    /* 1. System Lifecycle */
-    bool (*init)(void* user_data);
-    void (*shutdown)(void);
-    void (*begin_frame)(int width, int height);
-    void (*end_frame)(void);
-
-    /* 2. Shape Rasterization */
-    void (*draw_rect)(float x, float y, float w, float h, uint32_t color);
-    void (*draw_rounded_rect)(float x, float y, float w, float h, float radius, uint32_t color);
-    void (*draw_circle)(float cx, float cy, float radius, uint32_t color);
-    void (*draw_line)(float x1, float y1, float x2, float y2, float thickness, uint32_t color);
-
-    /* 3. Dynamic Typography */
-    void (*draw_text)(const char* text, float x, float y, float font_size, uint32_t color);
-    void (*measure_text)(const char* text, float font_size, float* out_w, float* out_h);
-
-    /* 4. Clipping and Scissor Rectangles */
-    void (*push_clip_rect)(float x, float y, float w, float h);
-    void (*pop_clip_rect)(void);
+typedef struct {
+    Tether_System_API* system; /* Window loop, resolution, dirty mark, scissor clips, draw order */
+    Tether_Shape_API*  shape;  /* Retained SDF rectangles, radii, borders, opacity, rotation */
+    Tether_Text_API*   text;   /* Font loading, layout text measurement, retained text elements */
 } Tether_Backend;
+
+extern Tether_Backend g_backend;
 ```
 
 ### Architectural Benefits of the Backend Contract
-1. **Link-Time and Runtime Swapping**: An application can swap rendering drivers simply by passing a different backend pointer during initialization (`tether_init(&backend)`).
-2. **Headless Execution for Automated Testing**: Developers can run full UI integration tests in CI/CD pipelines using a null backend (`tether_backend_null`). The engine executes full layout, invalidation, and input dispatching without opening a window or connecting to a display server.
+1. **Link-Time Swapping**: An application swaps rendering and windowing drivers cleanly by linking a custom `Tether_Backend g_backend` translation unit in the build without modifying core engine source code.
+2. **Headless Execution for Automated Testing**: Developers can run full UI integration tests in CI/CD pipelines using the headless backend stub (`tests/headless_backend.c`). The engine executes layout, invalidation, and input dispatching without opening a window or connecting to a display server.
 3. **Zero Leaked Types**: No platform-specific structs (such as `HWND`, `ID3D11Device`, or `VkInstance`) are exposed to Tether Core or client applications.
 
 ---
 
 ## 6. Architecture-Level Determinism and Memory Layout
 
-To ensure robust execution across architectures ranging from 8-bit microcontrollers to 64-bit multi-core processors, Tether enforces strict data discipline:
+To keep Tether portable across desktop hosts and future embedded targets, the architecture separates flat core data structures from host graphics memory (`Note`: explicit static alignment/endianness bytecode rules apply to the target architecture and upcoming `.tbc` specification):
 
-### 1. 8-Byte Alignment Guarantees
-All component pools and dense array allocations are strictly aligned to 8-byte boundaries. This prevents hardware unaligned memory access traps on RISC architectures (such as ARM Cortex-M0 or older MIPS processors) and maximizes SIMD vectorization efficiency on modern x86-64 and ARM NEON processors.
+### 1. Alignment & Packed ECS Storage (Architecture Target)
+Dense arrays store flat C99 structs contiguously by component type. As embedded microcontroller targets come online, enforcing strict 8-byte pool alignment avoids unaligned-access traps on RISC cores while improving cache utilization on x86-64 and ARM.
 
-### 2. Endian-Neutral Serialization
-Tether's internal formats and bytecode specifications store multi-byte integers in little-endian byte order. When running on big-endian architectures, data is normalized automatically during parsing, ensuring cross-platform asset portability.
+### 2. Endian-Neutral Binary Specification (`.tbc` Roadmap)
+Tether's planned AOT bytecode format (`.tbc`) specifies little-endian integer encoding with load-time normalization for big-endian hosts (in `v0.0.3-preview`, scenes parse from text YAML at runtime).
 
 ### 3. Clear Memory Separation: Core Data vs. Host Graphics Memory
-Tether maintains transparent memory reporting:
-- **Core ECS Memory (Kilobytes)**: Tether's internal entity tracking, sparse maps, and contiguous component arrays require tens of kilobytes for hundreds of interactive UI widgets. On bare-metal devices, the entire state easily fits inside sub-64 KB SRAM.
-- **Binary Footprint (Hundreds of Kilobytes)**: The compiled Tether C library adds negligible weight to host binaries, avoiding the multi-megabyte overhead of modern UI toolkits.
-- **Host GPU Allocations**: On desktop platforms with hardware acceleration (DirectX 11, Metal, Vulkan), any additional resident memory is allocated by the host operating system's windowing system and GPU drivers (such as swapchain backbuffers, device context, and GPU font atlas textures). Tether itself introduces zero runtime framework bloat.
+- **Core ECS Memory**: Entity tables, sparse maps, and component arrays keep internal data compact (`TextDynamic` and expanding capacity pools use standard heap allocation today; sub-64 KB bare-metal static sizing is roadmap work).
+- **Native Library Footprint**: Compiled core binaries remain small, without bundled JS/Dart VM runtimes.
+- **Host GPU Allocations**: On desktop platforms via Chitra/Sokol, swapchain backbuffers, OS window handles, device contexts, and GPU font atlas textures live in the OS graphics subsystem and GPU drivers.
 
 ---
 

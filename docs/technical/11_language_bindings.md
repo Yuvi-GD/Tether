@@ -132,12 +132,14 @@ sequenceDiagram
 
 ### Modern C++ (C++17 / C++20)
 
-While Tether's core is pure C99, C++ applications benefit from a type-safe, header-only RAII wrapper:
+The following illustrative C++ wrapper is a starting point, not a shipped or tested binding. It does not own entities or callbacks:
 
 ```cpp
 #pragma once
 #include <tether/tether.h>
 #include <tether/ui/tether_ui.h>
+#include <tether/ui/widgets/tether_button.h>
+#include <tether/ui/widgets/tether_text.h>
 #include <tether/core/tether_registry.h>
 #include <string>
 #include <functional>
@@ -174,28 +176,29 @@ public:
         return *this;
     }
 
-    Entity& on_click(std::function<void(Entity)> callback) {
-        auto* cb_ptr = new std::function<void(Entity)>(callback);
-        tether_bind_event(handle, TETHER_EVENT_CLICK, [](Tether_GUID ent, Tether_EventType, void* udata) {
-            auto* cb = static_cast<std::function<void(Entity)>*>(udata);
-            (*cb)(Entity(ent));
-        }, cb_ptr);
-        return *this;
-    }
 };
 
+// Callback userdata must remain valid until its binding is removed.
 class UI {
 public:
-    static Entity panel(Entity parent, Tether_Color bg, float radius = 0.0f) {
-        return Entity(tether_ui_panel(parent.handle, bg, radius));
+    static Entity panel(Entity parent, Tether_Color bg) {
+        Tether_GUID p = tether_ui_panel(parent.handle);
+        tether_ui_set_color(p, bg);
+        return Entity(p);
     }
 
-    static Entity button(Entity parent, const std::string& caption, float font_size, Tether_Color bg) {
-        return Entity(tether_ui_button(parent.handle, caption.c_str(), font_size, bg, nullptr, nullptr));
+    static Entity button(Entity parent, const std::string& caption, Tether_Color bg) {
+        Tether_GUID b = tether_ui_button(parent.handle);
+        tether_ui_set_button_label(b, caption.c_str());
+        tether_ui_set_color(b, bg);
+        return Entity(b);
     }
 
-    static Entity text(Entity parent, const std::string& string, float font_size, Tether_Color color) {
-        return Entity(tether_ui_text(parent.handle, string.c_str(), font_size, color));
+    static Entity text(Entity parent, const std::string& string, Tether_Color color) {
+        Tether_GUID t = tether_ui_text(parent.handle);
+        tether_ui_set_text(t, string.c_str());
+        tether_ui_set_text_color(t, color);
+        return Entity(t);
     }
 };
 
@@ -250,7 +253,7 @@ impl Entity {
     }
 }
 
-extern "C" fn rust_click_trampoline<F>(entity: u64, _event_type: i32, user_data: *mut c_void)
+extern "C" fn rust_click_trampoline<F>(entity: u64, _event: *const TetherEvent, user_data: *mut c_void)
 where
     F: Fn(Entity),
 {
@@ -356,15 +359,9 @@ const tether = @cImport({
 
 pub fn setup_ui() void {
     const parent = tether.tether_ecs_get_main_root();
-    const btn = tether.tether_ui_button(
-        parent,
-        "Compile Zig",
-        16.0,
-        tether.Tether_Color{ .r = 247, .g = 164, .b = 29, .a = 255 },
-        null,
-        null,
-    );
-    _ = btn;
+    const btn = tether.tether_ui_button(parent);
+    tether.tether_ui_set_button_label(btn, "Compile Zig");
+    tether.tether_ui_set_color(btn, tether.Tether_Color{ .r = 247, .g = 164, .b = 29, .a = 255 });
 }
 ```
 
@@ -399,7 +396,7 @@ Tether's core ECS and rendering pipelines are strictly single-threaded:
 
 | Language Target | Target Status | Delivery Mechanism | Primary Objective |
 | :--- | :---: | :--- | :--- |
-| **C++20 Wrapper** | Active Preview | Header-only (`include/tether/tether.hpp`) | Modern fluent C++ development with RAII and lambdas. |
+| **C++20 Wrapper** | Roadmap | Header-only wrapper (`tether.hpp`, planned) | Modern fluent C++ development with RAII and lambdas. |
 | **Rust (`tether-rs`)** | Roadmap | Official Cargo Crate | Memory-safe systems programming and game UI. |
 | **Python (`pytether`)** | Roadmap | PyPI Binary Wheel (`ctypes`/C-extension) | Rapid data visualization, AI toolkits, desktop utilities. |
 | **WASM / NPM** | Roadmap | WebAssembly npm package | High-performance canvas-based web applications. |
