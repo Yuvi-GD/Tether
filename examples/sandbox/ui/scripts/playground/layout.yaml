@@ -1,0 +1,100 @@
+Panel:
+  flow: COLUMN
+  gap: [0, 12]
+  padding: 16
+  color: [31, 31, 31, 255]
+  children:
+    - Text:
+        string: "Nested layout and cards"
+        font_size: 24
+        color: [235, 235, 235, 255]
+    - Text:
+        string: "A fixed sidebar sits beside flexible content. Nested rows divide their remaining width in a 1:2:1 ratio."
+        font_size: 15
+        wrap_width: 900
+        color: [190, 190, 190, 255]
+    - Container:
+        flow: ROW
+        gap: [12, 0]
+        fill_ratio: 1
+        children:
+          - Panel:
+              flow: COLUMN
+              size_box: [155, 0]
+              padding: 14
+              gap: [0, 10]
+              color: [43, 43, 43, 255]
+              border_radius: 6
+              children:
+                - Text:
+                    string: "SIDEBAR"
+                    font_size: 14
+                    color: [155, 185, 215, 255]
+                - Text:
+                    string: "Fixed width"
+                    font_size: 16
+                    color: [220, 220, 220, 255]
+                - Text:
+                    string: "155 pixels"
+                    font_size: 15
+                    color: [175, 175, 175, 255]
+          - Container:
+              flow: COLUMN
+              fill_ratio: 1
+              gap: [0, 12]
+              children:
+                - Container:
+                    flow: ROW
+                    size_box: [0, 115]
+                    gap: [10, 0]
+                    children:
+                      - Panel:
+                          flow: COLUMN
+                          fill_ratio: 1
+                          padding: 12
+                          color: [47, 66, 82, 255]
+                          border_radius: 6
+                          children:
+                            - Text:
+                                string: "1 share"
+                                font_size: 17
+                      - Panel:
+                          flow: COLUMN
+                          fill_ratio: 2
+                          padding: 12
+                          color: [58, 75, 60, 255]
+                          border_radius: 6
+                          children:
+                            - Text:
+                                string: "2 shares"
+                                font_size: 17
+                            - Text:
+                                string: "Twice the flexible share"
+                                font_size: 14
+                      - Panel:
+                          flow: COLUMN
+                          fill_ratio: 1
+                          padding: 12
+                          color: [78, 62, 60, 255]
+                          border_radius: 6
+                          children:
+                            - Text:
+                                string: "1 share"
+                                font_size: 17
+                - Panel:
+                    flow: COLUMN
+                    padding: 16
+                    gap: [0, 8]
+                    fill_ratio: 1
+                    color: [48, 48, 48, 255]
+                    border_radius: 6
+                    children:
+                      - Text:
+                          string: "A card inside the layout"
+                          font_size: 20
+                          color: [230, 230, 230, 255]
+                      - Text:
+                          string: "The sidebar, the proportional row, and this card form one nested hierarchy. Resize the window to explore how available space is shared."
+                          font_size: 15
+                          wrap_width: 700
+                          color: [190, 190, 190, 255]

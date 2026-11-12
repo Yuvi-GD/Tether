@@ -1,137 +1,346 @@
+# Showcase widgets are composed in YAML. C only binds their actions.
 - Widget:
     name: "StatCard"
     tree:
-      - Panel:
-          interactable: true
-          fill_ratio: 1.0
-          color: $card_color
-          hover_color: AUTO
-          press_color: AUTO
-          flow: COLUMN
-          padding: 15
-          gap: [0, 8]
-          children:
-            - Text:
-                string: $card_title
-                font_size: 18.0
-                color: [40, 44, 52, 180]
-            - Slot: "children"
-
-- Panel:
-  id: "AppRoot"
-  flow: NONE
-  color: [30, 32, 36, 255]
-  children:
-    - Panel: # Main App Window
-        anchor_min: 0.0
-        anchor_max: 1.0
-        color: [40, 44, 52, 255]
+      Panel:
+        fill_ratio: 1
+        color: $card_color
         flow: COLUMN
-        padding: 20
-        gap: [0, 15]
+        padding: 15
+        gap: [0, 8]
         children:
-          # ============================================================
-          # HEADER
-          # ============================================================
-          - Panel:
-              color: [50, 56, 68, 255]
-              flow: ROW
-              padding: 15
-              gap: [15, 0]
-              children:
-                - Text:
-                    string: "Tether UI"
-                    font_size: 36.0
-                    color: [255, 255, 255, 255]
-                - Panel: # Spacer
-                    fill_ratio: 0.1
-                    color: [0, 0, 0, 0]
-                - Panel: # Refresh Button
-                    id: "RefreshBtn"
-                    interactable: true
-                    color: [97, 175, 239, 255]
-                    hover_color: AUTO
-                    press_color: AUTO
-                    padding: 8
-                    border_radius: 10
-                    border_width: 5
-                    border_color: [30, 32, 36, 255]
-                    children:
-                      - Text:
-                          fill_ratio: 1.0
-                          string: "Refresh"
-                          font_size: 22.0
-                          color: [30, 32, 36, 255]
-
-          # ============================================================
-          # MAIN CONTENT (Sidebar + View)
-          # ============================================================
-          - Panel:
-              fill_ratio: 0.92
-              color: [40, 44, 52, 255]
-              flow: ROW
-              gap: [15, 0]
-              children:
-                # --- Sidebar ---
-                - Panel:
-                    fill_ratio: 0.22
-                    color: [50, 56, 68, 255]
-                    flow: COLUMN
-                    padding: 15
-                    gap: [0, 10]
-                    children:
-                      - Text:
-                          string: "Navigation"
-                          font_size: 24.0
-                          color: [171, 178, 191, 255]
-                      - Panel: # Spacer
-                          fill_ratio: 1.0
-                          color: [0, 0, 0, 0]
-                      - Panel: # Nav: Dashboard (active state)
-                          interactable: true
-                          color: [97, 175, 239, 255]
-                          hover_color: AUTO
-                          press_color: AUTO
-                          padding: 12
-                          children:
-                            - Text:
-                                string: "Dashboard"
-                                font_size: 20.0
-                                color: [30, 32, 36, 255]
-                      - Panel: # Nav: Analytics
-                          interactable: true
-                          color: [62, 68, 81, 255]
-                          hover_color: AUTO
-                          press_color: AUTO
-                          padding: 12
-                          children:
-                            - Text:
-                                string: "Analytics"
-                                font_size: 20.0
-                                color: [200, 200, 210, 255]
-                      - Panel: # Nav: Reports
-                          interactable: true
-                          color: [62, 68, 81, 255]
-                          hover_color: AUTO
-                          press_color: AUTO
-                          padding: 12
-                          children:
-                            - Text:
-                                string: "Reports"
-                                font_size: 20.0
-                                color: [200, 200, 210, 255]
-                      - Panel: # Nav: Toggle
-                          id: "ShowHideBtn"
-                          interactable: true
-                          color: [62, 68, 81, 255]
-                          hover_color: AUTO
-                          press_color: AUTO
-                          padding: 12
-                          children:
-                            - Text:
-                                string: "Show Feature"
-                                font_size: 20.0
-                                color: [200, 200, 210, 255]
-
-                # --- Main View ---
-                - Scene: "UI/dashboard.yaml"
+          - Text:
+              string: $card_title
+              font_size: 18
+              color: [40, 44, 52, 180]
+          - Slot: "children"
+- Panel:
+    id: "AppRoot"
+    color: [25, 25, 25, 255]
+    flow: COLUMN
+    fill_ratio: 1
+    padding: [16, 20]
+    gap: [0, 12]
+    children:
+      - Text:
+          string: "Tether / Showcase"
+          font_size: 24
+          color: [235, 235, 235, 255]
+      - Text:
+          string: "Explore composition, interaction and live YAML in one application."
+          font_size: 15
+          color: [175, 175, 175, 255]
+      - SegmentedBar:
+          id: "showcase_tabs"
+          options: ["Dashboard", "Examples", "YAML playground"]
+          selected: 0
+      - Switcher:
+          id: "showcase_switcher"
+          active: 0
+          fill_ratio: 1
+          children:
+            - Container:
+                flow: COLUMN
+                fill_ratio: 1
+                children:
+                  - Scene: "UI/dashboard.yaml"
+            - Panel:
+                flow: COLUMN
+                fill_ratio: 1
+                padding: 20
+                gap: [0, 14]
+                color: [38, 38, 38, 255]
+                border_radius: 8
+                children:
+                  - Text:
+                      string: "Interactive examples"
+                      font_size: 24
+                      color: [235, 235, 235, 255]
+                  - Text:
+                      string: "Try custom overlays and change a live element. These controls update the same entity through native Tether APIs."
+                      font_size: 16
+                      wrap_width: 950
+                      color: [190, 190, 190, 255]
+                  - Container:
+                      flow: ROW
+                      gap: [10, 0]
+                      children:
+                        - Button:
+                            id: "showcase_open_dialog"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Open dialog"
+                        - Button:
+                            id: "showcase_show_toast"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Show toast"
+                  - Text:
+                      string: "CHANGE AN ELEMENT"
+                      font_size: 14
+                      color: [170, 170, 170, 255]
+                  - Container:
+                      flow: ROW
+                      gap: [10, 0]
+                      children:
+                        - Button:
+                            id: "example_visibility"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Hide / show"
+                        - Button:
+                            id: "example_color"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Change color"
+                        - Button:
+                            id: "example_align"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Align text"
+                        - Button:
+                            id: "example_enable"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Disable / enable"
+                  - Container:
+                      flow: ROW
+                      gap: [10, 0]
+                      children:
+                        - Button:
+                            id: "example_font_size"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Font size"
+                        - Button:
+                            id: "example_text_color"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Text color"
+                        - Button:
+                            id: "example_border"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Border"
+                        - Button:
+                            id: "example_radius"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Corner radius"
+                        - Button:
+                            id: "example_padding"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Padding"
+                  - Container:
+                      flow: ROW
+                      gap: [10, 0]
+                      children:
+                        - Button:
+                            id: "example_gap"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Card gap"
+                        - Button:
+                            id: "example_flow"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Row / column"
+                        - Button:
+                            id: "example_copy"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Change text"
+                        - Button:
+                            id: "example_progress_step"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Update progress"
+                        - Button:
+                            id: "example_opacity"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Badge opacity"
+                        - Button:
+                            id: "example_rotate"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Rotate badge"
+                        - Button:
+                            id: "example_scale"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Scale badge"
+                  - Panel:
+                      id: "example_target"
+                      flow: COLUMN
+                      fill_ratio: 1
+                      color: [48, 68, 85, 255]
+                      border_radius: 7
+                      padding: 12
+                      gap: [0, 8]
+                      children:
+                        - Container:
+                            flow: ROW
+                            content_align: [START, CENTER]
+                            gap: [10, 0]
+                            children:
+                              - Text:
+                                  id: "example_text"
+                                  string: "Project overview"
+                                  font_size: 17
+                                  color: [230, 230, 230, 255]
+                                  fill_ratio: 1
+                              - Panel:
+                                  id: "example_badge"
+                                  size_box: [22, 22]
+                                  color: [120, 210, 160, 255]
+                                  border_radius: 4
+                        - Container:
+                            id: "example_card_row"
+                            flow: ROW
+                            gap: [10, 10]
+                            fill_ratio: 1
+                            children:
+                              - Panel:
+                                  flow: COLUMN
+                                  fill_ratio: 1
+                                  padding: 10
+                                  gap: [0, 5]
+                                  color: [34, 48, 60, 255]
+                                  border_radius: 5
+                                  children:
+                                    - Text:
+                                        string: "Active task"
+                                        font_size: 15
+                                        color: [220, 230, 235, 255]
+                                    - Text:
+                                        id: "example_card_text"
+                                        string: "Preparing a preview"
+                                        font_size: 14
+                                        color: [165, 190, 200, 255]
+                              - Panel:
+                                  flow: COLUMN
+                                  fill_ratio: 1
+                                  padding: 10
+                                  gap: [0, 5]
+                                  color: [40, 59, 55, 255]
+                                  border_radius: 5
+                                  children:
+                                    - Text:
+                                        string: "Completion"
+                                        font_size: 15
+                                        color: [220, 230, 225, 255]
+                                    - ProgressBar:
+                                        id: "example_progress"
+                                        value: 0.35
+                        - Button:
+                            id: "example_target_button"
+                            fill_ratio: 0
+                            size_box: [0, 36]
+                            content:
+                              - Text:
+                                  string: "Try hover and press feedback"
+                  - Text:
+                      string: "The controls above stay available when the example is hidden or disabled."
+                      font_size: 14
+                      wrap_width: 950
+                      color: [160, 160, 160, 255]
+            - Panel:
+                flow: COLUMN
+                fill_ratio: 1
+                padding: 20
+                gap: [0, 12]
+                color: [38, 38, 38, 255]
+                border_radius: 8
+                children:
+                  - Container:
+                      flow: ROW
+                      content_align: [START, CENTER]
+                      gap: [10, 0]
+                      children:
+                        - Text:
+                            string: "YAML playground"
+                            font_size: 24
+                            color: [235, 235, 235, 255]
+                        - Container:
+                            fill_ratio: 1
+                        - Button:
+                            id: "showcase_load_yaml"
+                            size_box: [160, 38]
+                            fill_ratio: 0
+                            content:
+                              - Text:
+                                  string: "Choose YAML"
+                        - Button:
+                            id: "showcase_clear_preview"
+                            size_box: [100, 38]
+                            fill_ratio: 0
+                            content:
+                              - Text:
+                                  string: "Clear"
+                  - Text:
+                      string: "Select a preset or a chosen file. Each selection reloads its YAML into the preview."
+                      font_size: 15
+                      wrap_width: 950
+                      color: [190, 190, 190, 255]
+                  - Text:
+                      string: "Use unique IDs and widget names; they share the application's registry."
+                      font_size: 14
+                      wrap_width: 950
+                      color: [220, 190, 140, 255]
+                  - Container:
+                      flow: ROW
+                      gap: [10, 0]
+                      children:
+                        - Button:
+                            id: "showcase_preset_controls"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Controls"
+                        - Button:
+                            id: "showcase_preset_layout"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Layout"
+                        - Button:
+                            id: "showcase_selected_yaml"
+                            fill_ratio: 1
+                            content:
+                              - Text:
+                                  string: "Chosen file"
+                  - Text:
+                      id: "showcase_preview_status"
+                      string: "Choose a preset or load your own YAML file."
+                      font_size: 14
+                      color: [170, 190, 210, 255]
+                  - Panel:
+                      id: "showcase_preview"
+                      flow: COLUMN
+                      fill_ratio: 1
+                      padding: 16
+                      gap: [0, 8]
+                      color: [27, 27, 27, 255]
+                      border_color: [75, 75, 75, 255]
+                      border_width: 1
+                      border_radius: 6

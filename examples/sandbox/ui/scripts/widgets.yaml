@@ -1,0 +1,261 @@
+# The two columns intentionally use the same widgets and content.
+- Panel:
+    id: zoo_root
+    color: [25, 25, 25, 255]
+    flow: COLUMN
+    fill_ratio: 1
+    padding: [14, 20]
+    gap: [0, 10]
+    children:
+      - Text:
+          string: "Tether / Widget gallery"
+          font_size: 24
+          color: [230, 230, 230, 255]
+      - Text:
+          string: "Try the controls on the left. The matching examples on the right are disabled."
+          font_size: 14
+          color: [160, 160, 160, 255]
+      - Container:
+          flow: ROW
+          fill_ratio: 1
+          gap: [14, 0]
+          children:
+            - Panel:
+                id: zoo_left_col
+                fill_ratio: 1
+                flow: COLUMN
+                gap: [0, 7]
+                padding: [12, 14]
+                color: [38, 38, 38, 255]
+                border_color: [68, 68, 68, 255]
+                border_width: 1
+                border_radius: 8
+                children:
+                  - Text:
+                      string: "ENABLED"
+                      font_size: 17
+                      color: [170, 210, 250, 255]
+                  - Button:
+                      id: zoo_button_enabled
+                      fill_ratio: 0
+                      content:
+                        - Text:
+                            string: "Enabled button"
+                  - Text:
+                      id: zoo_button_status
+                      string: "Try the enabled button."
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Container:
+                      flow: ROW
+                      content_align: [START, CENTER]
+                      gap: [10, 0]
+                      children:
+                        - Checkbox:
+                            id: zoo_checkbox
+                            checked: true
+                        - Text:
+                            string: "Checkbox"
+                            font_size: 14
+                            color: [220, 230, 245, 255]
+                        - Toggle:
+                            id: zoo_toggle
+                            is_on: true
+                        - Text:
+                            id: zoo_toggle_label
+                            string: "Example toggle: ON"
+                            font_size: 14
+                            color: [160, 190, 220, 255]
+                  - Text:
+                      id: zoo_cb_label
+                      string: "Example checkbox: checked"
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Text:
+                      id: zoo_slider_label
+                      string: "Value: 65%"
+                      font_size: 14
+                      color: [195, 195, 195, 255]
+                  - Slider:
+                      id: zoo_slider
+                      min: 0
+                      max: 100
+                      value: 65
+                      step: 1
+                  - ProgressBar:
+                      id: zoo_prog_bar
+                      value: 0.65
+                  - Text:
+                      string: "Radio selection"
+                      font_size: 14
+                      color: [195, 195, 195, 255]
+                  - Radio:
+                      id: zoo_radio
+                      flow: ROW
+                      gap: [14, 0]
+                      options: ["High Precision", "Low Power", "Balanced"]
+                      selected: 0
+                  - Text:
+                      id: zoo_radio_label
+                      string: "Selected: High Precision"
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Collapsible:
+                      id: zoo_col1
+                      title: "Document and native UI"
+                      open: false
+                      content:
+                        - Panel:
+                            children: []
+                        - Container:
+                            children:
+                              - Text:
+                                  string: "YAML creates native widgets; C binds actions."
+                                  font_size: 13
+                                  wrap_width: 430
+                  - SegmentedBar:
+                      id: zoo_switcher_tabs
+                      options: ["Compose", "Try state", "Render"]
+                      selected: 0
+                  - Dropdown:
+                      id: zoo_dropdown
+                      options: ["Dark Slate", "Cyber Blue", "Emerald Terminal"]
+                      selected: 0
+                  - Text:
+                      id: zoo_dropdown_label
+                      string: "Selected example palette: Dark Slate"
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Switcher:
+                      id: zoo_switcher
+                      active: 0
+                      fill_ratio: 1
+                      children:
+                        - Container:
+                            flow: COLUMN
+                            children:
+                              - Text:
+                                  string: "Combine widgets using YAML or native C."
+                                  font_size: 14
+                                  wrap_width: 430
+                        - Container:
+                            flow: ROW
+                            content_align: [START, CENTER]
+                            gap: [10, 0]
+                            children:
+                              - Checkbox:
+                                  id: zoo_preserved_checkbox
+                              - Text:
+                                  string: "Keep this checked while switching tabs."
+                                  font_size: 14
+                                  wrap_width: 400
+                        - Container:
+                            flow: COLUMN
+                            children:
+                              - Text:
+                                  string: "Chitra renders the same widget tree."
+                                  font_size: 14
+                                  wrap_width: 430
+            - Panel:
+                id: zoo_right_col
+                fill_ratio: 1
+                flow: COLUMN
+                gap: [0, 7]
+                padding: [12, 14]
+                color: [38, 38, 38, 255]
+                border_color: [68, 68, 68, 255]
+                border_width: 1
+                border_radius: 8
+                children:
+                  - Text:
+                      string: "DISABLED"
+                      font_size: 17
+                      color: [160, 160, 160, 255]
+                  - Button:
+                      id: zoo_button_disabled
+                      fill_ratio: 0
+                      content:
+                        - Text:
+                            string: "Disabled button"
+                  - Text:
+                      string: "This button does not respond."
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Container:
+                      flow: ROW
+                      content_align: [START, CENTER]
+                      gap: [10, 0]
+                      children:
+                        - Checkbox:
+                            id: zoo_checkbox_disabled
+                            checked: true
+                        - Text:
+                            string: "Checkbox"
+                            font_size: 14
+                            color: [170, 185, 205, 255]
+                        - Toggle:
+                            id: zoo_toggle_disabled
+                            is_on: true
+                        - Text:
+                            string: "Disabled toggle"
+                            font_size: 14
+                            color: [170, 185, 205, 255]
+                  - Text:
+                      string: "Disabled checkbox"
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Text:
+                      string: "Value: 65%"
+                      font_size: 14
+                      color: [160, 160, 160, 255]
+                  - Slider:
+                      id: zoo_slider_disabled
+                      min: 0
+                      max: 100
+                      value: 65
+                      step: 1
+                  - ProgressBar:
+                      id: zoo_progress_disabled
+                      value: 0.65
+                  - Text:
+                      string: "Radio selection"
+                      font_size: 14
+                      color: [160, 160, 160, 255]
+                  - Radio:
+                      id: zoo_radio_disabled
+                      flow: ROW
+                      gap: [14, 0]
+                      options: ["High Precision", "Low Power", "Balanced"]
+                      selected: 0
+                  - Text:
+                      string: "Selected: High Precision"
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Collapsible:
+                      id: zoo_collapsible_disabled
+                      title: "Document and native UI"
+                      open: false
+                  - SegmentedBar:
+                      id: zoo_switcher_tabs_disabled
+                      options: ["Compose", "Try state", "Render"]
+                      selected: 0
+                  - Dropdown:
+                      id: zoo_dropdown_disabled
+                      options: ["Dark Slate", "Cyber Blue", "Emerald Terminal"]
+                      selected: 0
+                  - Text:
+                      string: "Selected example palette: Dark Slate"
+                      font_size: 13
+                      color: [160, 160, 160, 255]
+                  - Switcher:
+                      id: zoo_switcher_disabled
+                      active: 0
+                      fill_ratio: 1
+                      children:
+                        - Container:
+                            flow: COLUMN
+                            children:
+                              - Text:
+                                  string: "Combine widgets using YAML or native C."
+                                  font_size: 14
+                                  wrap_width: 430

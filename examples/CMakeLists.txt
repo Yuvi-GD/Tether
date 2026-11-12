@@ -1,15 +1,12 @@
 add_executable(tether_sandbox
-    sandbox/sandbox_main.c
     sandbox/app/app.c
-    sandbox/ui/sandbox_ui.c
-    sandbox/ui/widgets/sandbox_cards.c
+    sandbox/ui/widgets/sandbox_widgets_zoo.c
     sandbox/lab/lab.c
     sandbox/results/results.c
-    sandbox/sandbox_events.c
-    sandbox/sandbox_widget.c
+    sandbox/events/sandbox_events.c
 )
 target_include_directories(tether_sandbox PRIVATE
-    sandbox/include
+    sandbox/events
     sandbox/app sandbox/ui
     sandbox/ui/widgets
     sandbox/lab

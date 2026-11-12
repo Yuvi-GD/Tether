@@ -1,0 +1,51 @@
+# Application structure. Runtime navigation is bound in app.c.
+Container:
+  flow: "COLUMN"
+  gap: [0, 0]
+  children:
+    - Panel:
+        size_box: [0, 1]
+        fill_ratio: 0
+        color: [87, 87, 87, 255]
+    - Panel:
+        flow: "ROW"
+        content_align: [START, CENTER]
+        padding: [6, 16]
+        gap: [12, 0]
+        size_box: [0, 48]
+        color: [32, 32, 32, 255]
+        children:
+          - Text:
+              string: "Tether"
+              font_size: 28
+              color: [235, 235, 235, 255]
+          - Container:
+              fill_ratio: 1
+          - Button:
+              id: "RefreshBtn"
+              size_box: [110, 34]
+              fill_ratio: 0
+              content:
+                - Text:
+                    string: "Refresh"
+    - Panel:
+        flow: "ROW"
+        padding: [6, 16]
+        size_box: [0, 48]
+        color: [34, 34, 34, 255]
+        children:
+          - SegmentedBar:
+              id: "app_navigation"
+              options: ["Widget gallery", "Lab & results", "Showcase"]
+              selected: 0
+              fill_ratio: 1
+    - Container:
+        id: "view_widgets"
+        fill_ratio: 1
+    - Container:
+        id: "view_lab"
+        fill_ratio: 1
+    - Container:
+        id: "view_showcase"
+        fill_ratio: 1
+  id: "sandbox_root"

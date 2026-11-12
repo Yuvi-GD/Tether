@@ -4,8 +4,7 @@
 #include <stdbool.h>
 #include "tether/core/tether_ecs.h"
 
-Tether_GUID results_create(Tether_GUID parent);
-void results_register(void);
+bool results_bind(void);
 bool results_load(const char *path);
 bool results_load_after_process(const char *path, int exit_code);
 void results_message(const char *message);

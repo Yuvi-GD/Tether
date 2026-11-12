@@ -1,5 +1,4 @@
 #include "results.h"
-#include "sandbox_cards.h"
 #include "tether/ui/tether_ui.h"
 #include "tool.h"
 #include "tether/core/tether_registry.h"
@@ -12,48 +11,24 @@
 /* Only a bounded report snapshot enters the UI. Runner samples stay on disk. */
 static Tether_GUID report_label, title_label, import_label, status_label, scenario_label;
 static const struct {
+    const char *id;
     ToolReportField field;
-    const char *title;
     unsigned format;
 } metrics[] = {
-    {REPORT_COUNT, "Initial objects", 0},        {REPORT_STEPS, "Measured steps", 0},
-    {REPORT_CHECKS, "Total checks", 0},          {REPORT_FAILURES, "Failed checks", 0},
-    {REPORT_MEAN, "Avg work / step", 1},         {REPORT_P95, "P95 work / step", 1},
-    {REPORT_FRAME_AVG, "Avg frame interval", 1}, {REPORT_FRAME_P95, "P95 frame interval", 1},
-    {REPORT_ELAPSED, "Elapsed wall time", 1},    {REPORT_CPU, "Process CPU time", 1},
-    {REPORT_RSS, "Peak process RAM", 2},         {REPORT_DRAWS, "Draw submissions", 0},
-    {REPORT_UPLOADS, "Upload requests", 2},      {REPORT_GPU, "GPU time", 1}};
+    {"count", REPORT_COUNT, 0},     {"steps", REPORT_STEPS, 0},
+    {"checks", REPORT_CHECKS, 0},    {"failures", REPORT_FAILURES, 0},
+    {"work_mean", REPORT_MEAN, 1},      {"work_p95", REPORT_P95, 1},
+    {"frame_mean", REPORT_FRAME_AVG, 1}, {"frame_p95", REPORT_FRAME_P95, 1},
+    {"elapsed", REPORT_ELAPSED, 1},   {"cpu", REPORT_CPU, 1},
+    {"rss", REPORT_RSS, 2},       {"draws", REPORT_DRAWS, 0},
+    {"uploads", REPORT_UPLOADS, 2},   {"gpu", REPORT_GPU, 1}
+};
 #define CARD_COUNT (sizeof metrics / sizeof *metrics)
 static Tether_GUID cards[CARD_COUNT], values[CARD_COUNT];
 
-static Tether_GUID metric_cards(Tether_GUID parent) {
-    const Tether_Color backgrounds[] = {
-        {25, 43, 61, 255}, {28, 47, 46, 255}, {42, 35, 58, 255}, {51, 40, 29, 255}};
-    const Tether_Color accents[] = {
-        {125, 199, 255, 255}, {112, 222, 192, 255}, {196, 171, 250, 255}, {246, 204, 136, 255}};
-    Tether_GUID root = tether_ui_column(parent, 12.0f);
-    for (unsigned i = 0; i < CARD_COUNT;) {
-        Tether_GUID row = tether_ui_row(root, 10.0f);
-        tether_ui_set_size(row, 0.0f, 78.0f);
-        for (unsigned col = 0; col < 3 && i < CARD_COUNT; col++, i++) {
-            unsigned palette = (i / 3) % 4;
-            cards[i] = sandbox_metric_card(row, metrics[i].title, "--", backgrounds[palette],
-                                           accents[palette], &values[i]);
-            if (metrics[i].field == REPORT_UPLOADS) {
-                tether_ui_set_text_color(values[i], (Tether_Color){87, 230, 187, 255});
-            } else if (metrics[i].field == REPORT_GPU) {
-                tether_ui_set_text_color(values[i], (Tether_Color){255, 192, 91, 255});
-            }
-        }
-    }
-    return root;
-}
-void results_register(void) {
-    tether_register_widget("ResultCards", metric_cards);
-}
-static void import_result(Tether_GUID id, Tether_EventType event, void *data) {
+static void import_result(Tether_GUID id, const Tether_Event *event_info, void *data) {
+    (void)event_info;
     (void)id;
-    (void)event;
     (void)data;
     char path[4096];
     if (tool_pick_result(path, sizeof path)) {
@@ -61,18 +36,28 @@ static void import_result(Tether_GUID id, Tether_EventType event, void *data) {
     }
 }
 static void set_status(const char *label, Tether_Color color) {
-    sandbox_set_status_badge(status_label, label, color);
+    tether_ui_set_text(status_label, label);
+    tether_ui_set_text_color(status_label, color);
 }
-Tether_GUID results_create(Tether_GUID parent) {
-    (void)parent;
+bool results_bind(void) {
+    for (unsigned i = 0; i < CARD_COUNT; ++i) {
+        char id[40];
+        snprintf(id, sizeof id, "res_card_%s", metrics[i].id);
+        cards[i] = tether_registry_find_entity(id);
+        snprintf(id, sizeof id, "res_value_%s", metrics[i].id);
+        values[i] = tether_registry_find_entity(id);
+        if (!cards[i] || !values[i]) return false;
+    }
     title_label = tether_registry_find_entity("workbench_title");
     import_label = tether_registry_find_entity("res_import_label");
     report_label = tether_registry_find_entity("res_report_text");
     status_label = tether_registry_find_entity("res_status_badge");
     scenario_label = tether_registry_find_entity("res_scenario_label");
-    tether_bind_event(tether_registry_find_entity("btn_load_result"), TETHER_EVENT_CLICK,
+    Tether_GUID import_button = tether_registry_find_entity("btn_load_result");
+    if (!title_label || !import_label || !report_label || !status_label || !scenario_label || !import_button) return false;
+    tether_bind_event(import_button, TETHER_EVENT_CLICK,
                       import_result, NULL);
-    return report_label;
+    return true;
 }
 void results_message(const char *message) {
     tether_ui_set_text(report_label, message ? message : "");
@@ -150,6 +135,16 @@ bool results_has_geometry(void) {
     Tether_SlotTransform *view = tether_ecs_get_component(tether_registry_find_entity("LabRoot"),
                                                           TETHER_COMPONENT_SLOT_TRANSFORM);
     if (!view) {
+        return false;
+    }
+    /* Verify template parameters produce distinct card and value colors. */
+    Tether_Shape *first_card = tether_ecs_get_component(cards[0], TETHER_COMPONENT_SHAPE);
+    Tether_Shape *work_card = tether_ecs_get_component(cards[4], TETHER_COMPONENT_SHAPE);
+    Tether_Text *first_value = tether_ecs_get_component(values[0], TETHER_COMPONENT_TEXT);
+    Tether_Text *work_value = tether_ecs_get_component(values[4], TETHER_COMPONENT_TEXT);
+    if (!first_card || !work_card || !first_value || !work_value ||
+        !memcmp(&first_card->bg_color, &work_card->bg_color, sizeof(Tether_Color)) ||
+        !memcmp(&first_value->color, &work_value->color, sizeof(Tether_Color))) {
         return false;
     }
     Tether_GUID labels[] = {report_label, title_label, import_label, status_label, scenario_label};
