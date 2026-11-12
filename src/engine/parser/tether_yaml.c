@@ -3,20 +3,34 @@
 
 #include "tether/engine/parser/tether_yaml.h"
 #include "tether/engine/parser/tether_yaml_ast.h"
+#include "tether/engine/parser/tether_yaml_widgets.h"
 
 #include "tether/ui/tether_widgets.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 typedef struct {
-    char** names;
-    Tether_ASTNode** trees;
-    uint32_t count;
-    uint32_t capacity;
-} WidgetASTMap;
+    char* name;
+    Tether_ASTNode* tree;
+} WidgetDefinition;
 
-static WidgetASTMap g_widget_asts = {0};
+static WidgetDefinition* definitions;
+static size_t definition_count;
+static size_t definition_capacity;
+static bool loading;
+
+typedef struct {
+    Tether_GUID* created;
+    size_t count;
+    size_t capacity;
+    unsigned depth;
+    unsigned template_depth;
+    bool failed;
+} YamlLoad;
+
+static Tether_Align parse_align_value(const char* val);
 
 static const char* resolve_scalar(Tether_ASTNode* node, Tether_ASTEnvironment* env) {
     if (!node) return NULL;
@@ -166,54 +180,93 @@ static Tether_Align parse_align_value(const char* val) {
     return TETHER_ALIGN_START;
 }
 
-static void register_widget_ast(Tether_ASTNode* props) {
-    if (!props || props->type != TETHER_AST_MAPPING) return;
-    const char* name = NULL;
-    Tether_ASTNode* tree = NULL;
-    
-    for (uint32_t i = 0; i < props->child_count; i++) {
-        Tether_ASTNode* key_node = props->keys[i];
-        if (key_node && key_node->type == TETHER_AST_SCALAR) {
-            if (strcmp(key_node->scalar_value, "name") == 0 && props->children[i]->type == TETHER_AST_SCALAR) {
-                name = props->children[i]->scalar_value;
-            } else if (strcmp(key_node->scalar_value, "tree") == 0) {
-                tree = props->children[i];
-            }
-        }
-    }
-    
-    if (name && tree) {
-        for (uint32_t i = 0; i < g_widget_asts.count; i++) {
-            if (strcmp(g_widget_asts.names[i], name) == 0) {
-                g_widget_asts.trees[i] = tree;
-                return;
-            }
-        }
-        
-        if (g_widget_asts.count >= g_widget_asts.capacity) {
-            g_widget_asts.capacity = g_widget_asts.capacity == 0 ? 16 : g_widget_asts.capacity * 2;
-            g_widget_asts.names = (char**)realloc(g_widget_asts.names, g_widget_asts.capacity * sizeof(char*));
-            g_widget_asts.trees = (Tether_ASTNode**)realloc(g_widget_asts.trees, g_widget_asts.capacity * sizeof(Tether_ASTNode*));
-        }
-        g_widget_asts.names[g_widget_asts.count] = strdup(name);
-        g_widget_asts.trees[g_widget_asts.count] = tree;
-        g_widget_asts.count++;
-    }
-}
-
-static Tether_ASTNode* get_widget_ast(const char* name) {
-    for (uint32_t i = 0; i < g_widget_asts.count; i++) {
-        if (strcmp(g_widget_asts.names[i], name) == 0) {
-            return g_widget_asts.trees[i];
-        }
+static Tether_ASTNode* find_property(Tether_ASTNode* mapping, const char* name) {
+    if (!mapping || mapping->type != TETHER_AST_MAPPING) return NULL;
+    for (uint32_t i = 0; i < mapping->child_count; ++i) {
+        Tether_ASTNode* key = mapping->keys[i];
+        if (key && key->type == TETHER_AST_SCALAR && !strcmp(key->scalar_value, name)) return mapping->children[i];
     }
     return NULL;
 }
 
-static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Tether_ASTEnvironment* env);
-static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env);
+static bool register_widget_ast(Tether_ASTNode* props, bool allow_replace) {
+    Tether_ASTNode* name_node = find_property(props, "name");
+    Tether_ASTNode* tree = find_property(props, "tree");
+    const char* name;
+    name = resolve_scalar(name_node, NULL);
+    if (!name || !*name || !tree) return false;
+    size_t index = 0;
+    while (index < definition_count && strcmp(definitions[index].name, name)) ++index;
+    /* A Scene loaded during template expansion cannot invalidate the active tree. */
+    if (index < definition_count && !allow_replace) return false;
+    Tether_ASTNode* copy = tether_ast_clone(tree);
+    if (!copy) return false;
+    if (index < definition_count) {
+        tether_ast_free(definitions[index].tree);
+        definitions[index].tree = copy;
+        return true;
+    }
+    char* name_copy = strdup(name);
+    if (!name_copy) {
+        tether_ast_free(copy);
+        return false;
+    }
+    if (definition_count == definition_capacity) {
+        size_t capacity = definition_capacity ? definition_capacity * 2 : 16;
+        WidgetDefinition* grown = NULL;
+        if (capacity > definition_capacity && capacity <= SIZE_MAX / sizeof(*definitions)) {
+            grown = realloc(definitions, capacity * sizeof(*definitions));
+        }
+        if (!grown) {
+            free(name_copy);
+            tether_ast_free(copy);
+            return false;
+        }
+        definitions = grown;
+        definition_capacity = capacity;
+    }
+    definitions[definition_count++] = (WidgetDefinition){name_copy, copy};
+    return true;
+}
 
-static void apply_content(Tether_GUID parent, Tether_ASTNode* content, Tether_ASTEnvironment* env) {
+static Tether_ASTNode* get_widget_ast(const char* name) {
+    for (size_t i = 0; i < definition_count; ++i) {
+        if (!strcmp(definitions[i].name, name)) return definitions[i].tree;
+    }
+    return NULL;
+}
+
+void tether_yaml_term(void) {
+    if (loading) return;
+    for (size_t i = 0; i < definition_count; ++i) {
+        free(definitions[i].name);
+        tether_ast_free(definitions[i].tree);
+    }
+    free(definitions);
+    definitions = NULL;
+    definition_count = 0;
+    definition_capacity = 0;
+}
+
+static bool track_created(YamlLoad* load, Tether_GUID entity) {
+    if (load->count == load->capacity) {
+        size_t capacity = load->capacity ? load->capacity * 2 : 16;
+        Tether_GUID* grown = NULL;
+        if (capacity > load->capacity && capacity <= SIZE_MAX / sizeof(*load->created)) {
+            grown = realloc(load->created, capacity * sizeof(*load->created));
+        }
+        if (!grown) return false;
+        load->created = grown;
+        load->capacity = capacity;
+    }
+    load->created[load->count++] = entity;
+    return true;
+}
+
+static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Tether_ASTEnvironment* env, YamlLoad* load);
+static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env, YamlLoad* load);
+
+static void apply_content(Tether_GUID parent, Tether_ASTNode* content, Tether_ASTEnvironment* env, YamlLoad* load) {
     if (!content || content->type != TETHER_AST_SEQUENCE) return;
 
     Tether_Hierarchy* hierarchy = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);
@@ -223,7 +276,7 @@ static void apply_content(Tether_GUID parent, Tether_ASTNode* content, Tether_AS
         Tether_ASTNode* child_definition = resolve_node(content->children[i], env);
         if (child_definition && child_definition->type == TETHER_AST_MAPPING && child_definition->child_count > 0) {
             Tether_ASTNode* props = resolve_node(child_definition->children[0], env);
-            apply_properties(existing_child, props, env);
+            apply_properties(existing_child, props, env, load);
         }
 
         Tether_Hierarchy* child_hierarchy = (Tether_Hierarchy*)tether_ecs_get_component(existing_child, TETHER_COMPONENT_HIERARCHY);
@@ -231,9 +284,11 @@ static void apply_content(Tether_GUID parent, Tether_ASTNode* content, Tether_AS
     }
 }
 
-static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env) {
-    if (!props || props->type != TETHER_AST_MAPPING) return;
-
+static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env, YamlLoad* load) {
+    if (!props || props->type != TETHER_AST_MAPPING) {
+        load->failed = true;
+        return;
+    }
     for (uint32_t i = 0; i < props->child_count; i++) {
         Tether_ASTNode* key_node = props->keys[i];
         Tether_ASTNode* val_node = resolve_node(props->children[i], env);
@@ -241,14 +296,15 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
 
         const char* key = key_node->scalar_value;
 
+        if (load->failed) return;
         if (strcmp(key, "children") == 0) {
             if (!tether_ecs_get_component(ent, TETHER_COMPONENT_IS_LEAF)) {
-                instantiate_node(val_node, ent, env);
+                instantiate_node(val_node, ent, env, load);
             }
         }
         else if (strcmp(key, "content") == 0) {
             if (!tether_ecs_get_component(ent, TETHER_COMPONENT_IS_LEAF)) {
-                apply_content(ent, val_node, env);
+                apply_content(ent, val_node, env, load);
             }
         }
         else if (strcmp(key, "color") == 0) {
@@ -256,7 +312,7 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
             Tether_Color c = {0, 0, 0, 255};
             if (resolve_color(val_node, env, &c)) {
-                if (s) s->bg_color = c;
+                if (s) { s->bg_color = c; s->active_bg = c; }
                 if (t) t->color = c;
             }
         }
@@ -266,6 +322,7 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
                 Tether_Color c = {0, 0, 0, 255};
                 if (resolve_color(val_node, env, &c)) {
                     s->border_color = c;
+                    s->active_border = c;
                 }
             }
         }
@@ -291,28 +348,6 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
                 else if (strcmp(val, "SCROLL") == 0) mode = TETHER_OVERFLOW_SCROLL;
                 of->x = mode;
                 of->y = mode;
-            }
-        }
-        else if (strcmp(key, "hover_color") == 0) {
-            Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
-            if (i) {
-                const char* val = resolve_scalar(val_node, env);
-                if (val && strcmp(val, "AUTO") == 0) {
-                    i->hover_color_mode = TETHER_COLOR_MODE_AUTO;
-                } else if (resolve_color(val_node, env, &i->hover_color)) {
-                    i->hover_color_mode = TETHER_COLOR_MODE_MANUAL;
-                }
-            }
-        }
-        else if (strcmp(key, "press_color") == 0) {
-            Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
-            if (i) {
-                const char* val = resolve_scalar(val_node, env);
-                if (val && strcmp(val, "AUTO") == 0) {
-                    i->press_color_mode = TETHER_COLOR_MODE_AUTO;
-                } else if (resolve_color(val_node, env, &i->press_color)) {
-                    i->press_color_mode = TETHER_COLOR_MODE_MANUAL;
-                }
             }
         }
         else if (strcmp(key, "flow") == 0) {
@@ -414,7 +449,7 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
         else if (strcmp(key, "string") == 0) {
             const char* val = resolve_scalar(val_node, env);
             if (val) {
-                tether_ecs_set_text_string(ent, val);
+                tether_ui_set_text(ent, val);
             }
         }
         else if (strcmp(key, "font_size") == 0) {
@@ -451,16 +486,75 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
             Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
             if (rt) resolve_vec2(val_node, env, &rt->render_pivot.x, &rt->render_pivot.y);
         }
+        else if (strcmp(key, "min") == 0) {
+            Tether_ValueRange* vr = (Tether_ValueRange*)tether_ecs_get_component(ent, TETHER_COMPONENT_VALUE_RANGE);
+            const char* val = resolve_scalar(val_node, env);
+            if (vr && val) vr->min_val = (float)atof(val);
+        }
+        else if (strcmp(key, "max") == 0) {
+            Tether_ValueRange* vr = (Tether_ValueRange*)tether_ecs_get_component(ent, TETHER_COMPONENT_VALUE_RANGE);
+            const char* val = resolve_scalar(val_node, env);
+            if (vr && val) vr->max_val = (float)atof(val);
+        }
+        else if (strcmp(key, "step") == 0) {
+            Tether_ValueRange* vr = (Tether_ValueRange*)tether_ecs_get_component(ent, TETHER_COMPONENT_VALUE_RANGE);
+            const char* val = resolve_scalar(val_node, env);
+            if (vr && val) vr->step = (float)atof(val);
+        }
+        else if (strcmp(key, "value") == 0) {
+            Tether_ValueRange* vr = (Tether_ValueRange*)tether_ecs_get_component(ent, TETHER_COMPONENT_VALUE_RANGE);
+            const char* val = resolve_scalar(val_node, env);
+            if (vr && val) vr->value = (float)atof(val);
+        }
+        else if (strcmp(key, "checked") == 0 || strcmp(key, "check") == 0 || strcmp(key, "is_on") == 0) {
+            Tether_BoolState* bs = (Tether_BoolState*)tether_ecs_get_component(ent, TETHER_COMPONENT_BOOL_STATE);
+            const char* val = resolve_scalar(val_node, env);
+            if (bs && val) bs->value = (strcmp(val, "true") == 0 || strcmp(val, "1") == 0 || strcmp(val, "ON") == 0);
+        }
     }
 }
 
-static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Tether_ASTEnvironment* env) {
+static Tether_GUID load_document(const char* filepath, Tether_GUID parent, YamlLoad* load);
+
+static Tether_ASTNode* widget_properties(Tether_ASTNode* node, uint32_t index) {
+    Tether_ASTNode* props = node->children[index];
+    if (!props) return NULL;
+    if (props->type == TETHER_AST_MAPPING) return props;
+    /* A blank/null widget value introduces the existing flat property syntax. */
+    if (props->type == TETHER_AST_SCALAR && props->scalar_value &&
+        (!props->scalar_value[0] || !strcmp(props->scalar_value, "null") ||
+         !strcmp(props->scalar_value, "~"))) return node;
+    return NULL;
+}
+
+static bool bind_parameters(Tether_ASTEnvironment* target, Tether_ASTNode* props,
+                            uint32_t skip, Tether_ASTEnvironment* source) {
+    if (!props || props->type != TETHER_AST_MAPPING) return false;
+    for (uint32_t i = 0; i < props->child_count; ++i) {
+        if (i == skip) continue;
+        Tether_ASTNode* key = props->keys[i];
+        Tether_ASTNode* value = resolve_node(props->children[i], source);
+        if (!key || key->type != TETHER_AST_SCALAR || !value) return false;
+        if (value->type == TETHER_AST_SCALAR) {
+            const char* text = resolve_scalar(value, source);
+            if (!text) return false;
+            tether_ast_env_set(target, key->scalar_value, text);
+        } else {
+            tether_ast_env_set_slot(target, key->scalar_value, value);
+        }
+    }
+    return true;
+}
+
+static Tether_GUID instantiate_body(Tether_ASTNode* node, Tether_GUID parent,
+                                    Tether_ASTEnvironment* env, YamlLoad* load) {
     if (!node) return TETHER_INVALID_GUID;
 
     if (node->type == TETHER_AST_SEQUENCE) {
         Tether_GUID first_child = TETHER_INVALID_GUID;
         for (uint32_t i = 0; i < node->child_count; i++) {
-            Tether_GUID child = instantiate_node(node->children[i], parent, env);
+            Tether_GUID child = instantiate_node(node->children[i], parent, env, load);
+            if (load->failed) break;
             if (first_child == TETHER_INVALID_GUID) first_child = child;
         }
         return first_child;
@@ -473,12 +567,13 @@ static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Te
                 const char* key_str = key_node->scalar_value;
                 
                 if (strcmp(key_str, "Widget") == 0) {
-                    continue; /* Handled in pre-pass */
+                    return TETHER_INVALID_GUID; /* Handled in pre-pass. */
                 }
 
                 if (strcmp(key_str, "Scene") == 0) {
                     const char* scene_path = resolve_scalar(node->children[i], env);
-                    if (scene_path) return tether_yaml_load(scene_path, parent);
+                    if (scene_path) return load_document(scene_path, parent, load);
+                    load->failed = true;
                     return TETHER_INVALID_GUID;
                 }
                 
@@ -487,47 +582,32 @@ static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Te
                     if (slot_name_node && slot_name_node->type == TETHER_AST_SCALAR) {
                         Tether_ASTNode* injected = tether_ast_env_get_slot(env, slot_name_node->scalar_value);
                         if (injected) {
-                            return instantiate_node(injected, parent, env);
+                            return instantiate_node(injected, parent, env, load);
                         }
                     }
-                    continue;
+                    return TETHER_INVALID_GUID; /* Optional slot not supplied. */
                 }
                 
                 /* Check if it's a custom widget */
                 Tether_ASTNode* widget_tree = get_widget_ast(key_str);
                 if (widget_tree) {
-                    Tether_ASTNode* props = node->children[i];
+                    Tether_ASTNode* props = widget_properties(node, i);
                     Tether_ASTEnvironment* new_env = tether_ast_env_create();
-                    
-                    if (props && props->type == TETHER_AST_MAPPING) {
-                        for (uint32_t p = 0; p < props->child_count; p++) {
-                            Tether_ASTNode* p_key = props->keys[p];
-                            Tether_ASTNode* p_val = props->children[p];
-                            if (p_key && p_key->type == TETHER_AST_SCALAR) {
-                                if (p_val && p_val->type != TETHER_AST_SCALAR) {
-                                    tether_ast_env_set_slot(new_env, p_key->scalar_value, p_val);
-                                } else if (p_val) {
-                                    tether_ast_env_set(new_env, p_key->scalar_value, resolve_scalar(p_val, env));
-                                }
-                            }
-                        }
-                    } else {
-                        /* Flat syntax fallback */
-                        for (uint32_t p = 0; p < node->child_count; p++) {
-                            if (p == i) continue; /* Skip the Widget name key itself */
-                            Tether_ASTNode* p_key = node->keys[p];
-                            Tether_ASTNode* p_val = node->children[p];
-                            if (p_key && p_key->type == TETHER_AST_SCALAR) {
-                                if (p_val && p_val->type != TETHER_AST_SCALAR) {
-                                    tether_ast_env_set_slot(new_env, p_key->scalar_value, p_val);
-                                } else if (p_val) {
-                                    tether_ast_env_set(new_env, p_key->scalar_value, resolve_scalar(p_val, env));
-                                }
-                            }
-                        }
+                    if (!new_env) {
+                        load->failed = true;
+                        return TETHER_INVALID_GUID;
                     }
                     
-                    Tether_GUID new_ent = instantiate_node(widget_tree, parent, new_env);
+                    if (!bind_parameters(new_env, props, props == node ? i : UINT32_MAX, env)) {
+                        fprintf(stderr, "YAML: invalid parameters for '%s'\n", key_str);
+                        tether_ast_env_free(new_env);
+                        load->failed = true;
+                        return TETHER_INVALID_GUID;
+                    }
+
+                    load->template_depth++;
+                    Tether_GUID new_ent = instantiate_node(widget_tree, parent, new_env, load);
+                    load->template_depth--;
                     tether_ast_env_free(new_env);
                     return new_ent;
                 }
@@ -535,12 +615,16 @@ static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Te
                 /* Check native widgets */
                 Tether_GUID new_ent = tether_create_widget(key_str, parent);
                 if (new_ent != TETHER_INVALID_GUID) {
-                    Tether_ASTNode* props = node->children[i];
-                    if (props && props->type == TETHER_AST_MAPPING) {
-                        apply_properties(new_ent, props, env);
-                    } else {
-                        /* Flat syntax fallback */
-                        apply_properties(new_ent, node, env);
+                    Tether_ASTNode* prop_mapping = widget_properties(node, i);
+                    if (!track_created(load, new_ent)) {
+                        tether_widget_destroy(new_ent);
+                        load->failed = true;
+                        return TETHER_INVALID_GUID;
+                    }
+                    apply_properties(new_ent, prop_mapping, env, load);
+                    if (!load->failed && !tether_yaml_apply_widget_properties(new_ent, key_str, prop_mapping, env)) {
+                        fprintf(stderr, "YAML: invalid properties for '%s'\n", key_str);
+                        load->failed = true;
                     }
                     return new_ent;
                 }
@@ -548,43 +632,92 @@ static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Te
         }
     }
 
+    fprintf(stderr, "YAML: expected a registered widget, Scene or Slot\n");
+    load->failed = true;
     return TETHER_INVALID_GUID;
 }
 
-Tether_GUID tether_yaml_load(const char* filepath, Tether_GUID parent) {
-    Tether_ASTNode* ast = tether_ast_parse_file(filepath);
-    if (!ast) return TETHER_INVALID_GUID;
+static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent,
+                                    Tether_ASTEnvironment* env, YamlLoad* load) {
+    if (load->failed) return TETHER_INVALID_GUID;
+    if (!node || load->depth >= 64) {
+        fprintf(stderr, "YAML: missing node or expansion depth exceeds 64\n");
+        load->failed = true;
+        return TETHER_INVALID_GUID;
+    }
+    load->depth++;
+    Tether_GUID result = instantiate_body(resolve_node(node, env), parent, env, load);
+    load->depth--;
+    return result;
+}
 
-    /* Pre-pass: Find and cache widgets */
-    if (ast->type == TETHER_AST_SEQUENCE) {
-        for (uint32_t i = 0; i < ast->child_count; i++) {
-            Tether_ASTNode* child = ast->children[i];
-            if (child->type == TETHER_AST_MAPPING) {
-                for (uint32_t j = 0; j < child->child_count; j++) {
-                    Tether_ASTNode* key_node = child->keys[j];
-                    if (key_node && key_node->type == TETHER_AST_SCALAR && strcmp(key_node->scalar_value, "Widget") == 0) {
-                        register_widget_ast(child->children[j]);
-                    }
-                }
-            }
+static bool register_definitions(Tether_ASTNode* node, YamlLoad* load) {
+    if (node->type == TETHER_AST_SEQUENCE) {
+        for (uint32_t i = 0; i < node->child_count; ++i) {
+            if (!register_definitions(node->children[i], load)) return false;
+        }
+    } else if (node->type == TETHER_AST_MAPPING) {
+        Tether_ASTNode* definition = find_property(node, "Widget");
+        if (definition && !register_widget_ast(definition, load->template_depth == 0)) {
+            fprintf(stderr, "YAML: invalid definition or redefinition during expansion\n");
+            return false;
         }
     }
+    return true;
+}
 
-    if (parent == TETHER_INVALID_GUID) {
-        parent = tether_ecs_get_main_root();
+static Tether_GUID load_document(const char* filepath, Tether_GUID parent, YamlLoad* load) {
+    Tether_ASTNode* ast = tether_ast_parse_file(filepath);
+    if (!ast) {
+        fprintf(stderr, "YAML: cannot parse '%s'\n", filepath ? filepath : "<null>");
+        load->failed = true;
+        return TETHER_INVALID_GUID;
     }
-    
-    /* Use a blank environment for the root document */
+    if (!register_definitions(ast, load)) load->failed = true;
     Tether_ASTEnvironment* env = tether_ast_env_create();
-    
-    /* Instantiate */
-    Tether_GUID root = instantiate_node(ast, parent, env);
-    
-    if (root != TETHER_INVALID_GUID) {
-        tether_widget_show(root);
-    }
-    
+    if (!env) load->failed = true;
+    Tether_GUID root = instantiate_node(ast, parent, env, load);
     tether_ast_env_free(env);
     tether_ast_free(ast);
+    return root;
+}
+
+static void remove_tree_aliases(Tether_GUID entity) {
+    Tether_Hierarchy* hierarchy = tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
+    Tether_GUID child = hierarchy ? hierarchy->first_child : TETHER_INVALID_GUID;
+    while (child != TETHER_INVALID_GUID) {
+        Tether_Hierarchy* next = tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
+        Tether_GUID sibling = next ? next->next_sibling : TETHER_INVALID_GUID;
+        remove_tree_aliases(child);
+        child = sibling;
+    }
+    tether_registry_remove_alias(entity);
+}
+
+Tether_GUID tether_yaml_load(const char* filepath, Tether_GUID parent) {
+    if (loading) {
+        fprintf(stderr, "YAML: reentrant loads from adapter callbacks are unsupported\n");
+        return TETHER_INVALID_GUID;
+    }
+    if (parent == TETHER_INVALID_GUID) parent = tether_ecs_get_main_root();
+    if (!tether_ecs_is_valid(parent)) return TETHER_INVALID_GUID;
+    loading = true;
+    YamlLoad load = {0};
+    Tether_GUID root = load_document(filepath, parent, &load);
+    if (load.failed) {
+        /* Reverse creation order handles multiple top-level siblings and nested Scenes. */
+        for (size_t i = load.count; i > 0; --i) {
+            Tether_GUID entity = load.created[i - 1];
+            if (tether_ecs_is_valid(entity)) {
+                remove_tree_aliases(entity);
+                tether_widget_destroy(entity);
+            }
+        }
+        root = TETHER_INVALID_GUID;
+    } else if (root != TETHER_INVALID_GUID) {
+        tether_widget_show(root);
+    }
+    free(load.created);
+    loading = false;
     return root;
 }

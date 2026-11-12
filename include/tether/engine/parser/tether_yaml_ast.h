@@ -56,6 +56,9 @@ Tether_ASTNode* tether_ast_parse_file(const char* filepath);
 /* Free the AST tree */
 void tether_ast_free(Tether_ASTNode* node);
 
+/* Deep copy; the returned tree is owned by the caller. NULL on allocation failure. */
+Tether_ASTNode* tether_ast_clone(const Tether_ASTNode* node);
+
 /* Environment API */
 Tether_ASTEnvironment* tether_ast_env_create(void);
 void tether_ast_env_set(Tether_ASTEnvironment* env, const char* key, const char* value);

@@ -42,6 +42,40 @@ void tether_ast_free(Tether_ASTNode* node) {
     free(node);
 }
 
+Tether_ASTNode* tether_ast_clone(const Tether_ASTNode* node) {
+    if (!node) return NULL;
+    Tether_ASTNode* copy = calloc(1, sizeof(*copy));
+    if (!copy) return NULL;
+    copy->type = node->type;
+    if (node->scalar_value) {
+        copy->scalar_value = strdup(node->scalar_value);
+        if (!copy->scalar_value) goto failed;
+    }
+    if (node->child_count) {
+        copy->children = calloc(node->child_count, sizeof(*copy->children));
+        if (!copy->children) goto failed;
+        if (node->type == TETHER_AST_MAPPING) {
+            copy->keys = calloc(node->child_count, sizeof(*copy->keys));
+            if (!copy->keys) goto failed;
+        }
+        copy->child_capacity = node->child_count;
+        for (uint32_t i = 0; i < node->child_count; ++i) {
+            copy->child_count = i + 1;
+            copy->children[i] = tether_ast_clone(node->children[i]);
+            if (!copy->children[i]) goto failed;
+            if (copy->keys) {
+                copy->keys[i] = tether_ast_clone(node->keys[i]);
+                if (!copy->keys[i]) goto failed;
+            }
+        }
+    }
+    return copy;
+
+failed:
+    tether_ast_free(copy);
+    return NULL;
+}
+
 Tether_ASTNode* tether_ast_parse_file(const char* filepath) {
     if (!filepath) {
         return NULL;
@@ -215,7 +249,7 @@ void tether_ast_env_free(Tether_ASTEnvironment* env) {
     
     for (uint32_t i = 0; i < env->slot_count; i++) {
         free(env->slot_keys[i]);
-        /* We do not free the slot_values nodes here, they belong to the AST tree */
+        /* Slot values are owned by the AST tree. */
     }
     if (env->slot_keys) free(env->slot_keys);
     if (env->slot_values) free(env->slot_values);

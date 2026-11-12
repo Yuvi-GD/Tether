@@ -7,8 +7,9 @@
 #include "tether/engine/tether_engine.h"
 #include "tether/engine/parser/tether_yaml.h"
 #include "tether/ui/tether_widgets.h"
+#include "tether/ui/tether_ui.h"
+#include "tether/engine/parser/tether_yaml_widgets.h"
 #include <stddef.h>
-#include <stdio.h>
 
 static bool g_redraw_requested = true;
 static bool g_frame_drawn = false;
@@ -23,40 +24,58 @@ void tether_init(Tether_Config* config) {
     tether_ecs_init();
     
     /* Core spatial, hierarchy, and state components */
-    tether_ecs_register_component_static(TETHER_COMPONENT_SLOT_TRANSFORM, sizeof(Tether_SlotTransform));
-    tether_ecs_register_component_static(TETHER_COMPONENT_RENDER_TRANSFORM, sizeof(Tether_RenderTransform));
-    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy));
-    tether_ecs_register_component_static(TETHER_COMPONENT_VISIBILITY, sizeof(Tether_Visibility));
-    tether_ecs_register_component_static(TETHER_COMPONENT_LAYOUT, sizeof(Tether_Layout));
+    tether_ecs_register_component_static(TETHER_COMPONENT_SLOT_TRANSFORM, sizeof(Tether_SlotTransform), TETHER_DEFAULT_SLOT_TRANSFORM);
+    tether_ecs_register_component_static(TETHER_COMPONENT_RENDER_TRANSFORM, sizeof(Tether_RenderTransform), TETHER_DEFAULT_RENDER_TRANSFORM);
+    tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy), NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_VISIBILITY, sizeof(Tether_Visibility), TETHER_DEFAULT_VISIBILITY);
+    tether_ecs_register_component_static(TETHER_COMPONENT_LAYOUT, sizeof(Tether_Layout), TETHER_DEFAULT_LAYOUT);
 
-    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_LAYOUT, 0);
-    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_VISUAL, 0);
-    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_HIERARCHY, 0);
-    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_TEXT_CONTENT, 0);
-    tether_ecs_register_component_static(TETHER_COMPONENT_VOLATILE, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_LAYOUT, 0, NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_VISUAL, 0, NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_HIERARCHY, 0, NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_DIRTY_TEXT_CONTENT, 0, NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_VOLATILE, 0, NULL);
     
     /* Root entities and registries */
     tether_ecs_init_roots();
     tether_registry_init();
     
     /* Visual, layout slot, and interaction components */
-    tether_ecs_register_component_static(TETHER_COMPONENT_SHAPE, sizeof(Tether_Shape));
-    tether_ecs_register_component_static(TETHER_COMPONENT_ANCHOR_SLOT, sizeof(Tether_AnchorSlot));
-    tether_ecs_register_component_static(TETHER_COMPONENT_FLEX_SLOT, sizeof(Tether_FlexSlot));
-    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT, sizeof(Tether_Text));
-    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_WORD, sizeof(Tether_TextWord));
-    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_LABEL, sizeof(Tether_TextLabel));
-    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_PARAGRAPH, sizeof(Tether_TextParagraph));
-    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_DYNAMIC, sizeof(Tether_TextDynamic));
-    tether_ecs_register_component_static(TETHER_COMPONENT_OVERFLOW, sizeof(Tether_Overflow));
-    tether_ecs_register_component_static(TETHER_COMPONENT_IMAGE, sizeof(Tether_Image));
-    tether_ecs_register_component_static(TETHER_COMPONENT_INTERACTABLE, sizeof(Tether_Interactable));
-    tether_ecs_register_component_static(TETHER_COMPONENT_IS_LEAF, 0);
+    tether_ecs_register_component_static(TETHER_COMPONENT_SHAPE, sizeof(Tether_Shape), TETHER_DEFAULT_SHAPE);
+    tether_ecs_register_component_static(TETHER_COMPONENT_ANCHOR_SLOT, sizeof(Tether_AnchorSlot), TETHER_DEFAULT_ANCHOR_SLOT);
+    tether_ecs_register_component_static(TETHER_COMPONENT_FLEX_SLOT, sizeof(Tether_FlexSlot), TETHER_DEFAULT_FLEX_SLOT);
+    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT, sizeof(Tether_Text), TETHER_DEFAULT_TEXT);
+    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_WORD, sizeof(Tether_TextWord), NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_LABEL, sizeof(Tether_TextLabel), NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_PARAGRAPH, sizeof(Tether_TextParagraph), NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_TEXT_DYNAMIC, sizeof(Tether_TextDynamic), NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_OVERFLOW, sizeof(Tether_Overflow), TETHER_DEFAULT_OVERFLOW);
+    tether_ecs_register_component_static(TETHER_COMPONENT_IMAGE, sizeof(Tether_Image), NULL);
+    tether_ecs_register_component_static(TETHER_COMPONENT_INTERACTABLE, sizeof(Tether_Interactable), TETHER_DEFAULT_INTERACTABLE);
+    tether_ecs_register_component_static(TETHER_COMPONENT_IS_LEAF, 0, NULL);
+
+    /* Semantic UI State Components (Pure ECS) */
+    tether_ecs_register_component_static(TETHER_COMPONENT_VALUE_RANGE, sizeof(Tether_ValueRange), TETHER_DEFAULT_VALUE_RANGE);
+    tether_ecs_register_component_static(TETHER_COMPONENT_BOOL_STATE, sizeof(Tether_BoolState), TETHER_DEFAULT_BOOL_STATE);
+    tether_ecs_register_component_static(TETHER_COMPONENT_SELECTION_STATE, sizeof(Tether_SelectionState), TETHER_DEFAULT_SELECTION_STATE);
     
     /* Built-in widget factories */
-    tether_register_widget("Panel", tether_widget_create_panel);
-    tether_register_widget("Text", tether_widget_create_text);
-    tether_register_widget("Button", tether_widget_create_button);
+    tether_register_widget("Container", tether_widget_create_container);
+    tether_register_widget("Panel", tether_ui_panel);
+    
+    tether_register_widget("Text", tether_ui_text);
+    tether_register_widget("Button", tether_ui_button);
+    tether_register_widget("ProgressBar", tether_ui_progress_bar);
+    tether_register_widget("Slider", tether_ui_slider);
+    tether_register_widget("Toggle", tether_ui_toggle);
+    tether_register_widget("Checkbox", tether_ui_checkbox);
+    tether_register_widget("Radio", tether_ui_radio);
+    tether_register_widget("SegmentedBar", tether_ui_segmented_bar);
+    tether_register_widget("Menu", tether_ui_menu);
+    tether_register_widget("Dropdown", tether_ui_dropdown);
+    tether_register_widget("ContextMenu", tether_ui_context_menu);
+    tether_register_widget("Collapsible", tether_ui_collapsible);
+    tether_register_widget("Switcher", tether_ui_switcher);
 }
 
 void tether_on_init(void) {
@@ -125,13 +144,10 @@ void tether_on_cleanup(void) {
         g_config.on_term();
     }
 
-    Tether_DenseArray* nodes = tether_ecs_get_dense_array(TETHER_COMPONENT_SLOT_TRANSFORM);
-    if (nodes) {
-        printf("length of TOTAL ENTITIES %lu\n", nodes->count);
-    }
-
     /* Terminate engine scene */
     tether_engine_term();
+
+    tether_yaml_term();
 
     /* Teardown engine-specific resources before backend shuts down */
     tether_registry_term();

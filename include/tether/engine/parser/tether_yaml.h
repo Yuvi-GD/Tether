@@ -14,6 +14,9 @@ extern "C" {
  */
 Tether_GUID tether_yaml_load(const char* filepath, Tether_GUID parent);
 
+/* Release cached definitions on the UI thread, outside a load. */
+void tether_yaml_term(void);
+
 #ifdef __cplusplus
 }
 #endif
