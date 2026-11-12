@@ -37,10 +37,19 @@ Tether_GUID tether_hit_test(float x, float y);
 
 /*
  * Process a normalized input event.
- * Handles state transitions (Hover Enter/Exit, Press, Release, Click) and
+ * Handles state transitions (Hover Enter/Exit, Press, Release, Click, Drag) and
  * automatically fires the Tether_EventRegistry callbacks.
  */
 void tether_input_process_event(const Tether_Pointer_Event* event);
+
+/* Query the latest normalized pointer position (x, y) */
+void tether_input_get_pointer_pos(float* out_x, float* out_y);
+
+/* One temporary priority target and observer; clear with an invalid entity. */
+typedef void (*Tether_InputRouteCallback)(Tether_GUID entity, const Tether_Pointer_Event *event,
+                                         Tether_GUID hit, Tether_GUID pressed);
+void tether_input_set_route(Tether_GUID entity, Tether_InputRouteCallback callback);
+void tether_input_clear_route(Tether_GUID entity);
 
 /* Reset input tracking (called on shutdown) */
 void tether_input_term(void);

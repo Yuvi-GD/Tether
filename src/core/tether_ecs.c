@@ -1,10 +1,8 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
-#include "tether/core/tether_registry.h"
 
 #include <stdlib.h>
 #include <string.h>
-
 
 #define INITIAL_ENTITY_CAPACITY 1024
 #define INITIAL_DENSE_CAPACITY 64
@@ -31,8 +29,7 @@ typedef struct {
 
 static Tether_Registry g_registry = {0};
 
-static void ensure_sparse_capacity(int component_id,
-                                   uint32_t required_capacity) {
+static void ensure_sparse_capacity(int component_id, uint32_t required_capacity) {
   Tether_SparseMap *sparse = &g_registry.sparse_maps[component_id];
   if (required_capacity > sparse->capacity) {
     uint32_t old_cap = sparse->capacity;
@@ -106,6 +103,17 @@ void tether_ecs_term(void) {
   free(g_registry.generations);
   free(g_registry.free_indices);
 
+  if (g_registry.dense_arrays && TETHER_COMPONENT_TEXT_DYNAMIC < g_registry.component_type_capacity) {
+      Tether_DenseArray *dyn_arr = &g_registry.dense_arrays[TETHER_COMPONENT_TEXT_DYNAMIC];
+      if (dyn_arr->data && dyn_arr->element_size == sizeof(Tether_TextDynamic)) {
+          Tether_TextDynamic *dyns = (Tether_TextDynamic *)dyn_arr->data;
+          for (uint32_t j = 0; j < dyn_arr->count; ++j) {
+              free(dyns[j].data);
+              dyns[j].data = NULL;
+          }
+      }
+  }
+
   if (g_registry.sparse_maps) {
       for (uint32_t i = 0; i < g_registry.component_type_capacity; ++i) {
         if (g_registry.sparse_maps[i].dense_indices) {
@@ -116,6 +124,9 @@ void tether_ecs_term(void) {
         }
         if (g_registry.dense_arrays[i].entity_map) {
           free(g_registry.dense_arrays[i].entity_map);
+        }
+        if (g_registry.dense_arrays[i].default_data) {
+          free(g_registry.dense_arrays[i].default_data);
         }
       }
       free(g_registry.sparse_maps);
@@ -231,7 +242,7 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
 
 
 
-void tether_ecs_register_component_static(uint32_t component_id, size_t element_size) {
+void tether_ecs_register_component_static(uint32_t component_id, size_t element_size, const void* default_data) {
   if (component_id < 0) return;
   
   if ((uint32_t)component_id >= g_registry.component_type_capacity) {
@@ -252,11 +263,19 @@ void tether_ecs_register_component_static(uint32_t component_id, size_t element_
 
   Tether_DenseArray *dense = &g_registry.dense_arrays[component_id];
   dense->element_size = element_size;
+  if (dense->default_data) {
+      free(dense->default_data);
+      dense->default_data = NULL;
+  }
+  if (default_data && element_size > 0) {
+      dense->default_data = malloc(element_size);
+      memcpy(dense->default_data, default_data, element_size);
+  }
 }
 
-uint32_t tether_ecs_register_component_dynamic(size_t element_size) {
+uint32_t tether_ecs_register_component_dynamic(size_t element_size, const void* default_data) {
   uint32_t id = g_registry.next_custom_component_id++;
-  tether_ecs_register_component_static(id, element_size);
+  tether_ecs_register_component_static(id, element_size, default_data);
   return id;
 }
 
@@ -299,7 +318,11 @@ void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
   void *ptr = NULL;
   if (dense->element_size > 0) {
       ptr = (uint8_t *)dense->data + (dense_idx * dense->element_size);
-      memset(ptr, 0, dense->element_size);
+      if (dense->default_data) {
+          memcpy(ptr, dense->default_data, dense->element_size);
+      } else {
+          memset(ptr, 0, dense->element_size);
+      }
   } else {
       ptr = (void*)1;
   }
@@ -452,72 +475,4 @@ void tether_ecs_bring_to_front(Tether_GUID entity) {
     Tether_GUID parent = h->parent;
     tether_ecs_detach_entity(entity);
     tether_ecs_attach_entity(parent, entity);
-}
-
-/* ========================================================================== */
-/*                            Text Component API                              */
-/* ========================================================================== */
-
-const char* tether_ecs_get_text_string(Tether_GUID entity) {
-    /* Fast check from smallest to largest */
-    Tether_TextWord* word = (Tether_TextWord*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_WORD);
-    if (word) return word->data;
-    
-    Tether_TextLabel* label = (Tether_TextLabel*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_LABEL);
-    if (label) return label->data;
-    
-    Tether_TextParagraph* paragraph = (Tether_TextParagraph*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
-    if (paragraph) return paragraph->data;
-    
-    Tether_TextDynamic* dynamic = (Tether_TextDynamic*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-    if (dynamic) return dynamic->data;
-    
-    return NULL;
-}
-
-bool tether_ecs_set_text_string(Tether_GUID entity, const char* string) {
-  if (!tether_ecs_is_valid(entity) || !string) return false;
-
-  size_t length = strlen(string);
-  Tether_TextDynamic* dynamic = (Tether_TextDynamic*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-  if (dynamic && dynamic->data) {
-    free(dynamic->data);
-    dynamic->data = NULL;
-  }
-
-  tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_WORD);
-  tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_LABEL);
-  tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
-  tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-
-  if (length <= 31) {
-    Tether_TextWord* text = (Tether_TextWord*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_WORD);
-    if (!text) return false;
-    memcpy(text->data, string, length + 1);
-  } else if (length <= 127) {
-    Tether_TextLabel* text = (Tether_TextLabel*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_LABEL);
-    if (!text) return false;
-    memcpy(text->data, string, length + 1);
-  } else if (length <= 511) {
-    Tether_TextParagraph* text = (Tether_TextParagraph*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_PARAGRAPH);
-    if (!text) return false;
-    memcpy(text->data, string, length + 1);
-  } else {
-    Tether_TextDynamic* text = (Tether_TextDynamic*)tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-    if (!text) return false;
-    text->capacity = (uint32_t)(length + 1) * 2;
-    text->data = (char*)malloc(text->capacity);
-    if (!text->data) {
-      tether_ecs_remove_component(entity, TETHER_COMPONENT_TEXT_DYNAMIC);
-      return false;
-    }
-    memcpy(text->data, string, length + 1);
-    text->length = (uint32_t)length;
-  }
-
-  tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
-  tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_VISUAL);
-  tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_LAYOUT);
-
-  return true;
 }
