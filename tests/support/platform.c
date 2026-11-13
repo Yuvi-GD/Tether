@@ -330,3 +330,22 @@ bool tool_pick_result(char *path, size_t size) {
 bool tool_pick_yaml(char *path, size_t size) {
     return tool_pick_file(path, size, "YAML files (*.yaml;*.yml)\0*.yaml;*.yml\0\0");
 }
+
+uint64_t tool_file_mtime(const char *path) {
+    if (!path || !path[0]) {
+        return 0;
+    }
+#ifdef _WIN32
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data)) {
+        return 0;
+    }
+    return ((uint64_t)data.ftLastWriteTime.dwHighDateTime << 32) | (uint64_t)data.ftLastWriteTime.dwLowDateTime;
+#else
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        return 0;
+    }
+    return (uint64_t)st.st_mtime;
+#endif
+}
