@@ -10,7 +10,7 @@ Panel:
         font_size: 24
         color: [235, 235, 235, 255]
     - Text:
-        string: "Edit UI/playground.yaml and load it again to change this preview."
+        string: "Edit UI/playground.yaml and save to live sync, or click Sync."
         font_size: 16
         color: [190, 190, 190, 255]
     - Checkbox:

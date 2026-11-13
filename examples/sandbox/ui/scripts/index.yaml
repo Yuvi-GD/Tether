@@ -291,6 +291,13 @@
                               - Text:
                                   string: "Choose YAML"
                         - Button:
+                            id: "showcase_sync_yaml"
+                            size_box: [100, 38]
+                            fill_ratio: 0
+                            content:
+                              - Text:
+                                  string: "Sync"
+                        - Button:
                             id: "showcase_clear_preview"
                             size_box: [100, 38]
                             fill_ratio: 0
@@ -298,7 +305,7 @@
                               - Text:
                                   string: "Clear"
                   - Text:
-                      string: "Select a preset or a chosen file. Each selection reloads its YAML into the preview."
+                      string: "Select a preset or a chosen file. Edit and save to live sync, or click Sync to reload."
                       font_size: 15
                       wrap_width: 950
                       color: [190, 190, 190, 255]
@@ -309,6 +316,7 @@
                       color: [220, 190, 140, 255]
                   - Container:
                       flow: ROW
+                      content_align: [START, CENTER]
                       gap: [10, 0]
                       children:
                         - Button:
@@ -329,9 +337,22 @@
                             content:
                               - Text:
                                   string: "Chosen file"
+                        - Container:
+                            flow: ROW
+                            content_align: [START, CENTER]
+                            gap: [8, 0]
+                            padding: [0, 6]
+                            children:
+                              - Toggle:
+                                  id: "showcase_live_sync"
+                                  is_on: true
+                              - Text:
+                                  string: "Live sync"
+                                  font_size: 14
+                                  color: [200, 200, 200, 255]
                   - Text:
                       id: "showcase_preview_status"
-                      string: "Choose a preset or load your own YAML file."
+                      string: "Choose a preset or load your own YAML file. Live sync is on."
                       font_size: 14
                       color: [170, 190, 210, 255]
                   - Panel:

@@ -30,6 +30,10 @@ static unsigned example_scale_index;
 static bool example_vertical;
 static bool example_alternate_text;
 static char chosen_yaml[4096];
+static char active_yaml[4096];
+static uint64_t active_yaml_mtime;
+static double last_sync_poll_ms;
+static bool live_sync_active = true;
 
 static void size_overlay(Tether_GUID overlay) {
     if (!tether_ecs_is_valid(overlay) || !g_backend.system || !g_backend.system->get_resolution) return;
@@ -55,9 +59,12 @@ void sandbox_showcase_cleanup(void) {
     sandbox_showcase_close_overlays();
     if (tether_ecs_is_valid(dialog_overlay)) tether_widget_destroy(dialog_overlay);
     if (tether_ecs_is_valid(toast_overlay)) tether_widget_destroy(toast_overlay);
+    if (tether_ecs_is_valid(preview_content)) tether_widget_destroy(preview_content);
     dialog_overlay = TETHER_INVALID_GUID;
     toast_overlay = TETHER_INVALID_GUID;
     preview_content = TETHER_INVALID_GUID;
+    active_yaml[0] = '\0';
+    active_yaml_mtime = 0;
 }
 
 static void select_showcase_view(Tether_GUID entity, const Tether_Event *event, void *data) {
@@ -91,23 +98,49 @@ static void show_toast(Tether_GUID entity, const Tether_Event *event, void *data
     toast_deadline = tool_now_ms() + 4000;
 }
 
+static bool load_preview(const char *path);
+
 void sandbox_showcase_update(void) {
     if (toast_deadline && tool_now_ms() >= toast_deadline) close_toast(0, NULL, NULL);
     Tether_Visibility *dialog = tether_ecs_get_component(dialog_overlay, TETHER_COMPONENT_VISIBILITY);
     Tether_Visibility *toast = tether_ecs_get_component(toast_overlay, TETHER_COMPONENT_VISIBILITY);
     if (dialog && dialog->local_state == TETHER_VISIBLE) size_overlay(dialog_overlay);
     if (toast && toast->local_state == TETHER_VISIBLE) size_overlay(toast_overlay);
+
+    if (live_sync_active && active_yaml[0]) {
+        double now = tool_now_ms();
+        if (now - last_sync_poll_ms >= 250.0) {
+            last_sync_poll_ms = now;
+            uint64_t mtime = tool_file_mtime(active_yaml);
+            if (mtime != 0 && mtime != active_yaml_mtime) {
+                active_yaml_mtime = mtime;
+                load_preview(active_yaml);
+            }
+        }
+    }
 }
 
 static void clear_preview(Tether_GUID entity, const Tether_Event *event, void *data) {
     (void)entity; (void)event; (void)data;
     if (tether_ecs_is_valid(preview_content)) tether_widget_destroy(preview_content);
     preview_content = TETHER_INVALID_GUID;
+    active_yaml[0] = '\0';
+    active_yaml_mtime = 0;
+    tether_widget_set_enabled(tether_registry_find_entity("showcase_sync_yaml"), false);
     tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"), "Preview cleared.");
 }
 
 static bool load_preview(const char *path) {
-    clear_preview(0, NULL, NULL);
+    if (!path || !path[0]) return false;
+    if (active_yaml != path) {
+        snprintf(active_yaml, sizeof active_yaml, "%s", path);
+    }
+    active_yaml_mtime = tool_file_mtime(path);
+    tether_widget_set_enabled(tether_registry_find_entity("showcase_sync_yaml"), true);
+    if (tether_ecs_is_valid(preview_content)) {
+        tether_widget_destroy(preview_content);
+        preview_content = TETHER_INVALID_GUID;
+    }
     Tether_GUID host = tether_registry_find_entity("showcase_preview");
     preview_content = tether_widget_create_container(host);
     tether_ui_set_container(preview_content, TETHER_FLOW_COLUMN);
@@ -129,8 +162,27 @@ static bool load_preview(const char *path) {
         if (slot) slot->align_self_x = TETHER_ALIGN_FILL;
     }
     tether_widget_show(preview_content);
-    tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"), "YAML loaded. Edit and load again to update.");
+    tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"),
+                       "YAML loaded. Edit and save to live sync, or click Sync.");
     return true;
+}
+
+static void sync_yaml(Tether_GUID entity, const Tether_Event *event, void *data) {
+    (void)entity; (void)event; (void)data;
+    if (active_yaml[0]) {
+        if (load_preview(active_yaml)) {
+            tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"), "Preview synced.");
+        }
+    }
+}
+
+static void toggle_live_sync(Tether_GUID entity, const Tether_Event *event, void *data) {
+    (void)event; (void)data;
+    live_sync_active = tether_ui_get_toggle(entity);
+    if (live_sync_active) {
+        last_sync_poll_ms = 0;
+        if (active_yaml[0]) active_yaml_mtime = tool_file_mtime(active_yaml);
+    }
 }
 
 static void choose_yaml(Tether_GUID entity, const Tether_Event *event, void *data) {
@@ -366,6 +418,16 @@ bool sandbox_showcase_check(void) {
     tether_ui_set_segment_selected(tabs, 2);
     if (tether_ui_switcher_get_active(switcher) != 2 || !load_preview("UI/playground.yaml")) return false;
     if (!tether_ecs_is_valid(preview_content) || tether_widget_get_child_count(preview_content) == 0) return false;
+    Tether_GUID sync_button = tether_registry_find_entity("showcase_sync_yaml");
+    Tether_GUID live_sync_toggle = tether_registry_find_entity("showcase_live_sync");
+    if (!sync_button || !live_sync_toggle || !tether_widget_is_enabled(sync_button)) return false;
+    tether_dispatch_event(sync_button, TETHER_EVENT_CLICK);
+    const char *sync_status = tether_ui_get_text(tether_registry_find_entity("showcase_preview_status"));
+    if (!sync_status || strcmp(sync_status, "Preview synced.") != 0) return false;
+    tether_ui_set_toggle(live_sync_toggle, false);
+    if (live_sync_active) return false;
+    tether_ui_set_toggle(live_sync_toggle, true);
+    if (!live_sync_active) return false;
     if (!load_preview("UI/playground/layout.yaml")) return false;
     char previous_yaml[sizeof chosen_yaml];
     memcpy(previous_yaml, chosen_yaml, sizeof previous_yaml);
@@ -381,6 +443,7 @@ bool sandbox_showcase_check(void) {
     const char *status = tether_ui_get_text(tether_registry_find_entity("showcase_preview_status"));
     if (!status || !strstr(status, "Could not load")) return false;
     clear_preview(0, NULL, NULL);
+    if (tether_widget_is_enabled(sync_button)) return false;
     tether_ui_set_segment_selected(tabs, 0);
     return true;
 }
@@ -388,6 +451,10 @@ bool sandbox_showcase_check(void) {
 void sandbox_bind_events(void) {
     preview_content = TETHER_INVALID_GUID;
     toast_deadline = 0;
+    active_yaml[0] = '\0';
+    active_yaml_mtime = 0;
+    last_sync_poll_ms = 0;
+    live_sync_active = true;
     example_color_index = 0;
     example_align_index = 0;
     example_font_index = 0;
@@ -418,6 +485,13 @@ void sandbox_bind_events(void) {
     tether_bind_event(tether_registry_find_entity("showcase_selected_yaml"), TETHER_EVENT_CLICK, load_chosen_yaml, NULL);
     tether_widget_set_enabled(tether_registry_find_entity("showcase_selected_yaml"), chosen_yaml[0] != '\0');
     tether_bind_event(tether_registry_find_entity("showcase_clear_preview"), TETHER_EVENT_CLICK, clear_preview, NULL);
+    tether_bind_event(tether_registry_find_entity("showcase_sync_yaml"), TETHER_EVENT_CLICK, sync_yaml, NULL);
+    tether_widget_set_enabled(tether_registry_find_entity("showcase_sync_yaml"), false);
+    Tether_GUID live_sync_toggle = tether_registry_find_entity("showcase_live_sync");
+    if (live_sync_toggle != TETHER_INVALID_GUID) {
+        tether_ui_set_toggle(live_sync_toggle, true);
+        tether_bind_event(live_sync_toggle, TETHER_EVENT_CHANGE, toggle_live_sync, NULL);
+    }
     tether_bind_event(tether_registry_find_entity("example_visibility"), TETHER_EVENT_CLICK, toggle_example_visibility, NULL);
     tether_bind_event(tether_registry_find_entity("example_color"), TETHER_EVENT_CLICK, change_example_color, NULL);
     tether_bind_event(tether_registry_find_entity("example_align"), TETHER_EVENT_CLICK, change_example_alignment, NULL);
