@@ -24,6 +24,9 @@ Tether is an open-source C engine for building user interface libraries. It comb
 
 ---
 
+<img width="2556" height="1117" alt="image" src="https://github.com/user-attachments/assets/3f442144-2c24-4982-9859-c00c07ae9607" />
+
+---
 ## 1. Architectural Vision: The "PDF of Interactive User Interfaces"
 
 Digital computing solved media portability decades ago by establishing open, vendor-neutral file specifications:
