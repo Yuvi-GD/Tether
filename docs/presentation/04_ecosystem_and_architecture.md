@@ -55,9 +55,9 @@ Tether is divided into six distinct subsystem cells:
 
 | Subsystem Cell | Primary Responsibility | Memory Ownership | Hardware Awareness |
 | :--- | :--- | :--- | :---: |
-| **ECS Kernel** | Manages 64-bit entity GUIDs, sparse maps, and contiguous dense component arrays. | Owns raw contiguous heap buffers; zero widget knowledge. | Completely Abstract |
+| **ECS Kernel** | Manages 64-bit entity TUIDs, sparse maps, and contiguous dense component arrays. | Owns raw contiguous heap buffers; zero widget knowledge. | Completely Abstract |
 | **Engine Systems** | Tracks spatial transforms (`SlotTransform`, `RenderTransform`), tree hierarchy, invalidation tags (`DIRTY_*`), and input events. | Operates directly over Kernel dense arrays. | Completely Abstract |
-| **Central Registry & UI** | Maps string aliases to GUIDs, registers widget constructors (`tether_register_widget()`), and manages fonts. | Owns alias map, widget registry, and font table. | Completely Abstract |
+| **Central Registry & UI** | Maps string aliases to TUIDs, registers widget constructors (`tether_register_widget()`), and manages fonts. | Owns alias map, widget registry, and font table. | Completely Abstract |
 | **Authoring & Parsing** | Converts declarative YAML into an intermediate format-neutral AST and instantiates live ECS entities. | Temporary parse buffers + template cache; copies strings into ECS SSO/dynamic tiers. | Completely Abstract |
 | **Layout Solver** | Resolves built-in two-pass container constraints (flex, canvas anchors, padding, gaps, text wrapping). | Traverses ECS hierarchy and `SlotTransform` / `Layout` pools (Vinyasa scratch solver on roadmap). | Completely Abstract |
 | **Backend Driver** | Window creation, OS input normalization, and graphics hardware rasterization. | Owns GPU vertex buffers, swapchains, device contexts, and font textures. | Hardware Specific |

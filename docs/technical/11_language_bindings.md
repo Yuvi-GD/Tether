@@ -10,8 +10,8 @@ Tether is designed from the ground up as a universal, lightweight UI kernel capa
 
 Key architectural properties enabling universal foreign language interop:
 - **Standard C ABI Invariants**: Un-mangled symbol names, standard calling conventions (`cdecl` / standard platform ABI), explicit struct alignments, and zero C++ vtables or RTTI.
-- **64-Bit Scalar GUID Currency**: Entities are passed as simple 64-bit integer values (`uint64_t` / `Tether_GUID`). Foreign languages never hold raw, unsafe heap pointers to internal engine nodes.
-- **Generational Safety**: Generational indexing embedded in the upper 32 bits of each GUID ensures that stale references held by foreign garbage collectors or asynchronous tasks fail safely via `tether_ecs_is_valid()` without memory corruption.
+- **64-Bit Scalar TUID Currency**: Entities are passed as simple 64-bit integer values (`uint64_t` / `TUID`). Foreign languages never hold raw, unsafe heap pointers to internal engine nodes.
+- **Generational Safety**: Generational indexing embedded in the upper 32 bits of each TUID ensures that stale references held by foreign garbage collectors or asynchronous tasks fail safely via `tether_ecs_is_valid()` without memory corruption.
 - **Dual Script and Program Parity**: There are no functional limits separating compiled C code from dynamic scripting environments. An entity created in C can be animated by Python, restyled by Lua, or queried by Rust; an entity declared in YAML can be wired directly to native C callbacks.
 
 ```mermaid
@@ -26,7 +26,7 @@ flowchart TD
     end
 
     subgraph C99ABI["Tether Pure C99 Public ABI (include/tether/)"]
-        Scalars["Scalar 64-bit GUIDs (uint64_t)"]
+        Scalars["Scalar 64-bit TUIDs (uint64_t)"]
         FlatFuncs["Global Functions (tether_*, tether_ecs_*, tether_ui_*)"]
         FlatStructs["Flat POD Structs (Tether_Color, Tether_Config, Tether_Pointer_Event)"]
         Callbacks["C Function Pointers with void* user_data"]
@@ -61,9 +61,9 @@ In traditional UI toolkits (e.g., Qt, GTK, wxWidgets), UI elements are heap-allo
 Tether eliminates this entire class of vulnerabilities by treating entities strictly as scalar 64-bit handles:
 
 ```c
-typedef uint64_t Tether_GUID;
+typedef uint64_t TUID;
 
-#define TETHER_INVALID_GUID 0
+#define TETHER_INVALID_TUID 0
 ```
 
 - **Lower 32 bits**: Entity index into sparse maps and generational arrays.
@@ -103,14 +103,14 @@ sequenceDiagram
     Kernel-->>YAML: Entities Created (id: "status_lbl", "btn_action")
     
     Host->>Kernel: tether_registry_find_entity("btn_action")
-    Kernel-->>Host: Returns GUID 0x0000000100000004
+    Kernel-->>Host: Returns TUID 0x0000000100000004
     
-    Host->>Kernel: tether_bind_event(GUID, CLICK, on_native_click, ctx)
+    Host->>Kernel: tether_bind_event(TUID, CLICK, on_native_click, ctx)
     
     Script->>Kernel: tether_registry_find_entity("status_lbl")
-    Kernel-->>Script: Returns GUID 0x0000000100000005
+    Kernel-->>Script: Returns TUID 0x0000000100000005
     
-    Script->>Kernel: tether_ui_set_text(GUID, "Running Diagnostics...")
+    Script->>Kernel: tether_ui_set_text(TUID, "Running Diagnostics...")
     Note over Script,Kernel: Script dynamically mutates text without C recompile
 ```
 
@@ -120,7 +120,7 @@ sequenceDiagram
    Whether an element is spawned from a YAML file, an imperative C call (`tether_ui_button`), or an embedded Lua script, it exists identically in the ECS dense pools.
 2. **Central Registry Querying Across Language Boundaries**:
    String IDs declared in markup (e.g., `id: user_avatar`) are registered in the Central Registry. Any language can query the handle:
-   - C: `Tether_GUID avatar = tether_registry_find_entity("user_avatar");`
+   - C: `TUID avatar = tether_registry_find_entity("user_avatar");`
    - Python: `avatar = tether.find_entity("user_avatar")`
    - Rust: `let avatar = tether.find_entity("user_avatar");`
 3. **Flexible Event Dispatching**:
@@ -148,10 +148,10 @@ namespace tether {
 
 class Entity {
 public:
-    Tether_GUID handle{TETHER_INVALID_GUID};
+    TUID handle{TETHER_INVALID_TUID};
 
     Entity() = default;
-    explicit Entity(Tether_GUID id) : handle(id) {}
+    explicit Entity(TUID id) : handle(id) {}
 
     static Entity find(const std::string& alias) {
         return Entity(tether_registry_find_entity(alias.c_str()));
@@ -182,20 +182,20 @@ public:
 class UI {
 public:
     static Entity panel(Entity parent, Tether_Color bg) {
-        Tether_GUID p = tether_ui_panel(parent.handle);
+        TUID p = tether_ui_panel(parent.handle);
         tether_ui_set_color(p, bg);
         return Entity(p);
     }
 
     static Entity button(Entity parent, const std::string& caption, Tether_Color bg) {
-        Tether_GUID b = tether_ui_button(parent.handle);
+        TUID b = tether_ui_button(parent.handle);
         tether_ui_set_button_label(b, caption.c_str());
         tether_ui_set_color(b, bg);
         return Entity(b);
     }
 
     static Entity text(Entity parent, const std::string& string, Tether_Color color) {
-        Tether_GUID t = tether_ui_text(parent.handle);
+        TUID t = tether_ui_text(parent.handle);
         tether_ui_set_text(t, string.c_str());
         tether_ui_set_text_color(t, color);
         return Entity(t);
@@ -329,7 +329,7 @@ function on_scene_loaded()
 end
 ```
 
-The C host binds this effortlessly by pushing `Tether_GUID` as a 64-bit integer or light userdata onto the Lua stack, giving scripts complete control over scene elements with zero garbage collector overhead on the C memory pools.
+The C host binds this effortlessly by pushing `TUID` as a 64-bit integer or light userdata onto the Lua stack, giving scripts complete control over scene elements with zero garbage collector overhead on the C memory pools.
 
 ---
 
@@ -373,8 +373,8 @@ When interacting across foreign language boundaries, developers must adhere to f
 
 ### Rule 1: The ECS Kernel Owns Entity Lifetime
 Foreign language objects (such as C++ wrapper classes, Python wrapper objects, or Lua tables) must **never attempt to manage entity lifetime through their own garbage collectors or destructors**.
-- Destroying an entity must always occur via `tether_widget_destroy(guid)` or `tether_ecs_destroy_entity(guid)`.
-- Foreign wrapper classes should store only the scalar `Tether_GUID`. If the entity is destroyed, subsequent calls gracefully no-op when `tether_ecs_is_valid()` returns `false`.
+- Destroying an entity must always occur via `tether_widget_destroy(tuid)` or `tether_ecs_destroy_entity(tuid)`.
+- Foreign wrapper classes should store only the scalar `TUID`. If the entity is destroyed, subsequent calls gracefully no-op when `tether_ecs_is_valid()` returns `false`.
 
 ### Rule 2: Strings Must Be Valid UTF-8 Null-Terminated Buffers
 - All string parameters passed to Tether APIs (`tether_ui_set_text`, `tether_registry_alias_entity`, `tether_yaml_load`) must be null-terminated UTF-8 byte arrays.

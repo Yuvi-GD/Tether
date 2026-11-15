@@ -13,14 +13,14 @@
 #define SLIDER_RADIUS 2.0f
 
 /* Forward declarations */
-static void slider_update(Tether_GUID slider);
-static void slider_handle_interaction(Tether_GUID entity, const Tether_Event *event_info, void *user_data);
+static void slider_update(TUID slider);
+static void slider_handle_interaction(TUID entity, const Tether_Event *event_info, void *user_data);
 
 /* ========================================================================== */
 /* 1. Widget Creation & Visual Sync                                           */
 /* ========================================================================== */
 
-static void slider_update(Tether_GUID slider) {
+static void slider_update(TUID slider) {
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(slider, TETHER_COMPONENT_VALUE_RANGE);
     if (!vr) return;
 
@@ -29,16 +29,16 @@ static void slider_update(Tether_GUID slider) {
     if (frac < 0.0f) frac = 0.0f;
     if (frac > 1.0f) frac = 1.0f;
 
-    Tether_GUID fill = tether_widget_get_child_at(slider, 0);
-    if (fill != TETHER_INVALID_GUID) {
+    TUID fill = tether_widget_get_child_at(slider, 0);
+    if (fill != TETHER_INVALID_TUID) {
         float fill_offset_right = (frac <= 0.0f) ? -SLIDER_THUMB_RADIUS : (frac >= 1.0f ? 0.0f : -(0.5f - frac) * SLIDER_THUMB_DIAMETER);
         tether_ui_set_anchor(fill, 0.0f, 0.0f, frac, 1.0f);
         tether_ui_set_offsets(fill, 0.0f, fill_offset_right, 0.0f, 0.0f);
         tether_ecs_add_component(fill, TETHER_COMPONENT_DIRTY_VISUAL);
     }
 
-    Tether_GUID thumb = tether_widget_get_child_at(slider, 1);
-    if (thumb != TETHER_INVALID_GUID) {
+    TUID thumb = tether_widget_get_child_at(slider, 1);
+    if (thumb != TETHER_INVALID_TUID) {
         tether_ui_set_anchor(thumb, frac, 0.5f, frac, 0.5f);
         tether_ui_set_offsets(thumb, -SLIDER_THUMB_RADIUS,
                                      -(1.0f - frac) * SLIDER_THUMB_DIAMETER,
@@ -48,9 +48,9 @@ static void slider_update(Tether_GUID slider) {
     }
 }
 
-Tether_GUID tether_ui_slider(Tether_GUID parent) {
+TUID tether_ui_slider(TUID parent) {
     /* Slider is directly a flexible progress bar with an interactive thumb */
-    Tether_GUID slider = tether_ui_progress_bar(parent);
+    TUID slider = tether_ui_progress_bar(parent);
 
     tether_ui_set_size(slider, 0.0f, SLIDER_HEIGHT);
     tether_ui_set_color(slider, (Tether_Color){53, 53, 58, 255});
@@ -62,8 +62,8 @@ Tether_GUID tether_ui_slider(Tether_GUID parent) {
         flex->fill_ratio = 0.0f;
     }
 
-    Tether_GUID fill = tether_widget_get_child_at(slider, 0);
-    if (fill != TETHER_INVALID_GUID) {
+    TUID fill = tether_widget_get_child_at(slider, 0);
+    if (fill != TETHER_INVALID_TUID) {
         tether_ui_set_border(fill, 0.0f, (Tether_Color){0, 0, 0, 0}, SLIDER_RADIUS);
     }
 
@@ -81,7 +81,7 @@ Tether_GUID tether_ui_slider(Tether_GUID parent) {
     tether_ui_set_value(slider, 0.0f);
 
     /* Child 1: Thumb: 20x20 circle */
-    Tether_GUID thumb = tether_ui_panel(slider);
+    TUID thumb = tether_ui_panel(slider);
     tether_ui_set_size(thumb, SLIDER_THUMB_DIAMETER, SLIDER_THUMB_DIAMETER);
     tether_ui_set_anchor(thumb, 0.0f, 0.5f, 0.0f, 0.5f);
     tether_ui_set_offsets(thumb, -SLIDER_THUMB_RADIUS, -SLIDER_THUMB_DIAMETER, -SLIDER_THUMB_RADIUS, 0.0f);
@@ -105,9 +105,9 @@ Tether_GUID tether_ui_slider(Tether_GUID parent) {
 /* 2. Internal Event Handling                                                 */
 /* ========================================================================== */
 
-static void slider_update_feedback(Tether_GUID slider, Tether_EventType type) {
-    Tether_GUID thumb = tether_widget_get_child_at(slider, 1);
-    if (thumb == TETHER_INVALID_GUID) return;
+static void slider_update_feedback(TUID slider, Tether_EventType type) {
+    TUID thumb = tether_widget_get_child_at(slider, 1);
+    if (thumb == TETHER_INVALID_TUID) return;
 
     Tether_Shape *shape = (Tether_Shape*)tether_ecs_get_component(thumb, TETHER_COMPONENT_SHAPE);
     if (!shape) return;
@@ -120,14 +120,14 @@ static void slider_update_feedback(Tether_GUID slider, Tether_EventType type) {
 }
 
 /* Keep pointer and programmatic changes on the same configured step. */
-static float slider_snap_value(Tether_GUID slider, float value) {
+static float slider_snap_value(TUID slider, float value) {
     Tether_ValueRange *range = tether_ecs_get_component(slider, TETHER_COMPONENT_VALUE_RANGE);
     if (!range || !isfinite(value) || !isfinite(range->step) || range->step <= 0.0f) return value;
     double steps = ((double)value - range->min_val) / range->step;
     return (float)(range->min_val + round(steps) * range->step);
 }
 
-static void slider_handle_input(Tether_GUID entity) {
+static void slider_handle_input(TUID entity) {
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(entity, TETHER_COMPONENT_VALUE_RANGE);
     if (!vr) return;
 
@@ -150,7 +150,7 @@ static void slider_handle_input(Tether_GUID entity) {
     tether_dispatch_event(entity, TETHER_EVENT_CHANGE);
 }
 
-static void slider_handle_interaction(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void slider_handle_interaction(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)user_data;
     if (!tether_widget_is_enabled(entity)) return;
     Tether_Interactable *interaction = tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
@@ -166,19 +166,19 @@ static void slider_handle_interaction(Tether_GUID entity, const Tether_Event *ev
 /* 3. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_slider_value(Tether_GUID slider, float value) {
-    if (slider == TETHER_INVALID_GUID) return;
+void tether_ui_set_slider_value(TUID slider, float value) {
+    if (slider == TETHER_INVALID_TUID) return;
     tether_ui_set_value(slider, slider_snap_value(slider, value));
     slider_update(slider);
     tether_dispatch_event(slider, TETHER_EVENT_CHANGE);
 }
 
-float tether_ui_get_slider_value(Tether_GUID slider) {
+float tether_ui_get_slider_value(TUID slider) {
     return tether_ui_get_value(slider);
 }
 
-void tether_ui_set_slider_range(Tether_GUID slider, float min_val, float max_val) {
-    if (slider == TETHER_INVALID_GUID) return;
+void tether_ui_set_slider_range(TUID slider, float min_val, float max_val) {
+    if (slider == TETHER_INVALID_TUID) return;
     tether_ui_set_range(slider, min_val, max_val);
     slider_update(slider);
 }

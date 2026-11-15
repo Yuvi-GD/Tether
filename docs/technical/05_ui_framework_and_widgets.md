@@ -35,9 +35,9 @@ flowchart TD
 
     subgraph CentralReg["Central Registry (tether_registry.h)"]
         W_Reg["Widget Factory Registry\n('Panel' -> Fn, 'Button' -> Fn, ...)"]
-        ID_Reg["String-ID Alias Map\n('submit_btn' <-> GUID)"]
+        ID_Reg["String-ID Alias Map\n('submit_btn' <-> TUID)"]
         Font_Reg["Font ID Registry\n(0 -> Regular, 1 -> Bold)"]
-        Event_Reg["Event Bindings\n(GUID + CLICK/CHANGE -> Callback)"]
+        Event_Reg["Event Bindings\n(TUID + CLICK/CHANGE -> Callback)"]
     end
 
     subgraph Layer1["Layer 1: Low-Level ECS Kernel (tether_ecs.h)"]
@@ -56,14 +56,14 @@ flowchart TD
 
 ## 3. The Native Widget Foundation (`tether_widgets.h`, `tether_list.h`)
 
-Widgets in Tether are not C++ classes with virtual function tables. Instead, they are pure C factory functions that instantiate a new entity GUID, attach a tailored collection of native components (initialized from registered `default_data` templates), and compose sub-entities in the hierarchy.
+Widgets in Tether are not C++ classes with virtual function tables. Instead, they are pure C factory functions that instantiate a new entity TUID, attach a tailored collection of native components (initialized from registered `default_data` templates), and compose sub-entities in the hierarchy.
 
 ### 1. Base Container Construction (`tether_widget_create_container`)
 Every widget in Tether begins by calling `tether_widget_create_container(parent)`. Because core components are registered with `default_data` templates, adding each component populates safe spatial, layout, visibility, transform, and overflow defaults automatically:
 
 ```c
-Tether_GUID tether_widget_create_container(Tether_GUID parent) {
-    Tether_GUID entity = tether_ecs_create_entity();
+TUID tether_widget_create_container(TUID parent) {
+    TUID entity = tether_ecs_create_entity();
 
     tether_ecs_add_component(entity, TETHER_COMPONENT_SLOT_TRANSFORM);
     tether_ecs_add_component(entity, TETHER_COMPONENT_LAYOUT);
@@ -102,8 +102,8 @@ A Button demonstrates pure ECS widget composition:
 ### 5. Disabled Interaction State (`tether_widget_set_enabled`)
 Any widget or compound subtree can be enabled or disabled at runtime:
 ```c
-void tether_widget_set_enabled(Tether_GUID entity, bool enabled);
-bool tether_widget_is_enabled(Tether_GUID entity);
+void tether_widget_set_enabled(TUID entity, bool enabled);
+bool tether_widget_is_enabled(TUID entity);
 ```
 Disabling an entity sets `Interactable.is_enabled = false`, clears active hover/press/focus flags and `shape->active_bg` / `active_border`, dims `RenderTransform.opacity` recursively across all child entities, and causes `tether_hit_test()` to skip the entire subtree.
 
@@ -137,29 +137,29 @@ For application developers building interfaces in C, Tether provides composable 
 ### Primitives & Flow Helpers
 ```c
 /* Create a styled container panel */
-Tether_GUID tether_ui_panel(Tether_GUID parent);
+TUID tether_ui_panel(TUID parent);
 
 /* Configure container flow direction (TETHER_FLOW_NONE, TETHER_FLOW_ROW, TETHER_FLOW_COLUMN) */
-void tether_ui_set_container(Tether_GUID entity, Tether_Flow flow);
+void tether_ui_set_container(TUID entity, Tether_Flow flow);
 
 /* Configure CSS positioning mode (RELATIVE, ABSOLUTE, FIXED) */
-void tether_ui_set_position(Tether_GUID entity, Tether_PositionMode position);
+void tether_ui_set_position(TUID entity, Tether_PositionMode position);
 ```
 
 ### Content, State & Control Helpers
 ```c
 /* Typography */
-Tether_GUID tether_ui_text(Tether_GUID parent);
-bool        tether_ui_set_text(Tether_GUID entity, const char* string);
-const char* tether_ui_get_text(Tether_GUID entity);
-void        tether_ui_set_text_color(Tether_GUID entity, Tether_Color color);
-void        tether_ui_set_text_size(Tether_GUID entity, float font_size);
-void        tether_ui_set_text_align(Tether_GUID entity, Tether_Align align_x, Tether_Align align_y);
+TUID tether_ui_text(TUID parent);
+bool        tether_ui_set_text(TUID entity, const char* string);
+const char* tether_ui_get_text(TUID entity);
+void        tether_ui_set_text_color(TUID entity, Tether_Color color);
+void        tether_ui_set_text_size(TUID entity, float font_size);
+void        tether_ui_set_text_align(TUID entity, Tether_Align align_x, Tether_Align align_y);
 
 /* Button */
-Tether_GUID tether_ui_button(Tether_GUID parent);
-void        tether_ui_set_button_label(Tether_GUID btn, const char* label);
-void        tether_ui_set_button_color(Tether_GUID btn, Tether_Color color);
+TUID tether_ui_button(TUID parent);
+void        tether_ui_set_button_label(TUID btn, const char* label);
+void        tether_ui_set_button_color(TUID btn, Tether_Color color);
 ```
 
 ### Fluent Layout, Style & Interaction Modifiers
@@ -176,7 +176,7 @@ void        tether_ui_set_button_color(Tether_GUID btn, Tether_Color color);
 ### Practical C Composition Example
 ```c
 /* Build a responsive profile card in pure C */
-Tether_GUID card = tether_ui_panel(tether_ecs_get_main_root());
+TUID card = tether_ui_panel(tether_ecs_get_main_root());
 tether_ui_set_container(card, TETHER_FLOW_COLUMN);
 tether_ui_set_gap(card, 0.0f, 12.0f);
 tether_ui_set_padding(card, 20.0f, 20.0f, 20.0f, 20.0f);
@@ -185,22 +185,22 @@ tether_ui_set_border(card, 1.0f, (Tether_Color){60, 64, 72, 255}, 8.0f);
 tether_ui_set_size(card, 320.0f, 0.0f); /* Fixed 320px width, auto height */
 
 /* Add title and subtitle */
-Tether_GUID title = tether_ui_text(card);
+TUID title = tether_ui_text(card);
 tether_ui_set_text(title, "User Profile");
 tether_ui_set_text_size(title, 22.0f);
 tether_ui_set_text_color(title, (Tether_Color){255, 255, 255, 255});
 
-Tether_GUID subtitle = tether_ui_text(card);
+TUID subtitle = tether_ui_text(card);
 tether_ui_set_text(subtitle, "Systems Engineer");
 tether_ui_set_text_size(subtitle, 14.0f);
 tether_ui_set_text_color(subtitle, (Tether_Color){170, 178, 190, 255});
 
 /* Add horizontal button row */
-Tether_GUID actions = tether_widget_create_container(card);
+TUID actions = tether_widget_create_container(card);
 tether_ui_set_container(actions, TETHER_FLOW_ROW);
 tether_ui_set_gap(actions, 8.0f, 0.0f);
 
-Tether_GUID save_btn = tether_ui_button(actions);
+TUID save_btn = tether_ui_button(actions);
 tether_ui_set_button_label(save_btn, "Save Changes");
 tether_ui_set_button_color(save_btn, (Tether_Color){97, 175, 239, 255});
 tether_ui_set_flex(save_btn, 1.0f); /* Button fills remaining row width */
@@ -230,7 +230,7 @@ flowchart LR
         subgraph RegAPIs["Public Registration Facades"]
             direction TB
             R1["1. Widget Factory Registry\n(Widget Names -> CreateFn)"]
-            R2["2. String-ID Alias Registry\n(String Aliases <-> GUIDs)"]
+            R2["2. String-ID Alias Registry\n(String Aliases <-> TUIDs)"]
             R3["3. Font Registry\n(Font Names <-> Font IDs)"]
             R4["4. Layout Strategies\n(Planned)"]
             R5["5. Function & Event Registry\n(Action Callbacks & Events)"]
@@ -291,18 +291,18 @@ typedef struct {
 2. **Zero Pointer Chasing**: Entries reside in flat, contiguous memory buffers. Lookups exhibit exceptional CPU cache line locality compared to separate chaining linked lists.
 3. **Unified Engine Infrastructure**:
    - Widget Factory Registry: Resolves widget name strings to creation function pointers (`const char* -> (uint64_t)Tether_WidgetCreateFn`).
-   - String-ID Forward Map: Resolves alias strings to entity GUIDs (`const char* -> (uint64_t)Tether_GUID`).
-   - String-ID Reverse Map: Resolves entity GUIDs back to alias strings (`uint64_t -> const char*`).
+   - String-ID Forward Map: Resolves alias strings to entity TUIDs (`const char* -> (uint64_t)TUID`).
+   - String-ID Reverse Map: Resolves entity TUIDs back to alias strings (`uint64_t -> const char*`).
    - Font paths and action dispatch tables leverage this same zero-fragmentation infrastructure.
 
 ### 1. Widget Factory Registry
 Maps human-readable widget type names to C creation function pointers:
 
 ```c
-typedef Tether_GUID (*Tether_WidgetCreateFn)(Tether_GUID parent);
+typedef TUID (*Tether_WidgetCreateFn)(TUID parent);
 
 void tether_register_widget(const char* name, Tether_WidgetCreateFn create_fn);
-Tether_GUID tether_create_widget(const char* name, Tether_GUID parent);
+TUID tether_create_widget(const char* name, TUID parent);
 ```
 
 During engine startup (`src/tether.c`), the complete built-in widget suite is registered automatically:
@@ -326,25 +326,25 @@ tether_register_widget("Switcher", tether_ui_switcher);
 
 When the Declarative YAML parser encounters `- Button:`, it does not contain a hardcoded `switch` statement. It simply queries the registry:
 ```c
-Tether_GUID entity = tether_create_widget("Button", parent);
+TUID entity = tether_create_widget("Button", parent);
 ```
 If an application or plugin has registered custom widgets (e.g., `"Slider"`, `"ColorPicker"`, `"DataGrid"`), the parser instantiates them transparently without engine modifications.
 
 ### 2. String-ID Alias Registry
-ECS entity GUIDs are generational 64-bit integers (`Version | Index`). While optimal for memory lookups and cache locality, integer IDs are hostile to human developers and declarative markup.
+ECS entity TUIDs are generational 64-bit integers (`Version | Index`). While optimal for memory lookups and cache locality, integer IDs are hostile to human developers and declarative markup.
 
-The String-ID Alias Registry maintains a high-speed, bi-directional mapping between human-readable strings and live ECS GUIDs:
+The String-ID Alias Registry maintains a high-speed, bi-directional mapping between human-readable strings and live ECS TUIDs:
 
 ```c
-void tether_registry_alias_entity(Tether_GUID entity, const char* alias);
-const char* tether_registry_get_alias(Tether_GUID entity);
-Tether_GUID tether_registry_find_entity(const char* alias);
-void tether_registry_remove_alias(Tether_GUID entity);
+void tether_registry_alias_entity(TUID entity, const char* alias);
+const char* tether_registry_get_alias(TUID entity);
+TUID tether_registry_find_entity(const char* alias);
+void tether_registry_remove_alias(TUID entity);
 ```
 
 #### Dual-Map Architecture (`src/core/tether_registry.c`)
-- **Forward Lookup (`g_alias_to_entity`)**: A string hash map (`Tether_HashMap`) resolving alias strings to entity GUIDs in $O(1)$ average time.
-- **Reverse Lookup (`g_entity_to_alias`)**: A 64-bit integer map (`Tether_U64Map`) resolving entity GUIDs back to alias strings.
+- **Forward Lookup (`g_alias_to_entity`)**: A string hash map (`Tether_HashMap`) resolving alias strings to entity TUIDs in $O(1)$ average time.
+- **Reverse Lookup (`g_entity_to_alias`)**: A 64-bit integer map (`Tether_U64Map`) resolving entity TUIDs back to alias strings.
 
 #### Automatic Alias Invalidation
 When an alias is assigned to an entity via `tether_registry_alias_entity(entity, "main_header")`:
@@ -376,16 +376,16 @@ const char* tether_font_get_name(uint32_t font_id);
 The current layout solver handles its built-in flow modes directly. A registry for custom measure and arrange functions is a future design idea described in the [roadmap](../presentation/10_roadmap_and_community.md).
 
 ### 5. Event Bindings
-User interaction callbacks are linked to entity GUIDs via `src/core/tether_events.c`:
+User interaction callbacks are linked to entity TUIDs via `src/core/tether_events.c`:
 
 ```c
-typedef void (*Tether_EventCallback)(Tether_GUID entity, const Tether_Event *event, void* user_data);
+typedef void (*Tether_EventCallback)(TUID entity, const Tether_Event *event, void* user_data);
 
-void tether_bind_event(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback, void* user_data);
-void tether_bind_pointer_event(Tether_GUID entity, Tether_EventType type, Tether_MouseButton button,
+void tether_bind_event(TUID entity, Tether_EventType type, Tether_EventCallback callback, void* user_data);
+void tether_bind_pointer_event(TUID entity, Tether_EventType type, Tether_MouseButton button,
                                Tether_EventCallback callback, void* user_data);
-void tether_unbind_event(Tether_GUID entity, Tether_EventType type);
-void tether_dispatch_event(Tether_GUID entity, Tether_EventType type);
+void tether_unbind_event(TUID entity, Tether_EventType type);
+void tether_dispatch_event(TUID entity, Tether_EventType type);
 ```
 
 - **Compact Storage**: Event bindings are maintained in a flat array (`Tether_EventBinding`) operating with Swap-and-Pop deallocation when not dispatching, and reentrancy-safe deferred cleanup (`g_dispatch_depth`) during callbacks.
@@ -415,7 +415,7 @@ sequenceDiagram
         Reg->>Dev: create_checkbox_fn(parent)
         Dev->>ECS: tether_widget_create_container(parent)
         Dev->>ECS: Attach Custom Components and Child Nodes
-        Dev-->>Parser: Returns Tether_GUID
+        Dev-->>Parser: Returns TUID
     end
 ```
 
@@ -436,7 +436,7 @@ void app_register_components(void) {
 
 #### 2. Implement the Widget Factory Function
 ```c
-static void on_checkbox_clicked(Tether_GUID entity, const Tether_Event* event, void* user_data) {
+static void on_checkbox_clicked(TUID entity, const Tether_Event* event, void* user_data) {
     (void)event; (void)user_data;
     Custom_CheckboxData* cb = tether_ecs_get_component(entity, COMPONENT_CHECKBOX);
     if (!cb) return;
@@ -445,14 +445,14 @@ static void on_checkbox_clicked(Tether_GUID entity, const Tether_Event* event, v
 
     /* Update child visual text checkmark */
     Tether_Hierarchy* h = tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    if (h && h->first_child != TETHER_INVALID_GUID) {
+    if (h && h->first_child != TETHER_INVALID_TUID) {
         tether_ui_set_text(h->first_child, cb->is_checked ? "[X]" : "[ ]");
     }
 }
 
-Tether_GUID create_custom_checkbox(Tether_GUID parent) {
+TUID create_custom_checkbox(TUID parent) {
     /* 1. Create base container row */
-    Tether_GUID root = tether_widget_create_container(parent);
+    TUID root = tether_widget_create_container(parent);
     tether_ui_set_container(root, TETHER_FLOW_ROW);
     tether_ui_set_gap(root, 8.0f, 0.0f);
     tether_ui_set_padding(root, 4.0f, 4.0f, 4.0f, 4.0f);
@@ -464,13 +464,13 @@ Tether_GUID create_custom_checkbox(Tether_GUID parent) {
     data->check_color = (Tether_Color){97, 175, 239, 255};
 
     /* 3. Add visual indicator child */
-    Tether_GUID indicator = tether_ui_text(root);
+    TUID indicator = tether_ui_text(root);
     tether_ui_set_text(indicator, "[ ]");
     tether_ui_set_text_size(indicator, 16.0f);
     tether_ui_set_text_color(indicator, data->check_color);
 
     /* 4. Add label text child */
-    Tether_GUID label = tether_ui_text(root);
+    TUID label = tether_ui_text(root);
     tether_ui_set_text(label, "Checkbox Option");
     tether_ui_set_text_size(label, 16.0f);
     tether_ui_set_text_color(label, (Tether_Color){255, 255, 255, 255});
@@ -495,7 +495,7 @@ void app_init_ui(void) {
 #### 4. Instantiate from C or Declarative YAML
 Once registered, the new widget can be instantiated via C:
 ```c
-Tether_GUID my_check = tether_create_widget("Checkbox", panel);
+TUID my_check = tether_create_widget("Checkbox", panel);
 ```
 Or declared directly within YAML markup:
 ```yaml
@@ -505,7 +505,7 @@ Or declared directly within YAML markup:
       - Checkbox:
           id: terms_agreement
 ```
-The parser encounters `- Checkbox:`, queries the Central Registry, executes `create_custom_checkbox()`, aliases the resulting GUID to `"terms_agreement"`, and mounts it into the scene tree with zero custom parser modifications.
+The parser encounters `- Checkbox:`, queries the Central Registry, executes `create_custom_checkbox()`, aliases the resulting TUID to `"terms_agreement"`, and mounts it into the scene tree with zero custom parser modifications.
 
 ---
 
@@ -541,12 +541,12 @@ sequenceDiagram
     Engine->>RHI: g_rhi.text->destroy(handle)
     Engine->>ECS: Handles reset to INVALID_HANDLE
     UI->>ECS: tether_ecs_destroy_entity(entity)
-    Note over ECS: Components removed via Swap-and-Pop and GUID invalidated
+    Note over ECS: Components removed via Swap-and-Pop and TUID invalidated
 ```
 
 ### Realization (`tether_widget_show` / `tether_engine_realize`)
 To present a widget on screen, its visual components must receive concrete hardware backend handles:
-1. `tether_widget_show(entity)` forwards the target GUID to `tether_engine_realize(entity)`.
+1. `tether_widget_show(entity)` forwards the target TUID to `tether_engine_realize(entity)`.
 2. The engine traverses the entity and all descendants recursively.
 3. If an entity contains `Tether_Shape` with an invalid handle, it calls `g_rhi.shape->create()`.
 4. If an entity contains `Tether_Text` with an invalid handle, it calls `g_rhi.text->create()` and tags `DIRTY_TEXT_CONTENT`.

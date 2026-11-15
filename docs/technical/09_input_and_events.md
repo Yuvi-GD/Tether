@@ -124,7 +124,7 @@ Rather than iterating linearly through dense component arrays, Tether executes a
 ```mermaid
 flowchart TD
     Start["hit_test_tree(node, x, y)"] --> VisCheck{"Is node VISIBLE?\n(Not HIDDEN or COLLAPSED)"}
-    VisCheck -- No --> Reject["Return INVALID_GUID (Branch Culled)"]
+    VisCheck -- No --> Reject["Return INVALID_TUID (Branch Culled)"]
     VisCheck -- Yes --> BoundsCheck{"Spatial Bounds Check:\nIs (x,y) inside SlotTransform?"}
     
     BoundsCheck -- No --> Reject
@@ -135,7 +135,7 @@ flowchart TD
     
     CheckSelfOnly -- No --> ChildLoop["Reverse Child Loop\n(last_child to prev_sibling: Topmost Z first)"]
     ChildLoop --> Recurse["hit = hit_test_tree(child, x, y)"]
-    Recurse --> ChildHit{"hit != INVALID_GUID?"}
+    Recurse --> ChildHit{"hit != INVALID_TUID?"}
     ChildHit -- Yes --> ReturnHit["Return hit (Short-Circuit)"]
     ChildHit -- No --> MoreChildren{"More siblings?"}
     MoreChildren -- Yes --> ChildLoop
@@ -151,7 +151,7 @@ flowchart TD
 1. **Priority Route & Reverse Root-Level Iteration**:
    If a temporary input route (`tether_input_set_route()`) is active (used by popups, dropdowns, and context menus), `tether_hit_test(x, y)` evaluates `g_route` first. Otherwise it queries root entities in `TETHER_COMPONENT_HIERARCHY` in reverse order (`overlay_root` before `main_root`).
 2. **Enabled & Visibility Pruning**:
-   If an entity has `Interactable.is_enabled == false`, or `Visibility.computed_state` equals `TETHER_HIDDEN` or `TETHER_COLLAPSED`, `hit_test_tree()` returns `TETHER_INVALID_GUID` immediately and prunes the entire subtree.
+   If an entity has `Interactable.is_enabled == false`, or `Visibility.computed_state` equals `TETHER_HIDDEN` or `TETHER_COLLAPSED`, `hit_test_tree()` returns `TETHER_INVALID_TUID` immediately and prunes the entire subtree.
 3. **$O(1)$ Spatial Bounding Box Culling with Overlay Child Descent**:
    The cursor position is tested against `Tether_SlotTransform`:
    ```c
@@ -193,10 +193,10 @@ typedef struct Tether_Interactable {
 ### Priority Input Routing (`tether_input_set_route` / `tether_input_clear_route`)
 Transient overlays such as open dropdowns and context menus register a single priority route target and observer callback:
 ```c
-typedef void (*Tether_InputRouteCallback)(Tether_GUID entity, const Tether_Pointer_Event *event,
-                                         Tether_GUID hit, Tether_GUID pressed);
-void tether_input_set_route(Tether_GUID entity, Tether_InputRouteCallback callback);
-void tether_input_clear_route(Tether_GUID entity);
+typedef void (*Tether_InputRouteCallback)(TUID entity, const Tether_Pointer_Event *event,
+                                         TUID hit, TUID pressed);
+void tether_input_set_route(TUID entity, Tether_InputRouteCallback callback);
+void tether_input_clear_route(TUID entity);
 ```
 During `tether_input_process_event()`, the router receives the resolved `hit` and `g_pressed` entities so an open menu or dropdown can close cleanly on an outside click or escape interaction. Destroying a routed entity clears `g_route` automatically.
 
@@ -239,16 +239,16 @@ typedef struct {
     float x, y;
 } Tether_Event;
 
-typedef void (*Tether_EventCallback)(Tether_GUID entity, const Tether_Event *event, void* user_data);
+typedef void (*Tether_EventCallback)(TUID entity, const Tether_Event *event, void* user_data);
 
-void tether_bind_event(Tether_GUID entity, Tether_EventType type,
+void tether_bind_event(TUID entity, Tether_EventType type,
                        Tether_EventCallback callback, void* user_data);
-void tether_bind_pointer_event(Tether_GUID entity, Tether_EventType type, Tether_MouseButton button,
+void tether_bind_pointer_event(TUID entity, Tether_EventType type, Tether_MouseButton button,
                                Tether_EventCallback callback, void* user_data);
-void tether_unbind_event(Tether_GUID entity, Tether_EventType type);
-void tether_unbind_callback(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback);
-void tether_dispatch_event(Tether_GUID entity, Tether_EventType type);
-void tether_dispatch_event_data(Tether_GUID entity, const Tether_Event *event);
+void tether_unbind_event(TUID entity, Tether_EventType type);
+void tether_unbind_callback(TUID entity, Tether_EventType type, Tether_EventCallback callback);
+void tether_dispatch_event(TUID entity, Tether_EventType type);
+void tether_dispatch_event_data(TUID entity, const Tether_Event *event);
 ```
 
 - **`tether_bind_event` vs `tether_bind_pointer_event`**: `tether_bind_event()` binds left-button pointer actions (or unfiltered hover/`TETHER_EVENT_CHANGE` events). `tether_bind_pointer_event()` lets callers bind specific mouse buttons such as `TETHER_MOUSE_BUTTON_RIGHT`.

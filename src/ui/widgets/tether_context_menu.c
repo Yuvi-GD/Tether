@@ -5,11 +5,11 @@
 #include "tether/ui/tether_ui.h"
 #include "tether/ui/tether_widgets.h"
 
-Tether_GUID tether_ui_context_menu(Tether_GUID parent) {
+TUID tether_ui_context_menu(TUID parent) {
     return tether_ui_menu(parent);
 }
 
-void tether_ui_context_menu_open_at(Tether_GUID menu, float x, float y) {
+void tether_ui_context_menu_open_at(TUID menu, float x, float y) {
     if (!tether_ecs_is_valid(menu)) return;
 
     int count = tether_ui_menu_get_item_count(menu);
@@ -19,7 +19,7 @@ void tether_ui_context_menu_open_at(Tether_GUID menu, float x, float y) {
     if (g_backend.system && g_backend.system->get_resolution) {
         g_backend.system->get_resolution(&viewport_width, &viewport_height);
     }
-    Tether_GUID host = tether_widget_get_parent(menu);
+    TUID host = tether_widget_get_parent(menu);
     if (tether_widget_get_parent(host) == tether_ecs_get_overlay_root()) {
         Tether_SlotTransform *slot = tether_ecs_get_component(host, TETHER_COMPONENT_SLOT_TRANSFORM);
         if (slot && viewport_width && viewport_height) {

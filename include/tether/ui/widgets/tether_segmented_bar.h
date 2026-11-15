@@ -21,26 +21,26 @@ extern "C" {
  *   └── [N-1] Segment N-1: Shape, Interactable
  *         └── [0] Text
  */
-Tether_GUID tether_ui_segmented_bar(Tether_GUID parent);
+TUID tether_ui_segmented_bar(TUID parent);
 
 /* Change segment direction after creation; only ROW and COLUMN are supported. */
-void tether_ui_set_segmented_bar_flow(Tether_GUID bar, Tether_Flow flow);
+void tether_ui_set_segmented_bar_flow(TUID bar, Tether_Flow flow);
 
 /* ========================================================================== */
 /* 2. Operations (Setters, Getters, Item Management)                          */
 /* ========================================================================== */
 
 /* Dynamic Item Management */
-Tether_GUID tether_ui_add_segment(Tether_GUID bar, const char *label);
-void        tether_ui_set_segment(Tether_GUID bar, int index, const char *label);
-const char* tether_ui_get_segment(Tether_GUID bar, int index);
-void        tether_ui_remove_segment(Tether_GUID bar, int index);
-void        tether_ui_clear_segments(Tether_GUID bar);
+TUID tether_ui_add_segment(TUID bar, const char *label);
+void        tether_ui_set_segment(TUID bar, int index, const char *label);
+const char* tether_ui_get_segment(TUID bar, int index);
+void        tether_ui_remove_segment(TUID bar, int index);
+void        tether_ui_clear_segments(TUID bar);
 
 /* Selection Operations */
-void        tether_ui_set_segment_selected(Tether_GUID bar, int selected_index);
-int         tether_ui_get_segment_selected(Tether_GUID bar);
-void        tether_ui_unselect_segment(Tether_GUID bar);
+void        tether_ui_set_segment_selected(TUID bar, int selected_index);
+int         tether_ui_get_segment_selected(TUID bar);
+void        tether_ui_unselect_segment(TUID bar);
 
 #ifdef __cplusplus
 }

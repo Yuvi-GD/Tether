@@ -153,8 +153,8 @@ Tether preserves the scene graph across frames. Subsystems update only what is f
 ### 4. Separation of Layout Space from Render Space
 Layout bounds (`SlotTransform`) and presentation transformations (`RenderTransform`) are decoupled so visual animations (offsets, colors, shape transforms, opacity) avoid triggering layout reflow passes in parent or sibling containers. (Note: in `v0.0.3-preview`, text transforms rebuild CPU-side glyph geometry via `DIRTY_TEXT_CONTENT`.)
 
-### 5. Universal 64-Bit Scalar GUIDs
-Entities are identified by scalar 64-bit integer values (`Tether_GUID`) containing an index and a generational version counter. Safe across foreign bindings, stale entity handles fail in $O(1)$ time via `tether_ecs_is_valid()`. (Internal C component getters can still return raw array pointers that C callers should re-query after dense-array mutations.)
+### 5. Universal 64-Bit Scalar TUIDs
+Entities are identified by scalar 64-bit integer values (`TUID`) containing an index and a generational version counter. Safe across foreign bindings, stale entity handles fail in $O(1)$ time via `tether_ecs_is_valid()`. (Internal C component getters can still return raw array pointers that C callers should re-query after dense-array mutations.)
 
 ### 6. Dual Authoring & Polyglot Parity
 Declarative markup (YAML) and compiled code (C99) share the exact same runtime representation:

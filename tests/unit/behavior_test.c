@@ -44,21 +44,21 @@ static bool near(float actual, float expected) {
     return fabsf(actual - expected) < 0.01f;
 }
 
-static Tether_GUID panel(Tether_GUID parent, float width, float height) {
-    Tether_GUID entity = tether_ui_panel(parent);
+static TUID panel(TUID parent, float width, float height) {
+    TUID entity = tether_ui_panel(parent);
     tether_ui_set_size(entity, width, height);
     return entity;
 }
 
 static bool layout_case(void) {
-    Tether_GUID root = panel(tether_ecs_get_main_root(), 400, 200);
+    TUID root = panel(tether_ecs_get_main_root(), 400, 200);
     Tether_Layout *layout = tether_ecs_get_component(root, TETHER_COMPONENT_LAYOUT);
     layout->flow = TETHER_FLOW_ROW;
     layout->content_align_x = TETHER_ALIGN_CENTER;
     layout->content_align_y = TETHER_ALIGN_START;
     tether_ui_set_gap(root, 10, 0);
-    Tether_GUID first = panel(root, 50, 20);
-    Tether_GUID second = panel(root, 50, 20);
+    TUID first = panel(root, 50, 20);
+    TUID second = panel(root, 50, 20);
     tether_layout_process_all(400, 200);
     Tether_SlotTransform *a = tether_ecs_get_component(first, TETHER_COMPONENT_SLOT_TRANSFORM);
     Tether_SlotTransform *b = tether_ecs_get_component(second, TETHER_COMPONENT_SLOT_TRANSFORM);
@@ -82,7 +82,7 @@ static bool layout_case(void) {
     tether_layout_process_all(600, 200);
     CHECK(near(a->y, 75) && near(b->y, 105));
     tether_ui_set_content_align(root, TETHER_ALIGN_FILL, TETHER_ALIGN_START);
-    Tether_GUID toggle = tether_ui_toggle(root);
+    TUID toggle = tether_ui_toggle(root);
     tether_layout_process_all(600, 200);
     Tether_SlotTransform *toggle_slot = tether_ecs_get_component(toggle, TETHER_COMPONENT_SLOT_TRANSFORM);
     CHECK(toggle_slot && near(toggle_slot->width, 46) && near(toggle_slot->height, 26));
@@ -91,8 +91,8 @@ static bool layout_case(void) {
 }
 
 static bool visibility_case(void) {
-    Tether_GUID parent = panel(tether_ecs_get_main_root(), 300, 100);
-    Tether_GUID child = panel(parent, 20, 20);
+    TUID parent = panel(tether_ecs_get_main_root(), 300, 100);
+    TUID child = panel(parent, 20, 20);
     Tether_Visibility *visibility = tether_ecs_get_component(child, TETHER_COMPONENT_VISIBILITY);
     CHECK(visibility && visibility->computed_state == TETHER_VISIBLE);
     tether_widget_set_visibility(parent, TETHER_HIDDEN);
@@ -108,7 +108,7 @@ static bool visibility_case(void) {
     return true;
 }
 
-static void count_click(Tether_GUID entity, const Tether_Event *event_info, void *data) {
+static void count_click(TUID entity, const Tether_Event *event_info, void *data) {
     (void)entity;
     if (event_info->type == TETHER_EVENT_CLICK) {
         (*(unsigned *)data)++;
@@ -116,9 +116,9 @@ static void count_click(Tether_GUID entity, const Tether_Event *event_info, void
 }
 
 static bool input_case(void) {
-    Tether_GUID root = panel(tether_ecs_get_main_root(), 200, 100);
-    Tether_GUID lower = panel(root, 100, 100);
-    Tether_GUID upper = panel(root, 100, 100);
+    TUID root = panel(tether_ecs_get_main_root(), 200, 100);
+    TUID lower = panel(root, 100, 100);
+    TUID upper = panel(root, 100, 100);
     tether_ecs_add_component(lower, TETHER_COMPONENT_INTERACTABLE);
     tether_ecs_add_component(upper, TETHER_COMPONENT_INTERACTABLE);
     tether_layout_process_all(200, 100);
@@ -141,19 +141,19 @@ static bool input_case(void) {
     tether_dispatch_event(lower, TETHER_EVENT_CLICK);
     CHECK(clicks == 1);
     tether_input_process_event(NULL);
-    CHECK(tether_hit_test(-1, -1) == TETHER_INVALID_GUID);
+    CHECK(tether_hit_test(-1, -1) == TETHER_INVALID_TUID);
     return true;
 }
 
 static bool lifetime_case(void) {
-    Tether_GUID parent = panel(tether_ecs_get_main_root(), 100, 100);
-    Tether_GUID child = panel(parent, 10, 10);
+    TUID parent = panel(tether_ecs_get_main_root(), 100, 100);
+    TUID child = panel(parent, 10, 10);
     tether_ecs_destroy_entity(parent);
     CHECK(!tether_ecs_is_valid(parent));
     CHECK(!tether_ecs_is_valid(child));
     tether_ecs_destroy_entity(parent);
-    tether_ecs_destroy_entity(TETHER_INVALID_GUID);
-    Tether_GUID replacement = tether_ecs_create_entity();
+    tether_ecs_destroy_entity(TETHER_INVALID_TUID);
+    TUID replacement = tether_ecs_create_entity();
     CHECK(tether_ecs_is_valid(replacement));
     CHECK(replacement != parent && replacement != child);
     CHECK(tether_ecs_get_component(child, TETHER_COMPONENT_LAYOUT) == NULL);
@@ -162,7 +162,7 @@ static bool lifetime_case(void) {
 }
 
 static bool text_case(void) {
-    Tether_GUID text = tether_ui_text(tether_ecs_get_main_root());
+    TUID text = tether_ui_text(tether_ecs_get_main_root());
     char large[700];
     memset(large, 'x', sizeof large - 1);
     large[sizeof large - 1] = '\0';
@@ -187,10 +187,10 @@ static bool text_case(void) {
 static int s_test_ctx_selected_idx = -1;
 static unsigned s_test_ctx_actions;
 static char s_test_ctx_selected_str[64] = {0};
-static void test_on_ctx_select(Tether_GUID item, const Tether_Event *event_info, void *user_data) {
+static void test_on_ctx_select(TUID item, const Tether_Event *event_info, void *user_data) {
     (void)item;
     (void)event_info;
-    Tether_GUID menu = (Tether_GUID)(uintptr_t)user_data;
+    TUID menu = (TUID)(uintptr_t)user_data;
     s_test_ctx_actions++;
     int index = tether_ui_menu_get_selected(menu);
     const char *item_text = tether_ui_menu_get_item_text(menu, index);
@@ -199,18 +199,18 @@ static void test_on_ctx_select(Tether_GUID item, const Tether_Event *event_info,
 }
 
 static bool widgets_case(void) {
-    Tether_GUID root = tether_ecs_get_main_root();
+    TUID root = tether_ecs_get_main_root();
 
     /* 0. Button & Hierarchy Queries */
     unsigned btn_clicks = 0;
-    Tether_GUID btn = tether_ui_button(root);
+    TUID btn = tether_ui_button(root);
     CHECK(tether_ecs_is_valid(btn));
     CHECK(tether_widget_get_parent(btn) == root);
-    Tether_GUID btn_txt = tether_widget_get_child_at(btn, 0);
+    TUID btn_txt = tether_widget_get_child_at(btn, 0);
     CHECK(tether_ecs_is_valid(btn_txt));
     CHECK(tether_widget_get_child_at(btn, 0) == btn_txt);
     CHECK(tether_widget_get_child_at(btn, -1) == btn_txt);
-    CHECK(tether_widget_get_child_at(btn, 1) == TETHER_INVALID_GUID);
+    CHECK(tether_widget_get_child_at(btn, 1) == TETHER_INVALID_TUID);
     int btn_child_count = tether_widget_get_child_count(btn);
     CHECK(btn_child_count == 1);
     CHECK(tether_widget_get_child_count(btn) == 1);
@@ -223,7 +223,7 @@ static bool widgets_case(void) {
     CHECK(btn_clicks == 1);
 
     /* 1. Progress Bar */
-    Tether_GUID pb = tether_ui_progress_bar(root);
+    TUID pb = tether_ui_progress_bar(root);
     tether_ui_set_size(pb, 200.0f, 10.0f);
     tether_ui_set_color(pb, (Tether_Color){30, 30, 30, 255});
     tether_ui_set_progress(pb, 0.25f);
@@ -238,7 +238,7 @@ static bool widgets_case(void) {
     CHECK(near(tether_ui_get_progress(pb), 0.0f));
 
     /* 2. Slider */
-    Tether_GUID sl = tether_ui_slider(root);
+    TUID sl = tether_ui_slider(root);
     tether_ui_set_size(sl, 200.0f, 24.0f);
     tether_ui_set_slider_range(sl, 0.0f, 100.0f);
     tether_ui_set_slider_value(sl, 50.0f);
@@ -256,7 +256,7 @@ static bool widgets_case(void) {
     CHECK(near(tether_ui_get_slider_value(sl), 30.0f));
 
     /* 3. Toggle Switch */
-    Tether_GUID tg = tether_ui_toggle(root);
+    TUID tg = tether_ui_toggle(root);
     tether_ui_set_toggle(tg, false);
     CHECK(tether_ecs_is_valid(tg));
     CHECK(!tether_ui_get_toggle(tg));
@@ -266,7 +266,7 @@ static bool widgets_case(void) {
     CHECK(!tether_ui_get_toggle(tg));
 
     /* 4. Checkbox */
-    Tether_GUID cb = tether_ui_checkbox(root);
+    TUID cb = tether_ui_checkbox(root);
     CHECK(tether_ecs_is_valid(cb));
     CHECK(!tether_ui_get_checked(cb));
     tether_ui_set_checked(cb, true);
@@ -275,7 +275,7 @@ static bool widgets_case(void) {
     CHECK(!tether_ui_get_checked(cb));
 
     /* 5. Radio Button Group */
-    Tether_GUID rad = tether_ui_radio(root);
+    TUID rad = tether_ui_radio(root);
     CHECK(tether_ecs_is_valid(rad));
     CHECK(tether_ui_get_radio_selected(rad) == -1);
     tether_ui_add_radio_option(rad, "Option 1");
@@ -291,7 +291,7 @@ static bool widgets_case(void) {
     CHECK(tether_ui_get_radio_selected(rad) == -1);
 
     /* 6. Segmented Button Bar */
-    Tether_GUID bar = tether_ui_segmented_bar(root);
+    TUID bar = tether_ui_segmented_bar(root);
     CHECK(tether_ecs_is_valid(bar));
     CHECK(tether_ui_get_segment_selected(bar) == -1);
     tether_ui_add_segment(bar, "Option A");
@@ -305,7 +305,7 @@ static bool widgets_case(void) {
 
     /* 7. Dropdown (Inline & Overlay) */
     const char *dd_opts[] = {"Red", "Green", "Blue"};
-    Tether_GUID dd = tether_ui_dropdown(root);
+    TUID dd = tether_ui_dropdown(root);
     tether_ui_set_dropdown_options(dd, dd_opts, 3);
     tether_ui_set_dropdown_selected(dd, 0);
     tether_ui_set_dropdown_type(dd, TETHER_DROPDOWN_INLINE);
@@ -313,8 +313,8 @@ static bool widgets_case(void) {
     CHECK(tether_ui_get_dropdown_selected(dd) == 0);
 
     /* Verify bracket chevron and RenderTransform scale & rotation */
-    Tether_GUID dd_hdr = tether_widget_get_child_at(dd, 0);
-    Tether_GUID dd_arrow = tether_widget_get_child_at(dd_hdr, 1);
+    TUID dd_hdr = tether_widget_get_child_at(dd, 0);
+    TUID dd_arrow = tether_widget_get_child_at(dd_hdr, 1);
     CHECK(tether_ecs_is_valid(dd_arrow));
     CHECK(strcmp(tether_ui_get_text(dd_arrow), "<") == 0);
     Tether_RenderTransform *dd_arrow_rt = (Tether_RenderTransform*)tether_ecs_get_component(dd_arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
@@ -325,7 +325,7 @@ static bool widgets_case(void) {
 
     tether_ui_set_dropdown_selected(dd, 1);
     CHECK(tether_ui_get_dropdown_selected(dd) == 1);
-    Tether_GUID dd_label = tether_widget_get_child_at(dd_hdr, 0);
+    TUID dd_label = tether_widget_get_child_at(dd_hdr, 0);
     CHECK(strcmp(tether_ui_get_text(dd_label), "Green") == 0);
 
     CHECK(!tether_ui_is_dropdown_open(dd));
@@ -385,7 +385,7 @@ static bool widgets_case(void) {
     /* Releasing outside collapses */
     CHECK(!tether_ui_is_dropdown_open(dd));
 
-    Tether_GUID dd_overlay = tether_ui_dropdown(root);
+    TUID dd_overlay = tether_ui_dropdown(root);
     tether_ui_set_dropdown_options(dd_overlay, dd_opts, 3);
     tether_ui_set_dropdown_selected(dd_overlay, 0);
     tether_ui_set_dropdown_type(dd_overlay, TETHER_DROPDOWN_OVERLAY);
@@ -396,7 +396,7 @@ static bool widgets_case(void) {
     CHECK(!tether_ui_is_dropdown_open(dd_overlay));
 
     /* Context menus are created and configured once, then reopened. */
-    Tether_GUID ctx_host = tether_widget_create_container(tether_ecs_get_overlay_root());
+    TUID ctx_host = tether_widget_create_container(tether_ecs_get_overlay_root());
     Tether_System_API *original_system = g_backend.system;
     Tether_System_API test_system = *original_system;
     test_system.get_resolution = test_resolution;
@@ -405,7 +405,7 @@ static bool widgets_case(void) {
     Tether_SlotTransform *ctx_host_slot = tether_ecs_get_component(ctx_host, TETHER_COMPONENT_SLOT_TRANSFORM);
     ctx_host_slot->width = 800.0f;
     ctx_host_slot->height = 600.0f;
-    Tether_GUID ctx_menu2 = tether_ui_context_menu(ctx_host);
+    TUID ctx_menu2 = tether_ui_context_menu(ctx_host);
     tether_ui_menu_set_items(ctx_menu2, dd_opts, 3);
     for (int i = 0; i < 3; ++i) {
         tether_bind_event(tether_widget_get_child_at(ctx_menu2, i), TETHER_EVENT_CLICK,
@@ -416,7 +416,7 @@ static bool widgets_case(void) {
     CHECK(s_test_ctx_selected_idx == -1);
     CHECK(s_test_ctx_actions == 0);
     tether_layout_process_all(800.0f, 600.0f);
-    Tether_GUID btn1 = tether_widget_get_child_at(ctx_menu2, 1);
+    TUID btn1 = tether_widget_get_child_at(ctx_menu2, 1);
     CHECK(tether_ecs_is_valid(btn1));
     Tether_SlotTransform *b1_st = (Tether_SlotTransform*)tether_ecs_get_component(btn1, TETHER_COMPONENT_SLOT_TRANSFORM);
     if (b1_st) {
@@ -450,11 +450,11 @@ static bool widgets_case(void) {
     g_backend.system = original_system;
 
     /* 8. Collapsible Section */
-    Tether_GUID col = tether_ui_collapsible(root);
+    TUID col = tether_ui_collapsible(root);
     tether_ui_set_collapsible_title(col, "Telemetry Details");
     CHECK(tether_ecs_is_valid(col));
     CHECK(!tether_ui_is_collapsible_open(col));
-    Tether_GUID content = tether_ui_collapsible_content(col);
+    TUID content = tether_ui_collapsible_content(col);
     CHECK(tether_ecs_is_valid(content));
     CHECK(tether_widget_is_collapsed(content));
     tether_ui_toggle_collapsible(col);
@@ -462,11 +462,11 @@ static bool widgets_case(void) {
     CHECK(tether_widget_is_visible(content));
 
     /* 8. View Switcher */
-    Tether_GUID sw = tether_ui_switcher(root);
+    TUID sw = tether_ui_switcher(root);
     CHECK(tether_ecs_is_valid(sw));
-    Tether_GUID v0 = tether_ui_switcher_add_view(sw);
-    Tether_GUID v1 = tether_ui_switcher_add_view(sw);
-    Tether_GUID v2 = tether_ui_switcher_add_view(sw);
+    TUID v0 = tether_ui_switcher_add_view(sw);
+    TUID v1 = tether_ui_switcher_add_view(sw);
+    TUID v2 = tether_ui_switcher_add_view(sw);
     CHECK(tether_ui_switcher_get_active(sw) == 0);
     CHECK(tether_widget_is_visible(v0));
     CHECK(tether_widget_is_collapsed(v1));
@@ -481,22 +481,22 @@ static bool widgets_case(void) {
     return true;
 }
 
-static void count_change(Tether_GUID entity, const Tether_Event *event_info, void *data) {
+static void count_change(TUID entity, const Tether_Event *event_info, void *data) {
     (void)entity;
     if (event_info->type == TETHER_EVENT_CHANGE) (*(unsigned *)data)++;
 }
 
 static bool menu_interaction_case(void) {
-    Tether_GUID root = panel(tether_ecs_get_main_root(), 400, 300);
+    TUID root = panel(tether_ecs_get_main_root(), 400, 300);
     tether_ui_set_container(root, TETHER_FLOW_COLUMN);
-    Tether_GUID dropdown = tether_ui_dropdown(root);
+    TUID dropdown = tether_ui_dropdown(root);
     const char *items[] = {"First", "Second", "Third"};
     tether_ui_set_dropdown_options(dropdown, items, 3);
     /* A later sibling covers the menu's lower items in normal layout order. */
-    Tether_GUID overlapping = panel(root, 400, 140);
+    TUID overlapping = panel(root, 400, 140);
     tether_widget_add_interaction(overlapping, TETHER_HIT_BLOCK);
-    Tether_GUID header = tether_widget_get_child_at(dropdown, 0);
-    Tether_GUID menu = tether_widget_get_child_at(dropdown, 1);
+    TUID header = tether_widget_get_child_at(dropdown, 0);
+    TUID menu = tether_widget_get_child_at(dropdown, 1);
     Tether_Shape *frame = tether_ecs_get_component(menu, TETHER_COMPONENT_SHAPE);
     Tether_Shape *item_shape = tether_ecs_get_component(tether_widget_get_child_at(menu, 0), TETHER_COMPONENT_SHAPE);
     CHECK(frame && item_shape && frame->border_width > 0.0f);
@@ -513,7 +513,7 @@ static bool menu_interaction_case(void) {
     tether_input_process_event(&event);
     CHECK(tether_ui_is_dropdown_open(dropdown));
     tether_layout_process_all(400, 300);
-    Tether_GUID last = tether_widget_get_child_at(menu, 2);
+    TUID last = tether_widget_get_child_at(menu, 2);
     unsigned actions = 0;
     tether_bind_event(last, TETHER_EVENT_CLICK, count_click, &actions);
     Tether_SlotTransform *last_slot = tether_ecs_get_component(last, TETHER_COMPONENT_SLOT_TRANSFORM);
@@ -534,10 +534,10 @@ static bool menu_interaction_case(void) {
     CHECK(actions == 1);
     CHECK(!tether_ui_is_dropdown_open(dropdown));
 
-    Tether_GUID collapsible = tether_ui_collapsible(root);
-    Tether_GUID col_header = tether_widget_get_child_at(collapsible, 0);
-    Tether_GUID col_arrow = tether_widget_get_child_at(col_header, 0);
-    Tether_GUID dd_arrow = tether_widget_get_child_at(header, 1);
+    TUID collapsible = tether_ui_collapsible(root);
+    TUID col_header = tether_widget_get_child_at(collapsible, 0);
+    TUID col_arrow = tether_widget_get_child_at(col_header, 0);
+    TUID dd_arrow = tether_widget_get_child_at(header, 1);
     Tether_Text *col_text = tether_ecs_get_component(col_arrow, TETHER_COMPONENT_TEXT);
     Tether_Text *dd_text = tether_ecs_get_component(dd_arrow, TETHER_COMPONENT_TEXT);
     Tether_RenderTransform *col_transform = tether_ecs_get_component(col_arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
@@ -560,28 +560,28 @@ static bool menu_interaction_case(void) {
 
 static unsigned event_self_count, event_other_count, event_right_count;
 static unsigned event_change_count;
-static void event_self_remove(Tether_GUID entity, const Tether_Event *event, void *data) {
+static void event_self_remove(TUID entity, const Tether_Event *event, void *data) {
     (void)event;
     (void)data;
     event_self_count++;
     tether_unbind_callback(entity, TETHER_EVENT_CLICK, event_self_remove);
 }
 
-static void event_other(Tether_GUID entity, const Tether_Event *event, void *data) {
+static void event_other(TUID entity, const Tether_Event *event, void *data) {
     (void)entity;
     (void)event;
     (void)data;
     event_other_count++;
 }
 
-static void event_right(Tether_GUID entity, const Tether_Event *event, void *data) {
+static void event_right(TUID entity, const Tether_Event *event, void *data) {
     (void)entity;
     (void)data;
     if (event->type == TETHER_EVENT_CLICK && event->button == TETHER_MOUSE_BUTTON_RIGHT &&
         near(event->x, 10.0f) && near(event->y, 10.0f)) event_right_count++;
 }
 
-static void event_menu_change(Tether_GUID entity, const Tether_Event *event, void *data) {
+static void event_menu_change(TUID entity, const Tether_Event *event, void *data) {
     (void)entity;
     (void)event;
     (void)data;
@@ -589,8 +589,8 @@ static void event_menu_change(Tether_GUID entity, const Tether_Event *event, voi
 }
 
 static bool event_contract_case(void) {
-    Tether_GUID root = panel(tether_ecs_get_main_root(), 200, 100);
-    Tether_GUID child = panel(root, 100, 100);
+    TUID root = panel(tether_ecs_get_main_root(), 200, 100);
+    TUID child = panel(root, 100, 100);
     tether_widget_add_interaction(child, TETHER_HIT_BLOCK);
     tether_bind_event(child, TETHER_EVENT_CLICK, event_self_remove, NULL);
     tether_bind_event(child, TETHER_EVENT_CLICK, event_other, NULL);
@@ -611,7 +611,7 @@ static bool event_contract_case(void) {
     CHECK(event_right_count == 1);
     CHECK(event_other_count == 2); /* Default left binding ignored the right click. */
 
-    Tether_GUID menu = tether_ui_menu(root);
+    TUID menu = tether_ui_menu(root);
     const char *items[] = {"One", "Two"};
     tether_ui_menu_set_items(menu, items, 2);
     tether_bind_event(menu, TETHER_EVENT_CHANGE, event_menu_change, NULL);
@@ -625,7 +625,7 @@ static bool event_contract_case(void) {
 }
 
 static unsigned disabled_click_count;
-static void count_disabled_click(Tether_GUID entity, const Tether_Event *event, void *data) {
+static void count_disabled_click(TUID entity, const Tether_Event *event, void *data) {
     (void)entity;
     (void)event;
     (void)data;
@@ -634,15 +634,15 @@ static void count_disabled_click(Tether_GUID entity, const Tether_Event *event, 
 
 /* Check the slider after disabling its parent during a drag. */
 static bool disabled_case(void) {
-    Tether_GUID root = panel(tether_ecs_get_main_root(), 200, 100);
-    Tether_GUID slider = tether_ui_slider(root);
+    TUID root = panel(tether_ecs_get_main_root(), 200, 100);
+    TUID slider = tether_ui_slider(root);
     tether_ui_set_size(slider, 100, 20);
     Tether_ValueRange *range = tether_ecs_get_component(slider, TETHER_COMPONENT_VALUE_RANGE);
     CHECK(range != NULL);
     range->step = 10.0f;
     tether_ui_set_slider_value(slider, 26.0f);
     CHECK(tether_ui_get_slider_value(slider) == 30.0f);
-    Tether_GUID thumb = tether_widget_get_child_at(slider, 1);
+    TUID thumb = tether_widget_get_child_at(slider, 1);
     Tether_RenderTransform *transform = tether_ecs_get_component(thumb, TETHER_COMPONENT_RENDER_TRANSFORM);
     CHECK(transform != NULL);
     transform->opacity = 0.8f;
@@ -682,7 +682,7 @@ static bool disabled_case(void) {
     CHECK(near(transform->opacity, 0.8f));
 
     tether_widget_destroy(slider);
-    Tether_GUID button = tether_ui_button(root);
+    TUID button = tether_ui_button(root);
     tether_ui_set_size(button, 100, 30);
     tether_bind_event(button, TETHER_EVENT_CLICK, count_disabled_click, NULL);
     tether_layout_process_all(200, 100);

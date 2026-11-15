@@ -10,10 +10,10 @@ extern "C" {
 
 /* 
  * Signature for a widget creation function.
- * Given a parent GUID, it should create a new entity, add necessary components,
- * attach it to the parent in the hierarchy, and return the new entity GUID.
+ * Given a parent TUID, it should create a new entity, add necessary components,
+ * attach it to the parent in the hierarchy, and return the new entity TUID.
  */
-typedef Tether_GUID (*Tether_WidgetCreateFn)(Tether_GUID parent);
+typedef TUID (*Tether_WidgetCreateFn)(TUID parent);
 
 /* Initialize and Terminate the Registry */
 void tether_registry_init(void);
@@ -23,16 +23,16 @@ void tether_registry_term(void);
  * Widget factory registration.
  */
 void tether_register_widget(const char* name, Tether_WidgetCreateFn create_fn);
-Tether_GUID tether_create_widget(const char* name, Tether_GUID parent);
+TUID tether_create_widget(const char* name, TUID parent);
 
 /*
  * String-ID registry: a stable lookup layer for user-facing names.
- * This keeps entity identity in ECS (GUID) while making names queryable.
+ * This keeps entity identity in ECS (TUID) while making names queryable.
  */
-void tether_registry_alias_entity(Tether_GUID entity, const char* alias);
-const char* tether_registry_get_alias(Tether_GUID entity);
-Tether_GUID tether_registry_find_entity(const char* alias);
-void tether_registry_remove_alias(Tether_GUID entity);
+void tether_registry_alias_entity(TUID entity, const char* alias);
+const char* tether_registry_get_alias(TUID entity);
+TUID tether_registry_find_entity(const char* alias);
+void tether_registry_remove_alias(TUID entity);
 
 /*
  * Font registry: 0-based to align directly with Chitra / Fontstash.

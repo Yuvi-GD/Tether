@@ -2,15 +2,15 @@
 #include "tether/ui/tether_widgets.h"
 #include "tether/core/tether_components.h"
 
-Tether_GUID tether_list_create(Tether_GUID parent) {
-    Tether_GUID list = tether_widget_create_container(parent);
+TUID tether_list_create(TUID parent) {
+    TUID list = tether_widget_create_container(parent);
     tether_ecs_add_component(list, TETHER_COMPONENT_SELECTION_STATE);
     return list;
 }
 
-Tether_GUID tether_list_add_item(Tether_GUID list) {
-    if (list == TETHER_INVALID_GUID) return TETHER_INVALID_GUID;
-    Tether_GUID item = tether_widget_create_container(list);
+TUID tether_list_add_item(TUID list) {
+    if (list == TETHER_INVALID_TUID) return TETHER_INVALID_TUID;
+    TUID item = tether_widget_create_container(list);
     Tether_SelectionState *sel = (Tether_SelectionState*)tether_ecs_get_component(list, TETHER_COMPONENT_SELECTION_STATE);
     if (sel) {
         sel->count = tether_widget_get_child_count(list);
@@ -18,10 +18,10 @@ Tether_GUID tether_list_add_item(Tether_GUID list) {
     return item;
 }
 
-void tether_list_remove_item(Tether_GUID list, int index) {
-    if (list == TETHER_INVALID_GUID || index < 0) return;
-    Tether_GUID item = tether_widget_get_child_at(list, index);
-    if (item == TETHER_INVALID_GUID) return;
+void tether_list_remove_item(TUID list, int index) {
+    if (list == TETHER_INVALID_TUID || index < 0) return;
+    TUID item = tether_widget_get_child_at(list, index);
+    if (item == TETHER_INVALID_TUID) return;
 
     Tether_SelectionState *sel = (Tether_SelectionState*)tether_ecs_get_component(list, TETHER_COMPONENT_SELECTION_STATE);
     if (sel) {
@@ -40,10 +40,10 @@ void tether_list_remove_item(Tether_GUID list, int index) {
     }
 }
 
-void tether_list_clear(Tether_GUID list) {
-    if (list == TETHER_INVALID_GUID) return;
-    Tether_GUID item = tether_widget_get_child_at(list, -1);
-    while (item != TETHER_INVALID_GUID) {
+void tether_list_clear(TUID list) {
+    if (list == TETHER_INVALID_TUID) return;
+    TUID item = tether_widget_get_child_at(list, -1);
+    while (item != TETHER_INVALID_TUID) {
         tether_widget_destroy(item);
         item = tether_widget_get_child_at(list, -1);
     }
@@ -54,16 +54,16 @@ void tether_list_clear(Tether_GUID list) {
     }
 }
 
-Tether_GUID tether_list_get_item(Tether_GUID list, int index) {
+TUID tether_list_get_item(TUID list, int index) {
     return tether_widget_get_child_at(list, index);
 }
 
-int tether_list_get_count(Tether_GUID list) {
+int tether_list_get_count(TUID list) {
     return tether_widget_get_child_count(list);
 }
 
-void tether_list_set_selected(Tether_GUID list, int index) {
-    if (list == TETHER_INVALID_GUID) return;
+void tether_list_set_selected(TUID list, int index) {
+    if (list == TETHER_INVALID_TUID) return;
     Tether_SelectionState *sel = (Tether_SelectionState*)tether_ecs_get_component(list, TETHER_COMPONENT_SELECTION_STATE);
     if (!sel) return;
 
@@ -74,12 +74,12 @@ void tether_list_set_selected(Tether_GUID list, int index) {
     }
 }
 
-int tether_list_get_selected(Tether_GUID list) {
-    if (list == TETHER_INVALID_GUID) return -1;
+int tether_list_get_selected(TUID list) {
+    if (list == TETHER_INVALID_TUID) return -1;
     Tether_SelectionState *sel = (Tether_SelectionState*)tether_ecs_get_component(list, TETHER_COMPONENT_SELECTION_STATE);
     return sel ? sel->selected_index : -1;
 }
 
-void tether_list_unselect(Tether_GUID list) {
+void tether_list_unselect(TUID list) {
     tether_list_set_selected(list, -1);
 }

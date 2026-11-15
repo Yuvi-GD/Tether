@@ -22,7 +22,7 @@ flowchart TD
         P1["1. Zero-Allocation Steady State\n(Pre-sized High-Water Pools, 0 malloc/free in loop)"]
         P2["2. Data-Oriented ECS\n(Contiguous Dense Arrays, Maximum L1/L2 Cache Locality)"]
         P3["3. Layout vs. Render Decoupling\n(SlotTransform vs. RenderTransform: Zero Animation Reflow)"]
-        P4["4. Explicit Ownership\n(64-bit Generational GUIDs, O(1) Swap-and-Pop, SSO Strings)"]
+        P4["4. Explicit Ownership\n(64-bit Generational TUIDs, O(1) Swap-and-Pop, SSO Strings)"]
         P5["5. Predictability over Magic\n(Single-threaded UI Loop, Deterministic Lifecycles, Zero GC)"]
         P6["6. Dual Authoring Parity\n(YAML & C99 as Co-Equal First-Class Citizens)"]
     end
@@ -79,7 +79,7 @@ Tether strictly separates **Identity** from **Data**, and **Data** from **Behavi
 
 ```mermaid
 flowchart LR
-    subgraph EntityIDs["Entity Identity (Pure 64-bit Scalar GUIDs)"]
+    subgraph EntityIDs["Entity Identity (Pure 64-bit Scalar TUIDs)"]
         E1["Entity 1 (Panel)"]
         E2["Entity 2 (Button)"]
         E3["Entity 3 (Text)"]
@@ -94,7 +94,7 @@ flowchart LR
     EntityIDs -->|Sparse Set Constant-Time Indexing| DenseMemory
 ```
 
-1. **Entities are Pure Identifiers**: An entity is just a 64-bit integer GUID. It owns no memory, contains no pointers, and has no vtables.
+1. **Entities are Pure Identifiers**: An entity is just a 64-bit integer TUID. It owns no memory, contains no pointers, and has no vtables.
 2. **Components are Flat Data Structs**: Components of the same type are packed contiguously into unified dense memory arrays.
 3. **Systems are Pure Functions**: The layout solver and rendering synchronizer sweep through contiguous memory arrays sequentially. When the CPU fetches memory into a cache line, it automatically prefetches the subsequent components, achieving near 100% L1/L2 cache line utilization.
 
@@ -138,12 +138,12 @@ flowchart TD
 
 Tether enforces absolute clarity regarding resource lifetimes, eliminating both garbage collection non-determinism and C++ memory leaks:
 
-### 1. 64-Bit Generational Handles (`Tether_GUID`)
-Entities are addressed exclusively by value through 64-bit scalar identifiers (`Tether_GUID`):
+### 1. 64-Bit Generational Handles (`TUID`)
+Entities are addressed exclusively by value through 64-bit scalar identifiers (`TUID`):
 - **Lower 32 bits**: Array slot index.
 - **Upper 32 bits**: Generational version counter.
 
-When an entity is destroyed, its slot index is placed on a free stack and its generation counter in the internal table increments. If a foreign scripting environment (Python, Lua) or asynchronous callback attempts to query an obsolete GUID, Tether's $O(1)$ validity check (`tether_ecs_is_valid()`) rejects it immediately. Dangling pointers and use-after-free exploits are mathematically eliminated.
+When an entity is destroyed, its slot index is placed on a free stack and its generation counter in the internal table increments. If a foreign scripting environment (Python, Lua) or asynchronous callback attempts to query an obsolete TUID, Tether's $O(1)$ validity check (`tether_ecs_is_valid()`) rejects it immediately. Dangling pointers and use-after-free exploits are mathematically eliminated.
 
 ### 2. $O(1)$ Swap-and-Pop Deallocation
 When a component is removed from an entity, Tether does not leave empty memory holes or shift remaining elements down in an expensive $O(N)$ memory move. Instead, it copies the last element in the dense array into the vacant slot and updates the sparse map in $O(1)$ constant time. Component arrays remain 100% packed and contiguous at all times.
@@ -194,10 +194,10 @@ sequenceDiagram
     Note over Kernel: Packed contiguous components allocated in Dense Arrays
     
     App->>Kernel: tether_registry_find_entity("btn_submit")
-    Kernel-->>App: Returns 64-bit Tether_GUID
+    Kernel-->>App: Returns 64-bit TUID
     
-    App->>Kernel: tether_ui_set_color(guid, Blue)
-    App->>Kernel: tether_ecs_attach_entity(guid, custom_c_child)
+    App->>Kernel: tether_ui_set_color(tuid, Blue)
+    App->>Kernel: tether_ecs_attach_entity(tuid, custom_c_child)
     Note over Kernel: Native C code modifies and reparents YAML-declared widget directly
 ```
 

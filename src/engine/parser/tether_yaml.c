@@ -22,7 +22,7 @@ static size_t definition_capacity;
 static bool loading;
 
 typedef struct {
-    Tether_GUID* created;
+    TUID* created;
     size_t count;
     size_t capacity;
     unsigned depth;
@@ -248,10 +248,10 @@ void tether_yaml_term(void) {
     definition_capacity = 0;
 }
 
-static bool track_created(YamlLoad* load, Tether_GUID entity) {
+static bool track_created(YamlLoad* load, TUID entity) {
     if (load->count == load->capacity) {
         size_t capacity = load->capacity ? load->capacity * 2 : 16;
-        Tether_GUID* grown = NULL;
+        TUID* grown = NULL;
         if (capacity > load->capacity && capacity <= SIZE_MAX / sizeof(*load->created)) {
             grown = realloc(load->created, capacity * sizeof(*load->created));
         }
@@ -263,16 +263,16 @@ static bool track_created(YamlLoad* load, Tether_GUID entity) {
     return true;
 }
 
-static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent, Tether_ASTEnvironment* env, YamlLoad* load);
-static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env, YamlLoad* load);
+static TUID instantiate_node(Tether_ASTNode* node, TUID parent, Tether_ASTEnvironment* env, YamlLoad* load);
+static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env, YamlLoad* load);
 
-static void apply_content(Tether_GUID parent, Tether_ASTNode* content, Tether_ASTEnvironment* env, YamlLoad* load) {
+static void apply_content(TUID parent, Tether_ASTNode* content, Tether_ASTEnvironment* env, YamlLoad* load) {
     if (!content || content->type != TETHER_AST_SEQUENCE) return;
 
     Tether_Hierarchy* hierarchy = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);
-    Tether_GUID existing_child = hierarchy ? hierarchy->first_child : TETHER_INVALID_GUID;
+    TUID existing_child = hierarchy ? hierarchy->first_child : TETHER_INVALID_TUID;
 
-    for (uint32_t i = 0; i < content->child_count && existing_child != TETHER_INVALID_GUID; i++) {
+    for (uint32_t i = 0; i < content->child_count && existing_child != TETHER_INVALID_TUID; i++) {
         Tether_ASTNode* child_definition = resolve_node(content->children[i], env);
         if (child_definition && child_definition->type == TETHER_AST_MAPPING && child_definition->child_count > 0) {
             Tether_ASTNode* props = resolve_node(child_definition->children[0], env);
@@ -280,11 +280,11 @@ static void apply_content(Tether_GUID parent, Tether_ASTNode* content, Tether_AS
         }
 
         Tether_Hierarchy* child_hierarchy = (Tether_Hierarchy*)tether_ecs_get_component(existing_child, TETHER_COMPONENT_HIERARCHY);
-        existing_child = child_hierarchy ? child_hierarchy->next_sibling : TETHER_INVALID_GUID;
+        existing_child = child_hierarchy ? child_hierarchy->next_sibling : TETHER_INVALID_TUID;
     }
 }
 
-static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env, YamlLoad* load) {
+static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironment* env, YamlLoad* load) {
     if (!props || props->type != TETHER_AST_MAPPING) {
         load->failed = true;
         return;
@@ -514,7 +514,7 @@ static void apply_properties(Tether_GUID ent, Tether_ASTNode* props, Tether_ASTE
     }
 }
 
-static Tether_GUID load_document(const char* filepath, Tether_GUID parent, YamlLoad* load);
+static TUID load_document(const char* filepath, TUID parent, YamlLoad* load);
 
 static Tether_ASTNode* widget_properties(Tether_ASTNode* node, uint32_t index) {
     Tether_ASTNode* props = node->children[index];
@@ -546,16 +546,16 @@ static bool bind_parameters(Tether_ASTEnvironment* target, Tether_ASTNode* props
     return true;
 }
 
-static Tether_GUID instantiate_body(Tether_ASTNode* node, Tether_GUID parent,
+static TUID instantiate_body(Tether_ASTNode* node, TUID parent,
                                     Tether_ASTEnvironment* env, YamlLoad* load) {
-    if (!node) return TETHER_INVALID_GUID;
+    if (!node) return TETHER_INVALID_TUID;
 
     if (node->type == TETHER_AST_SEQUENCE) {
-        Tether_GUID first_child = TETHER_INVALID_GUID;
+        TUID first_child = TETHER_INVALID_TUID;
         for (uint32_t i = 0; i < node->child_count; i++) {
-            Tether_GUID child = instantiate_node(node->children[i], parent, env, load);
+            TUID child = instantiate_node(node->children[i], parent, env, load);
             if (load->failed) break;
-            if (first_child == TETHER_INVALID_GUID) first_child = child;
+            if (first_child == TETHER_INVALID_TUID) first_child = child;
         }
         return first_child;
     } 
@@ -567,14 +567,14 @@ static Tether_GUID instantiate_body(Tether_ASTNode* node, Tether_GUID parent,
                 const char* key_str = key_node->scalar_value;
                 
                 if (strcmp(key_str, "Widget") == 0) {
-                    return TETHER_INVALID_GUID; /* Handled in pre-pass. */
+                    return TETHER_INVALID_TUID; /* Handled in pre-pass. */
                 }
 
                 if (strcmp(key_str, "Scene") == 0) {
                     const char* scene_path = resolve_scalar(node->children[i], env);
                     if (scene_path) return load_document(scene_path, parent, load);
                     load->failed = true;
-                    return TETHER_INVALID_GUID;
+                    return TETHER_INVALID_TUID;
                 }
                 
                 if (strcmp(key_str, "Slot") == 0) {
@@ -585,7 +585,7 @@ static Tether_GUID instantiate_body(Tether_ASTNode* node, Tether_GUID parent,
                             return instantiate_node(injected, parent, env, load);
                         }
                     }
-                    return TETHER_INVALID_GUID; /* Optional slot not supplied. */
+                    return TETHER_INVALID_TUID; /* Optional slot not supplied. */
                 }
                 
                 /* Check if it's a custom widget */
@@ -595,31 +595,31 @@ static Tether_GUID instantiate_body(Tether_ASTNode* node, Tether_GUID parent,
                     Tether_ASTEnvironment* new_env = tether_ast_env_create();
                     if (!new_env) {
                         load->failed = true;
-                        return TETHER_INVALID_GUID;
+                        return TETHER_INVALID_TUID;
                     }
                     
                     if (!bind_parameters(new_env, props, props == node ? i : UINT32_MAX, env)) {
                         fprintf(stderr, "YAML: invalid parameters for '%s'\n", key_str);
                         tether_ast_env_free(new_env);
                         load->failed = true;
-                        return TETHER_INVALID_GUID;
+                        return TETHER_INVALID_TUID;
                     }
 
                     load->template_depth++;
-                    Tether_GUID new_ent = instantiate_node(widget_tree, parent, new_env, load);
+                    TUID new_ent = instantiate_node(widget_tree, parent, new_env, load);
                     load->template_depth--;
                     tether_ast_env_free(new_env);
                     return new_ent;
                 }
                 
                 /* Check native widgets */
-                Tether_GUID new_ent = tether_create_widget(key_str, parent);
-                if (new_ent != TETHER_INVALID_GUID) {
+                TUID new_ent = tether_create_widget(key_str, parent);
+                if (new_ent != TETHER_INVALID_TUID) {
                     Tether_ASTNode* prop_mapping = widget_properties(node, i);
                     if (!track_created(load, new_ent)) {
                         tether_widget_destroy(new_ent);
                         load->failed = true;
-                        return TETHER_INVALID_GUID;
+                        return TETHER_INVALID_TUID;
                     }
                     apply_properties(new_ent, prop_mapping, env, load);
                     if (!load->failed && !tether_yaml_apply_widget_properties(new_ent, key_str, prop_mapping, env)) {
@@ -634,19 +634,19 @@ static Tether_GUID instantiate_body(Tether_ASTNode* node, Tether_GUID parent,
 
     fprintf(stderr, "YAML: expected a registered widget, Scene or Slot\n");
     load->failed = true;
-    return TETHER_INVALID_GUID;
+    return TETHER_INVALID_TUID;
 }
 
-static Tether_GUID instantiate_node(Tether_ASTNode* node, Tether_GUID parent,
+static TUID instantiate_node(Tether_ASTNode* node, TUID parent,
                                     Tether_ASTEnvironment* env, YamlLoad* load) {
-    if (load->failed) return TETHER_INVALID_GUID;
+    if (load->failed) return TETHER_INVALID_TUID;
     if (!node || load->depth >= 64) {
         fprintf(stderr, "YAML: missing node or expansion depth exceeds 64\n");
         load->failed = true;
-        return TETHER_INVALID_GUID;
+        return TETHER_INVALID_TUID;
     }
     load->depth++;
-    Tether_GUID result = instantiate_body(resolve_node(node, env), parent, env, load);
+    TUID result = instantiate_body(resolve_node(node, env), parent, env, load);
     load->depth--;
     return result;
 }
@@ -666,55 +666,55 @@ static bool register_definitions(Tether_ASTNode* node, YamlLoad* load) {
     return true;
 }
 
-static Tether_GUID load_document(const char* filepath, Tether_GUID parent, YamlLoad* load) {
+static TUID load_document(const char* filepath, TUID parent, YamlLoad* load) {
     Tether_ASTNode* ast = tether_ast_parse_file(filepath);
     if (!ast) {
         fprintf(stderr, "YAML: cannot parse '%s'\n", filepath ? filepath : "<null>");
         load->failed = true;
-        return TETHER_INVALID_GUID;
+        return TETHER_INVALID_TUID;
     }
     if (!register_definitions(ast, load)) load->failed = true;
     Tether_ASTEnvironment* env = tether_ast_env_create();
     if (!env) load->failed = true;
-    Tether_GUID root = instantiate_node(ast, parent, env, load);
+    TUID root = instantiate_node(ast, parent, env, load);
     tether_ast_env_free(env);
     tether_ast_free(ast);
     return root;
 }
 
-static void remove_tree_aliases(Tether_GUID entity) {
+static void remove_tree_aliases(TUID entity) {
     Tether_Hierarchy* hierarchy = tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    Tether_GUID child = hierarchy ? hierarchy->first_child : TETHER_INVALID_GUID;
-    while (child != TETHER_INVALID_GUID) {
+    TUID child = hierarchy ? hierarchy->first_child : TETHER_INVALID_TUID;
+    while (child != TETHER_INVALID_TUID) {
         Tether_Hierarchy* next = tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-        Tether_GUID sibling = next ? next->next_sibling : TETHER_INVALID_GUID;
+        TUID sibling = next ? next->next_sibling : TETHER_INVALID_TUID;
         remove_tree_aliases(child);
         child = sibling;
     }
     tether_registry_remove_alias(entity);
 }
 
-Tether_GUID tether_yaml_load(const char* filepath, Tether_GUID parent) {
+TUID tether_yaml_load(const char* filepath, TUID parent) {
     if (loading) {
         fprintf(stderr, "YAML: reentrant loads from adapter callbacks are unsupported\n");
-        return TETHER_INVALID_GUID;
+        return TETHER_INVALID_TUID;
     }
-    if (parent == TETHER_INVALID_GUID) parent = tether_ecs_get_main_root();
-    if (!tether_ecs_is_valid(parent)) return TETHER_INVALID_GUID;
+    if (parent == TETHER_INVALID_TUID) parent = tether_ecs_get_main_root();
+    if (!tether_ecs_is_valid(parent)) return TETHER_INVALID_TUID;
     loading = true;
     YamlLoad load = {0};
-    Tether_GUID root = load_document(filepath, parent, &load);
+    TUID root = load_document(filepath, parent, &load);
     if (load.failed) {
         /* Reverse creation order handles multiple top-level siblings and nested Scenes. */
         for (size_t i = load.count; i > 0; --i) {
-            Tether_GUID entity = load.created[i - 1];
+            TUID entity = load.created[i - 1];
             if (tether_ecs_is_valid(entity)) {
                 remove_tree_aliases(entity);
                 tether_widget_destroy(entity);
             }
         }
-        root = TETHER_INVALID_GUID;
-    } else if (root != TETHER_INVALID_GUID) {
+        root = TETHER_INVALID_TUID;
+    } else if (root != TETHER_INVALID_TUID) {
         tether_widget_show(root);
     }
     free(load.created);

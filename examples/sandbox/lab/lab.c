@@ -40,8 +40,8 @@ static const uint32_t budgets[] = {1024, 4096, 16384, 32768};
 static const uint32_t warmups[] = {0, 30, 60};
 static const uint32_t fps_values[] = {0, 60, 120, 1000};
 static unsigned selected[FIELD_COUNT];
-static Tether_GUID controls[FIELD_COUNT], labels[FIELD_COUNT], status_label;
-static Tether_GUID time_toggle, close_checkbox;
+static TUID controls[FIELD_COUNT], labels[FIELD_COUNT], status_label;
+static TUID time_toggle, close_checkbox;
 static bool refreshing, time_enabled;
 static const char *control_ids[] = {
     "lab_scenario", "lab_count", "lab_spawn", "lab_delete", "lab_mutate", "lab_frames",
@@ -91,7 +91,7 @@ static bool field_applies(unsigned field) {
 static void refresh_fields(void) {
     refreshing = true;
     for (unsigned field = 0; field < FIELD_COUNT; ++field) {
-        Tether_GUID control = controls[field];
+        TUID control = controls[field];
         if (field == MODE || field == WARMUP) {
             tether_ui_set_segment_selected(control, (int)selected[field]);
         } else if (field == BUDGET) {
@@ -120,14 +120,14 @@ static void refresh_fields(void) {
 }
 
 static int read_field(unsigned field) {
-    Tether_GUID entity = controls[field];
+    TUID entity = controls[field];
     if (field == MODE || field == WARMUP) return tether_ui_get_segment_selected(entity);
     if (field == BUDGET) return tether_ui_get_radio_selected(entity);
     if (field == SECONDS) return (int)tether_ui_get_slider_value(entity);
     return tether_ui_get_dropdown_selected(entity);
 }
 
-static void change_field(Tether_GUID entity, const Tether_Event *event, void *data) {
+static void change_field(TUID entity, const Tether_Event *event, void *data) {
     (void)event;
     if (refreshing) return;
     unsigned field = (unsigned)(uintptr_t)data;
@@ -151,7 +151,7 @@ static void change_field(Tether_GUID entity, const Tether_Event *event, void *da
     refresh_fields();
 }
 
-static void change_time_limit(Tether_GUID entity, const Tether_Event *event, void *data) {
+static void change_time_limit(TUID entity, const Tether_Event *event, void *data) {
     (void)event;
     (void)data;
     if (refreshing || process.active) return;
@@ -160,7 +160,7 @@ static void change_time_limit(Tether_GUID entity, const Tether_Event *event, voi
     refresh_fields();
 }
 
-static void launch_workload(Tether_GUID entity, const Tether_Event *event_info, void *data) {
+static void launch_workload(TUID entity, const Tether_Event *event_info, void *data) {
     (void)event_info;
     (void)entity;
     (void)data;
@@ -259,7 +259,7 @@ bool lab_bind(void) {
     status_label = tether_registry_find_entity("lab_status");
     time_toggle = tether_registry_find_entity("lab_time_enabled");
     close_checkbox = tether_registry_find_entity("lab_close");
-    Tether_GUID run = tether_registry_find_entity("lab_run");
+    TUID run = tether_registry_find_entity("lab_run");
     if (!status_label || !time_toggle || !close_checkbox || !run) return false;
     time_enabled = tether_ui_get_toggle(time_toggle);
     tether_bind_event(time_toggle, TETHER_EVENT_CHANGE, change_time_limit, NULL);
@@ -354,7 +354,7 @@ bool lab_has_geometry(void) {
                 return false;
             }
         }
-        Tether_GUID id = i < FIELD_COUNT ? labels[i] : status_label;
+        TUID id = i < FIELD_COUNT ? labels[i] : status_label;
         Tether_Text *text = tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
         Tether_SlotTransform *position =
             tether_ecs_get_component(id, TETHER_COMPONENT_SLOT_TRANSFORM);

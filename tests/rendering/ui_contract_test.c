@@ -19,24 +19,24 @@ static struct {
     unsigned frame;
     unsigned checks;
     unsigned failures;
-    Tether_GUID text;
-    Tether_GUID root;
-    Tether_GUID hidden_parent;
-    Tether_GUID hidden_text;
-    Tether_GUID outer_clip;
-    Tether_GUID inner_clip;
-    Tether_GUID clipped_shape;
-    Tether_GUID yaml_root;
-    Tether_GUID arrow;
-    Tether_GUID reference_arrow;
-    Tether_GUID wrap_panel;
-    Tether_GUID resize_text;
-    Tether_GUID capped_text;
-    Tether_GUID row_panel;
-    Tether_GUID row;
-    Tether_GUID row_label;
-    Tether_GUID row_button;
-    Tether_GUID row_next;
+    TUID text;
+    TUID root;
+    TUID hidden_parent;
+    TUID hidden_text;
+    TUID outer_clip;
+    TUID inner_clip;
+    TUID clipped_shape;
+    TUID yaml_root;
+    TUID arrow;
+    TUID reference_arrow;
+    TUID wrap_panel;
+    TUID resize_text;
+    TUID capped_text;
+    TUID row_panel;
+    TUID row;
+    TUID row_label;
+    TUID row_button;
+    TUID row_next;
     float row_wide_height;
     float arrow_x;
     float arrow_y;
@@ -70,8 +70,8 @@ static bool write_scene(const char *contents) {
     return ok;
 }
 
-static Tether_GUID panel(Tether_GUID parent, float width, float height, float x, float y) {
-    Tether_GUID entity = tether_ui_panel(parent);
+static TUID panel(TUID parent, float width, float height, float x, float y) {
+    TUID entity = tether_ui_panel(parent);
     tether_ui_set_size(entity, width, height);
     Tether_AnchorSlot *slot = tether_ecs_get_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
     slot->anchor_min = (Tether_Vec2){0, 0};
@@ -93,7 +93,7 @@ static void apply_mode(void) {
     }
 }
 
-static bool first_vertex(Tether_GUID entity, float *x, float *y) {
+static bool first_vertex(TUID entity, float *x, float *y) {
     Tether_Text *text = tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
     if (!text) {
         return false;
@@ -109,7 +109,7 @@ static bool first_vertex(Tether_GUID entity, float *x, float *y) {
     return true;
 }
 
-static unsigned wrapped_line_count(Tether_GUID entity) {
+static unsigned wrapped_line_count(TUID entity) {
     Tether_Text *text = tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
     uint8_t pipeline;
     uint32_t count = 0;
@@ -129,9 +129,9 @@ static unsigned wrapped_line_count(Tether_GUID entity) {
 
 static void init(void) {
     tether_font_register("Roboto-Regular", test.font_path);
-    Tether_GUID stage = panel(tether_ecs_get_main_root(), 800, 600, 0, 0);
+    TUID stage = panel(tether_ecs_get_main_root(), 800, 600, 0, 0);
     tether_widget_show(stage);
-    Tether_GUID root = panel(stage, 400, 100, 0, 0);
+    TUID root = panel(stage, 400, 100, 0, 0);
     test.root = root;
     test.text = tether_ui_text(root);
     tether_ui_set_text(test.text, "Tether validation");
@@ -167,7 +167,7 @@ static void init(void) {
     tether_ui_set_container(test.row_panel, TETHER_FLOW_COLUMN);
     test.row = tether_widget_create_container(test.row_panel);
     tether_ui_set_container(test.row, TETHER_FLOW_ROW);
-    Tether_GUID column = tether_widget_create_container(test.row);
+    TUID column = tether_widget_create_container(test.row);
     tether_ui_set_container(column, TETHER_FLOW_COLUMN);
     tether_ui_set_flex(column, 1.0f);
     test.row_label = tether_ui_text(column);
@@ -201,7 +201,7 @@ static void init(void) {
     check(write_scene("- Panel:\n    id: ReloadRoot\n    children:\n      - Text:\n          id: "
                       "ReloadText\n          string: before\n"),
           "write initial YAML");
-    test.yaml_root = tether_yaml_load(test.yaml_path, TETHER_INVALID_GUID);
+    test.yaml_root = tether_yaml_load(test.yaml_path, TETHER_INVALID_TUID);
     check(tether_ecs_is_valid(test.yaml_root), "instantiate YAML scene");
     apply_mode();
 }
@@ -245,21 +245,21 @@ static void update(void) {
         anchor->offset.right = -430;
         anchor->offset.bottom = -120;
         tether_ecs_add_component(test.root, TETHER_COMPONENT_DIRTY_LAYOUT);
-        Tether_GUID old_root = test.yaml_root;
-        Tether_GUID old_text = tether_registry_find_entity("ReloadText");
+        TUID old_root = test.yaml_root;
+        TUID old_text = tether_registry_find_entity("ReloadText");
         tether_widget_destroy(old_root);
         check(!tether_ecs_is_valid(old_root) && !tether_ecs_is_valid(old_text),
               "reload destroys old entities");
         check(write_scene("- Panel:\n    id: ReloadRoot\n    children:\n      - Text:\n          "
                           "id: ReloadText\n          string: after\n"),
               "write modified YAML");
-        test.yaml_root = tether_yaml_load(test.yaml_path, TETHER_INVALID_GUID);
+        test.yaml_root = tether_yaml_load(test.yaml_path, TETHER_INVALID_TUID);
         check(tether_ecs_is_valid(test.yaml_root), "reload modified YAML");
-        Tether_GUID new_text = tether_registry_find_entity("ReloadText");
+        TUID new_text = tether_registry_find_entity("ReloadText");
         const char *value = tether_ui_get_text(new_text);
         check(value && !strcmp(value, "after"), "reload uses modified content");
         check(write_scene("- Panel: [unterminated"), "write invalid YAML");
-        check(tether_yaml_load(test.yaml_path, TETHER_INVALID_GUID) == TETHER_INVALID_GUID,
+        check(tether_yaml_load(test.yaml_path, TETHER_INVALID_TUID) == TETHER_INVALID_TUID,
               "invalid YAML is rejected");
         check(tether_ecs_is_valid(test.yaml_root), "failed load preserves existing scene");
         apply_mode();

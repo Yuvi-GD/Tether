@@ -20,16 +20,16 @@ extern "C" {
  *   │     └── [1] Title: Text
  *   └── [1] Content: Container (column)
  */
-Tether_GUID tether_ui_collapsible(Tether_GUID parent);
+TUID tether_ui_collapsible(TUID parent);
 
 /* ========================================================================== */
 /* 2. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-Tether_GUID tether_ui_collapsible_content(Tether_GUID collapsible);
-void        tether_ui_toggle_collapsible(Tether_GUID collapsible);
-bool        tether_ui_is_collapsible_open(Tether_GUID collapsible);
-void        tether_ui_set_collapsible_title(Tether_GUID collapsible, const char *title);
+TUID tether_ui_collapsible_content(TUID collapsible);
+void        tether_ui_toggle_collapsible(TUID collapsible);
+bool        tether_ui_is_collapsible_open(TUID collapsible);
+void        tether_ui_set_collapsible_title(TUID collapsible, const char *title);
 
 #ifdef __cplusplus
 }

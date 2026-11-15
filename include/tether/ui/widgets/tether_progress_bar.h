@@ -18,14 +18,14 @@ extern "C" {
  * [Self] Track: Panel (Flow None, flex=1.0), ValueRange
  *   └── [0] Fill: Panel (active progress bar)
  */
-Tether_GUID tether_ui_progress_bar(Tether_GUID parent);
+TUID tether_ui_progress_bar(TUID parent);
 
 /* ========================================================================== */
 /* 2. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void  tether_ui_set_progress(Tether_GUID progress_bar, float progress);
-float tether_ui_get_progress(Tether_GUID progress_bar);
+void  tether_ui_set_progress(TUID progress_bar, float progress);
+float tether_ui_get_progress(TUID progress_bar);
 
 #ifdef __cplusplus
 }

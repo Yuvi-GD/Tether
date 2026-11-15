@@ -15,90 +15,90 @@ extern "C" {
 /* ========================================================================== */
 
 /* Create a visual panel with shape (bg_color, border, radius) */
-Tether_GUID tether_ui_panel(Tether_GUID parent);
+TUID tether_ui_panel(TUID parent);
 
 /* Container Layout Configuration */
-void tether_ui_set_container(Tether_GUID entity, Tether_Flow flow);
-void tether_ui_set_position(Tether_GUID entity, Tether_PositionMode position);
-Tether_PositionMode tether_ui_get_position(Tether_GUID entity);
-void tether_ui_set_content_align(Tether_GUID entity, Tether_Align align_x, Tether_Align align_y);
-void tether_ui_set_interactable(Tether_GUID entity, Tether_HitBehavior behavior);
-Tether_HitBehavior tether_ui_get_interactable(Tether_GUID entity);
+void tether_ui_set_container(TUID entity, Tether_Flow flow);
+void tether_ui_set_position(TUID entity, Tether_PositionMode position);
+Tether_PositionMode tether_ui_get_position(TUID entity);
+void tether_ui_set_content_align(TUID entity, Tether_Align align_x, Tether_Align align_y);
+void tether_ui_set_interactable(TUID entity, Tether_HitBehavior behavior);
+Tether_HitBehavior tether_ui_get_interactable(TUID entity);
 
 /* ========================================================================== */
 /* Boolean State Operations                                                   */
 /* ========================================================================== */
 
 /* Checks if an entity has a boolean state component */
-bool tether_ui_has_bool(Tether_GUID entity);
+bool tether_ui_has_bool(TUID entity);
 
 /* Reads the boolean state from an entity (returns false if missing) */
-bool tether_ui_get_bool(Tether_GUID entity);
+bool tether_ui_get_bool(TUID entity);
 
 /* Sets the boolean state on an entity (returns false if missing) and flags dirty */
-bool tether_ui_set_bool(Tether_GUID entity, bool value);
+bool tether_ui_set_bool(TUID entity, bool value);
 
 /* Toggles the boolean state on an entity and returns the new value */
-bool tether_ui_toggle_bool(Tether_GUID entity);
+bool tether_ui_toggle_bool(TUID entity);
 
 /* ========================================================================== */
 /* Value Range Operations                                                     */
 /* ========================================================================== */
 
 /* Reads the scalar value from an entity (returns 0.0f if missing) */
-float tether_ui_get_value(Tether_GUID entity);
+float tether_ui_get_value(TUID entity);
 
 /* Sets the scalar value (clamped between min and max) and marks dirty */
-bool  tether_ui_set_value(Tether_GUID entity, float value);
+bool  tether_ui_set_value(TUID entity, float value);
 
 /* Configures the min and max bounds of the value range */
-void  tether_ui_set_range(Tether_GUID entity, float min_val, float max_val);
+void  tether_ui_set_range(TUID entity, float min_val, float max_val);
 
 /* Reads the min and max bounds */
-void  tether_ui_get_range(Tether_GUID entity, float *out_min, float *out_max);
+void  tether_ui_get_range(TUID entity, float *out_min, float *out_max);
 
 /* ========================================================================== */
 /* Fluent Layout & Style Modifiers                                            */
 /* ========================================================================== */
 
 /* Set size box dimensions (width, height). 0 means auto/shrink-wrap */
-void tether_ui_set_size(Tether_GUID entity, float width, float height);
+void tether_ui_set_size(TUID entity, float width, float height);
 
 /* Set container inner padding */
-void tether_ui_set_padding(Tether_GUID entity, float top, float right, float bottom, float left);
+void tether_ui_set_padding(TUID entity, float top, float right, float bottom, float left);
 
 /* Set gap between children */
-void tether_ui_set_gap(Tether_GUID entity, float gap_x, float gap_y);
+void tether_ui_set_gap(TUID entity, float gap_x, float gap_y);
 
 /* Set flex fill ratio along the parent container's primary axis */
-void tether_ui_set_flex(Tether_GUID entity, float fill_ratio);
+void tether_ui_set_flex(TUID entity, float fill_ratio);
 
 /* Set normalized anchor bounds [0..1] */
-void tether_ui_set_anchor(Tether_GUID entity, float min_x, float min_y, float max_x, float max_y);
+void tether_ui_set_anchor(TUID entity, float min_x, float min_y, float max_x, float max_y);
 
 /* Set anchor pixel offsets (margins from anchor bounds) */
-void tether_ui_set_offsets(Tether_GUID entity, float top, float right, float bottom, float left);
+void tether_ui_set_offsets(TUID entity, float top, float right, float bottom, float left);
 
 /* Set background color of an entity's shape */
-void tether_ui_set_color(Tether_GUID entity, Tether_Color bg_color);
+void tether_ui_set_color(TUID entity, Tether_Color bg_color);
 
 /* Get background color of an entity's shape */
-Tether_Color tether_ui_get_color(Tether_GUID entity);
+Tether_Color tether_ui_get_color(TUID entity);
 
 /* Adjust RGB channels by a signed amount, clamping to [0, 255]. Alpha is unchanged. */
 Tether_Color tether_ui_adjust_color(Tether_Color color, int offset);
 
 /* Interaction feedback: disabled/idle 0, pressed -40, hovered/focused +20. */
-int tether_ui_interaction_offset(Tether_GUID entity);
+int tether_ui_interaction_offset(TUID entity);
 
 /* Set border width, color, and corner radius */
-void tether_ui_set_border(Tether_GUID entity, float width, Tether_Color color, float radius);
+void tether_ui_set_border(TUID entity, float width, Tether_Color color, float radius);
 
 /* Active color modifiers (temporary state for hover/press while preserving base color) */
-void tether_ui_set_active_color(Tether_GUID entity, Tether_Color color);
-void tether_ui_reset_active_color(Tether_GUID entity);
-void tether_ui_set_active_border(Tether_GUID entity, Tether_Color color);
-void tether_ui_reset_active_border(Tether_GUID entity);
+void tether_ui_set_active_color(TUID entity, Tether_Color color);
+void tether_ui_reset_active_color(TUID entity);
+void tether_ui_set_active_border(TUID entity, Tether_Color color);
+void tether_ui_reset_active_border(TUID entity);
 
 /* ========================================================================== */
 /* Extended Controls & Component Primitives                                  */

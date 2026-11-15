@@ -9,7 +9,7 @@
 #include <string.h>
 
 /* Only a bounded report snapshot enters the UI. Runner samples stay on disk. */
-static Tether_GUID report_label, title_label, import_label, status_label, scenario_label;
+static TUID report_label, title_label, import_label, status_label, scenario_label;
 static const struct {
     const char *id;
     ToolReportField field;
@@ -24,9 +24,9 @@ static const struct {
     {"uploads", REPORT_UPLOADS, 2},   {"gpu", REPORT_GPU, 1}
 };
 #define CARD_COUNT (sizeof metrics / sizeof *metrics)
-static Tether_GUID cards[CARD_COUNT], values[CARD_COUNT];
+static TUID cards[CARD_COUNT], values[CARD_COUNT];
 
-static void import_result(Tether_GUID id, const Tether_Event *event_info, void *data) {
+static void import_result(TUID id, const Tether_Event *event_info, void *data) {
     (void)event_info;
     (void)id;
     (void)data;
@@ -53,7 +53,7 @@ bool results_bind(void) {
     report_label = tether_registry_find_entity("res_report_text");
     status_label = tether_registry_find_entity("res_status_badge");
     scenario_label = tether_registry_find_entity("res_scenario_label");
-    Tether_GUID import_button = tether_registry_find_entity("btn_load_result");
+    TUID import_button = tether_registry_find_entity("btn_load_result");
     if (!title_label || !import_label || !report_label || !status_label || !scenario_label || !import_button) return false;
     tether_bind_event(import_button, TETHER_EVENT_CLICK,
                       import_result, NULL);
@@ -147,9 +147,9 @@ bool results_has_geometry(void) {
         !memcmp(&first_value->color, &work_value->color, sizeof(Tether_Color))) {
         return false;
     }
-    Tether_GUID labels[] = {report_label, title_label, import_label, status_label, scenario_label};
+    TUID labels[] = {report_label, title_label, import_label, status_label, scenario_label};
     for (unsigned i = 0; i < CARD_COUNT + sizeof labels / sizeof *labels; i++) {
-        Tether_GUID id = i < CARD_COUNT ? values[i] : labels[i - CARD_COUNT];
+        TUID id = i < CARD_COUNT ? values[i] : labels[i - CARD_COUNT];
         Tether_Text *text = tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
         uint8_t pipeline;
         uint32_t count = 0;

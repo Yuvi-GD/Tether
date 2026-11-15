@@ -13,19 +13,19 @@ extern "C" {
 /* ========================================================================== */
 
 /* Lifecycle */
-Tether_GUID tether_list_create(Tether_GUID parent);
-Tether_GUID tether_list_add_item(Tether_GUID list);
-void        tether_list_remove_item(Tether_GUID list, int index);
-void        tether_list_clear(Tether_GUID list);
+TUID tether_list_create(TUID parent);
+TUID tether_list_add_item(TUID list);
+void        tether_list_remove_item(TUID list, int index);
+void        tether_list_clear(TUID list);
 
 /* Item Queries (backed by TETHER_COMPONENT_HIERARCHY) */
-Tether_GUID tether_list_get_item(Tether_GUID list, int index);
-int         tether_list_get_count(Tether_GUID list);
+TUID tether_list_get_item(TUID list, int index);
+int         tether_list_get_count(TUID list);
 
 /* Selection Management (backed by TETHER_COMPONENT_SELECTION_STATE) */
-void        tether_list_set_selected(Tether_GUID list, int index);
-int         tether_list_get_selected(Tether_GUID list);
-void        tether_list_unselect(Tether_GUID list);
+void        tether_list_set_selected(TUID list, int index);
+int         tether_list_get_selected(TUID list);
+void        tether_list_unselect(TUID list);
 
 #ifdef __cplusplus
 }

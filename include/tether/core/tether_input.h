@@ -33,7 +33,7 @@ typedef struct Tether_Pointer_Event {
  * Culls layout branches instantly if the point is outside the parent's SlotTransform.
  * Respects Tether_HitBehavior properties.
  */
-Tether_GUID tether_hit_test(float x, float y);
+TUID tether_hit_test(float x, float y);
 
 /*
  * Process a normalized input event.
@@ -46,10 +46,10 @@ void tether_input_process_event(const Tether_Pointer_Event* event);
 void tether_input_get_pointer_pos(float* out_x, float* out_y);
 
 /* One temporary priority target and observer; clear with an invalid entity. */
-typedef void (*Tether_InputRouteCallback)(Tether_GUID entity, const Tether_Pointer_Event *event,
-                                         Tether_GUID hit, Tether_GUID pressed);
-void tether_input_set_route(Tether_GUID entity, Tether_InputRouteCallback callback);
-void tether_input_clear_route(Tether_GUID entity);
+typedef void (*Tether_InputRouteCallback)(TUID entity, const Tether_Pointer_Event *event,
+                                         TUID hit, TUID pressed);
+void tether_input_set_route(TUID entity, Tether_InputRouteCallback callback);
+void tether_input_clear_route(TUID entity);
 
 /* Reset input tracking (called on shutdown) */
 void tether_input_term(void);

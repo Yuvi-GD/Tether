@@ -13,7 +13,7 @@ extern "C" {
 bool tether_yaml_is_builtin_widget(const char* name);
 
 /* Apply widget-specific declarative properties from YAML AST to the entity */
-bool tether_yaml_apply_widget_properties(Tether_GUID entity, const char* widget_name,
+bool tether_yaml_apply_widget_properties(TUID entity, const char* widget_name,
                                          Tether_ASTNode* props, Tether_ASTEnvironment* env);
 
 #ifdef __cplusplus

@@ -37,7 +37,7 @@ flowchart TD
         UI["Widget Library Cell (Base Controls, Custom Widgets, Layout Rules)"]
         Registry["Central Registry Cell (Widgets, Aliases, Fonts)"]
         Engine["Engine Orchestrator (Transforms, Hierarchy, Input Dispatch, Invalidation)"]
-        Kernel["ECS Kernel Cell (Sparse Sets, Dense Arrays, GUIDs, SSO Memory)"]
+        Kernel["ECS Kernel Cell (Sparse Sets, Dense Arrays, TUIDs, SSO Memory)"]
         Layout["Layout Solver Interface (Tree Solver, Anchor/Flex, Future Vinyasa)"]
         Backend["Backend Interface (Windowing HAL + Rendering RHI Contracts)"]
     end
@@ -94,7 +94,7 @@ The Tether documentation is organized into two primary pillars: **Category A** f
 |:---:|:---|:---|
 | 01 | [Getting Started and Examples](technical/01_getting_started.md) | Prerequisites, CMake build instructions, running the sandbox showcase, and building a minimal C or YAML UI. |
 | 02 | [Tether Core Architecture and Execution Model](technical/02_core_architecture.md) | Engine lifecycle (`tether_run`), frame execution stages, subsystem dependencies, and thread ownership contracts. |
-| 03 | [ECS, Memory Management, and Lifecycle](technical/03_ecs_and_memory.md) | 64-bit generation GUIDs, sparse sets, dense arrays, swap-and-pop deallocation, and small string optimization (SSO). |
+| 03 | [ECS, Memory Management, and Lifecycle](technical/03_ecs_and_memory.md) | 64-bit generation TUIDs, sparse sets, dense arrays, swap-and-pop deallocation, and small string optimization (SSO). |
 | 04 | [Components, State, Invalidation, and Updates](technical/04_components_and_invalidation.md) | Base node components (`SlotTransform`, `Hierarchy`, `Visibility`), dirty flags (`DIRTY_VISUAL`, `DIRTY_LAYOUT`), and `VOLATILE` continuous mode. |
 | 05 | [UI Framework, Widget Registry, and Extensibility](technical/05_ui_framework_and_widgets.md) | Built-in widget suite (Container, Panel, Text, Button, Slider, Toggle, Checkbox, Radio, Dropdown, Menu, ContextMenu, Collapsible, Switcher), semantic state components, Central Registry, and custom widgets. |
 | 06 | [Vinyasa Layout System](technical/06_vinyasa_layout.md) | The built-in 2-pass layout algorithm (Measure/Arrange), container rules, flex and canvas modes, and planned Vinyasa integration. |

@@ -17,15 +17,15 @@ extern "C" {
  *   ├── [0] View 0 (visible)
  *   └── [N-1] View N-1 (collapsed)
  */
-Tether_GUID tether_ui_switcher(Tether_GUID parent);
+TUID tether_ui_switcher(TUID parent);
 
 /* ========================================================================== */
 /* 2. Operations (View Management & Activation)                               */
 /* ========================================================================== */
 
-Tether_GUID tether_ui_switcher_add_view(Tether_GUID switcher);
-void        tether_ui_switcher_show_index(Tether_GUID switcher, int active_index);
-int         tether_ui_switcher_get_active(Tether_GUID switcher);
+TUID tether_ui_switcher_add_view(TUID switcher);
+void        tether_ui_switcher_show_index(TUID switcher, int active_index);
+int         tether_ui_switcher_get_active(TUID switcher);
 
 #ifdef __cplusplus
 }

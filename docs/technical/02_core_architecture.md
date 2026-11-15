@@ -29,7 +29,7 @@ flowchart TD
         Registry["Central Registry Cell (Widgets, Aliases, Fonts)"]
         Engine["Engine Orchestrator (Transforms, Hierarchy, Invalidation, Frame Pipeline)"]
         Input["Input & Events Cell (Pointer Normalization, Reverse DFS Hit-Testing)"]
-        Kernel["ECS Kernel Cell (Sparse Sets, Dense Arrays, GUIDs, SSO Memory)"]
+        Kernel["ECS Kernel Cell (Sparse Sets, Dense Arrays, TUIDs, SSO Memory)"]
         Layout["Layout Solver Interface (Container Rules, Child Slots, Constraint Solving)"]
         Backend["Backend Interface (Windowing HAL + Rendering RHI Contracts)"]
     end
@@ -77,7 +77,7 @@ flowchart TD
 Tether completely departs from traditional Object-Oriented UI paradigms where visual controls inherit from base classes (e.g. `Widget -> VisualElement -> Control -> Button`). Instead, Tether represents UI through a pure **Entity Component System (ECS)**.
 
 ### Entities and Primitives
-- **Entity**: An entity is simply a 64-bit integer identifier (`Tether_GUID`) combining a recycled array index with a generation version to mathematically eliminate dangling pointers.
+- **Entity**: An entity is simply a 64-bit integer identifier (`TUID`) combining a recycled array index with a generation version to mathematically eliminate dangling pointers.
 - **Primitive**: In Tether, a primitive is an individual element entity in the scene hierarchy. It can act as a parent or a child, and it acquires layout, visual, and behavioral characteristics based on the components attached to it.
 - **Native vs. Dynamic Primitives**:
   - **Native Primitives**: Core elements built directly into the engine, composed of statically registered native components.
@@ -251,7 +251,7 @@ In Tether, widgets are not monolithic classes or inheritance trees. Instead, a w
 
 - **Factory Pattern**: Widgets register their factory functions with the central widget registry (`tether_register_widget("Button", factory)`).
 - **Component Assembly**: When a widget is instantiated:
-  1. An entity GUID is allocated in the ECS Kernel.
+  1. An entity TUID is allocated in the ECS Kernel.
   2. Foundational spatial components are attached (`SlotTransform`, `Hierarchy`, `Visibility`).
   3. Layout container or slot components are attached based on its role.
   4. Visible components (`Shape`) and non-visible behavioral components (`Interactable`) are attached.

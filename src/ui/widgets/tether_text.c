@@ -7,8 +7,8 @@
 /* 1. Widget Creation & Visual Sync                                           */
 /* ========================================================================== */
 
-Tether_GUID tether_ui_text(Tether_GUID parent) {
-    Tether_GUID entity = tether_widget_create_container(parent);
+TUID tether_ui_text(TUID parent) {
+    TUID entity = tether_widget_create_container(parent);
     tether_ecs_add_component(entity, TETHER_COMPONENT_TEXT);
     Tether_FlexSlot *f = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
     if (f) {
@@ -21,7 +21,7 @@ Tether_GUID tether_ui_text(Tether_GUID parent) {
 /* 2. Operations (View Management & Activation)                               */
 /* ========================================================================== */
 
-const char* tether_ui_get_text(Tether_GUID entity) {
+const char* tether_ui_get_text(TUID entity) {
     if (!tether_ecs_is_valid(entity)) return NULL;
 
     Tether_TextWord* word = (Tether_TextWord*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT_WORD);
@@ -39,7 +39,7 @@ const char* tether_ui_get_text(Tether_GUID entity) {
     return NULL;
 }
 
-bool tether_ui_set_text(Tether_GUID entity, const char* string) {
+bool tether_ui_set_text(TUID entity, const char* string) {
     if (!tether_ecs_is_valid(entity)) return false;
     if (!string) string = "";
 
@@ -87,8 +87,8 @@ bool tether_ui_set_text(Tether_GUID entity, const char* string) {
     return true;
 }
 
-void tether_ui_set_text_color(Tether_GUID entity, Tether_Color color) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_text_color(TUID entity, Tether_Color color) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Text *text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
     if (text) {
         text->color = color;
@@ -96,8 +96,8 @@ void tether_ui_set_text_color(Tether_GUID entity, Tether_Color color) {
     }
 }
 
-void tether_ui_set_text_size(Tether_GUID entity, float font_size) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_text_size(TUID entity, float font_size) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Text *text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
     if (text) {
         text->font_size = font_size;
@@ -108,8 +108,8 @@ void tether_ui_set_text_size(Tether_GUID entity, float font_size) {
     }
 }
 
-void tether_ui_set_text_align(Tether_GUID entity, Tether_Align align_x, Tether_Align align_y) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_text_align(TUID entity, Tether_Align align_x, Tether_Align align_y) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Text *text = (Tether_Text*)tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
     if (text) {
         text->align_x = align_x;

@@ -28,18 +28,18 @@ typedef enum {
  *         └── [i] Item: Panel, Interactable
  *               └── [0] Text
  */
-Tether_GUID tether_ui_dropdown(Tether_GUID parent);
+TUID tether_ui_dropdown(TUID parent);
 
 /* ========================================================================== */
 /* 2. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_dropdown_selected(Tether_GUID dropdown, int selected_index);
-int  tether_ui_get_dropdown_selected(Tether_GUID dropdown);
-void tether_ui_set_dropdown_open(Tether_GUID dropdown, bool open);
-bool tether_ui_is_dropdown_open(Tether_GUID dropdown);
-void tether_ui_set_dropdown_options(Tether_GUID dropdown, const char **options, int count);
-void tether_ui_set_dropdown_type(Tether_GUID dropdown, Tether_DropdownType type);
+void tether_ui_set_dropdown_selected(TUID dropdown, int selected_index);
+int  tether_ui_get_dropdown_selected(TUID dropdown);
+void tether_ui_set_dropdown_open(TUID dropdown, bool open);
+bool tether_ui_is_dropdown_open(TUID dropdown);
+void tether_ui_set_dropdown_options(TUID dropdown, const char **options, int count);
+void tether_ui_set_dropdown_type(TUID dropdown, Tether_DropdownType type);
 
 #ifdef __cplusplus
 }

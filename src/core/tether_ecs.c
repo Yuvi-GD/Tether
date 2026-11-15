@@ -23,8 +23,8 @@ typedef struct {
   Tether_DenseArray *dense_arrays;
   uint32_t next_custom_component_id;
 
-  Tether_GUID main_root;
-  Tether_GUID overlay_root;
+  TUID main_root;
+  TUID overlay_root;
 } Tether_Registry;
 
 static Tether_Registry g_registry = {0};
@@ -56,7 +56,7 @@ void tether_ecs_init(void) {
       (uint32_t *)malloc(g_registry.free_capacity * sizeof(uint32_t));
   g_registry.free_count = 0;
 
-  /* Index 0 is reserved for TETHER_INVALID_GUID */
+  /* Index 0 is reserved for TETHER_INVALID_TUID */
   g_registry.next_entity_index = 1;
   
   g_registry.component_type_capacity = INITIAL_COMPONENT_TYPE_CAPACITY;
@@ -138,11 +138,11 @@ void tether_ecs_term(void) {
   memset(&g_registry, 0, sizeof(Tether_Registry));
 }
 
-Tether_GUID tether_ecs_get_main_root(void) {
+TUID tether_ecs_get_main_root(void) {
   return g_registry.main_root;
 }
 
-Tether_GUID tether_ecs_get_overlay_root(void) {
+TUID tether_ecs_get_overlay_root(void) {
   return g_registry.overlay_root;
 }
 
@@ -156,7 +156,7 @@ Tether_DenseArray *tether_ecs_get_dense_array(int component_id) {
 /*                              Entity Lifecycle                              */
 /* ========================================================================== */
 
-Tether_GUID tether_ecs_create_entity(void) {
+TUID tether_ecs_create_entity(void) {
   uint32_t index;
   if (g_registry.free_count > 0) {
     index = g_registry.free_indices[--g_registry.free_count];
@@ -174,11 +174,11 @@ Tether_GUID tether_ecs_create_entity(void) {
   }
 
   uint32_t generation = g_registry.generations[index];
-  return tether_ecs_make_guid(index, generation);
+  return tether_ecs_make_tuid(index, generation);
 }
 
-bool tether_ecs_is_valid(Tether_GUID entity) {
-  if (entity == TETHER_INVALID_GUID)
+bool tether_ecs_is_valid(TUID entity) {
+  if (entity == TETHER_INVALID_TUID)
     return false;
   uint32_t index = tether_ecs_get_index(entity);
   uint32_t generation = tether_ecs_get_generation(entity);
@@ -187,7 +187,7 @@ bool tether_ecs_is_valid(Tether_GUID entity) {
   return g_registry.generations[index] == generation;
 }
 
-void tether_ecs_destroy_entity(Tether_GUID entity) {
+void tether_ecs_destroy_entity(TUID entity) {
   if (!tether_ecs_is_valid(entity))
     return;
 
@@ -201,10 +201,10 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
     }
     
     // Recursively destroy all children (cascading delete)
-    Tether_GUID child = h_copy.first_child;
-    while (child != 0) { // TETHER_INVALID_GUID is 0
+    TUID child = h_copy.first_child;
+    while (child != 0) { // TETHER_INVALID_TUID is 0
       Tether_Hierarchy* child_h = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-      Tether_GUID next = child_h ? child_h->next_sibling : 0;
+      TUID next = child_h ? child_h->next_sibling : 0;
       tether_ecs_destroy_entity(child);
       child = next;
     }
@@ -224,7 +224,7 @@ void tether_ecs_destroy_entity(Tether_GUID entity) {
       tether_ecs_remove_component(entity, i);
   }
 
-  /* Increment generation to invalidate old GUIDs */
+  /* Increment generation to invalidate old TUIDs */
   g_registry.generations[index]++;
 
   /* Add to free list */
@@ -279,7 +279,7 @@ uint32_t tether_ecs_register_component_dynamic(size_t element_size, const void* 
   return id;
 }
 
-void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
+void *tether_ecs_add_component(TUID entity, int component_id) {
   if (!tether_ecs_is_valid(entity) || component_id < 0 ||
       (uint32_t)component_id >= g_registry.component_type_capacity)
     return NULL;
@@ -307,8 +307,8 @@ void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
     if (dense->element_size > 0) {
         dense->data = realloc(dense->data, dense->capacity * dense->element_size);
     }
-    dense->entity_map = (Tether_GUID *)realloc(
-        dense->entity_map, dense->capacity * sizeof(Tether_GUID));
+    dense->entity_map = (TUID *)realloc(
+        dense->entity_map, dense->capacity * sizeof(TUID));
   }
 
   uint32_t dense_idx = dense->count++;
@@ -329,7 +329,7 @@ void *tether_ecs_add_component(Tether_GUID entity, int component_id) {
   return ptr;
 }
 
-void *tether_ecs_get_component(Tether_GUID entity, int component_id) {
+void *tether_ecs_get_component(TUID entity, int component_id) {
   if (!tether_ecs_is_valid(entity) || component_id < 0 ||
       (uint32_t)component_id >= g_registry.component_type_capacity)
     return NULL;
@@ -350,7 +350,7 @@ void *tether_ecs_get_component(Tether_GUID entity, int component_id) {
   return (uint8_t *)dense->data + (dense_idx * dense->element_size);
 }
 
-void tether_ecs_remove_component(Tether_GUID entity, int component_id) {
+void tether_ecs_remove_component(TUID entity, int component_id) {
   if (!tether_ecs_is_valid(entity) || component_id < 0 ||
       (uint32_t)component_id >= g_registry.component_type_capacity)
     return;
@@ -376,7 +376,7 @@ void tether_ecs_remove_component(Tether_GUID entity, int component_id) {
     }
 
     /* Update the entity map and the sparse map for the swapped entity */
-    Tether_GUID swapped_entity = dense->entity_map[last_dense_idx];
+    TUID swapped_entity = dense->entity_map[last_dense_idx];
     dense->entity_map[dense_idx_to_remove] = swapped_entity;
 
     uint32_t swapped_entity_index = tether_ecs_get_index(swapped_entity);
@@ -392,7 +392,7 @@ void tether_ecs_remove_component(Tether_GUID entity, int component_id) {
 /*                            Hierarchy API                                   */
 /* ========================================================================== */
 
-void tether_ecs_detach_entity(Tether_GUID entity) {
+void tether_ecs_detach_entity(TUID entity) {
   if (!tether_ecs_is_valid(entity)) return;
 
   Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
@@ -429,7 +429,7 @@ void tether_ecs_detach_entity(Tether_GUID entity) {
   h->next_sibling = 0;
 }
 
-void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity) {
+void tether_ecs_attach_entity(TUID parent, TUID entity) {
     if (!tether_ecs_is_valid(parent) || !tether_ecs_is_valid(entity)) return;
 
     if (tether_ecs_get_component(parent, TETHER_COMPONENT_IS_LEAF)) return;
@@ -451,7 +451,7 @@ void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity) {
       p->last_child = entity;
   } else {
       // O(1) Instant Append using last_child!
-      Tether_GUID old_last = p->last_child;
+      TUID old_last = p->last_child;
       Tether_Hierarchy* old_last_h = (Tether_Hierarchy*)tether_ecs_get_component(old_last, TETHER_COMPONENT_HIERARCHY);
       
       if (old_last_h) {
@@ -466,13 +466,13 @@ void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity) {
   tether_ecs_add_component(parent, TETHER_COMPONENT_DIRTY_HIERARCHY);
 }
 
-void tether_ecs_bring_to_front(Tether_GUID entity) {
+void tether_ecs_bring_to_front(TUID entity) {
     if (!tether_ecs_is_valid(entity)) return;
 
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
     if (!h || h->parent == 0) return; // Not attached
 
-    Tether_GUID parent = h->parent;
+    TUID parent = h->parent;
     tether_ecs_detach_entity(entity);
     tether_ecs_attach_entity(parent, entity);
 }

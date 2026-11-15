@@ -14,7 +14,7 @@
 
 static unsigned checks;
 static const char* fixture;
-static Tether_GUID parent;
+static TUID parent;
 
 #define CHECK(condition) do { \
     ++checks; \
@@ -31,8 +31,8 @@ static bool write_fixture(const char* yaml) {
     return fclose(file) == 0 && written;
 }
 
-static Tether_GUID load(const char* yaml) {
-    return write_fixture(yaml) ? tether_yaml_load(fixture, parent) : TETHER_INVALID_GUID;
+static TUID load(const char* yaml) {
+    return write_fixture(yaml) ? tether_yaml_load(fixture, parent) : TETHER_INVALID_TUID;
 }
 
 static uint32_t entity_count(void) {
@@ -42,25 +42,25 @@ static uint32_t entity_count(void) {
 static bool rejected(const char* yaml) {
     uint32_t before = entity_count();
     CHECK(write_fixture(yaml));
-    CHECK(tether_yaml_load(fixture, parent) == TETHER_INVALID_GUID);
+    CHECK(tether_yaml_load(fixture, parent) == TETHER_INVALID_TUID);
     CHECK(entity_count() == before);
     return true;
 }
 
 static bool dropdown_case(void) {
-    Tether_GUID first = load("Dropdown: {selected: 2, open: true, options: [One, Two, Three]}\n");
+    TUID first = load("Dropdown: {selected: 2, open: true, options: [One, Two, Three]}\n");
     CHECK(tether_ecs_is_valid(first));
     CHECK(tether_ui_get_dropdown_selected(first) == 2);
     CHECK(tether_ui_is_dropdown_open(first));
     tether_ui_set_dropdown_open(first, false);
-    Tether_GUID second = load("Dropdown: {options: [One, Two, Three], open: false, selected: 2}\n");
+    TUID second = load("Dropdown: {options: [One, Two, Three], open: false, selected: 2}\n");
     CHECK(tether_ecs_is_valid(second));
     CHECK(!tether_ui_is_dropdown_open(second));
     CHECK(tether_ui_get_dropdown_selected(first) == tether_ui_get_dropdown_selected(second));
-    Tether_GUID header = tether_widget_get_child_at(second, 0);
+    TUID header = tether_widget_get_child_at(second, 0);
     CHECK(!strcmp(tether_ui_get_button_label(header), "Three"));
 
-    Tether_GUID native = tether_ui_dropdown(parent);
+    TUID native = tether_ui_dropdown(parent);
     const char* labels[] = {"One", "Two", "Three"};
     tether_ui_set_dropdown_options(native, labels, 3);
     tether_ui_set_dropdown_selected(native, 2);
@@ -71,9 +71,9 @@ static bool dropdown_case(void) {
     fputs("Dropdown:\n  selected: 39\n  options:\n", file);
     for (int i = 0; i < 40; ++i) fprintf(file, "    - Item %d\n", i);
     CHECK(fclose(file) == 0);
-    Tether_GUID large = tether_yaml_load(fixture, parent);
+    TUID large = tether_yaml_load(fixture, parent);
     CHECK(tether_ecs_is_valid(large));
-    Tether_GUID menu = tether_widget_get_child_at(large, 1);
+    TUID menu = tether_widget_get_child_at(large, 1);
     CHECK(tether_ui_menu_get_item_count(menu) == 40);
     CHECK(tether_ui_get_dropdown_selected(large) == 39);
     CHECK(!strcmp(tether_ui_menu_get_item_text(menu, 39), "Item 39"));
@@ -81,15 +81,15 @@ static bool dropdown_case(void) {
 }
 
 static bool template_case(void) {
-    Tether_GUID first = load(
+    TUID first = load(
         "- Widget: {name: Caption, tree: {Text: {string: $caption}}}\n"
         "- Caption: {caption: First}\n");
     CHECK(tether_ecs_is_valid(first));
     CHECK(!strcmp(tether_ui_get_text(first), "First"));
-    Tether_GUID second = load("Caption: {caption: Second}\n");
+    TUID second = load("Caption: {caption: Second}\n");
     CHECK(tether_ecs_is_valid(second));
     CHECK(!strcmp(tether_ui_get_text(second), "Second"));
-    Tether_GUID replaced = load(
+    TUID replaced = load(
         "- Widget: {name: Caption, tree: {Text: {string: Replacement}}}\n"
         "- Caption: {}\n");
     CHECK(tether_ecs_is_valid(replaced));
@@ -106,7 +106,7 @@ static bool invalid_case(void) {
     CHECK(rejected("Dropdown: {options: [One, {bad: item}]}\n"));
     CHECK(rejected("Dropdown: {options: wrong}\n"));
     CHECK(rejected("- Button: {id: discarded}\n- Dropdown: {selected: 5}\n"));
-    CHECK(tether_registry_find_entity("discarded") == TETHER_INVALID_GUID);
+    CHECK(tether_registry_find_entity("discarded") == TETHER_INVALID_TUID);
     CHECK(rejected("Container: {children: [{Button: {}}, {UnknownWidget: {}}]}\n"));
     CHECK(tether_ecs_is_valid(load("Dropdown: {options: [Recovered], selected: 0}\n")));
     return true;
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
     bool passed = dropdown_case() && template_case() && invalid_case();
     /* Optional existing example documents exercise compatibility with real YAML. */
     for (int i = 2; passed && i < argc; ++i) {
-        Tether_GUID example = tether_yaml_load(argv[i], parent);
+        TUID example = tether_yaml_load(argv[i], parent);
         ++checks;
         if (!tether_ecs_is_valid(example)) {
             fprintf(stderr, "Example failed to load: %s\n", argv[i]);

@@ -13,7 +13,7 @@ extern "C" {
  * @param screen_width The width of the viewport.
  * @param screen_height The height of the viewport.
  */
-void tether_layout_process_tree(Tether_GUID root, float screen_width, float screen_height);
+void tether_layout_process_tree(TUID root, float screen_width, float screen_height);
 
 /**
  * Convenience function to process all root entities.

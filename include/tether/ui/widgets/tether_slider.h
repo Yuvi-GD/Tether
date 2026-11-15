@@ -19,15 +19,15 @@ extern "C" {
  *   ├── [0] Fill: Panel (active bar)
  *   └── [1] Thumb: Panel 18x18
  */
-Tether_GUID tether_ui_slider(Tether_GUID parent);
+TUID tether_ui_slider(TUID parent);
 
 /* ========================================================================== */
 /* 2. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_slider_value(Tether_GUID slider, float value);
-float tether_ui_get_slider_value(Tether_GUID slider);
-void tether_ui_set_slider_range(Tether_GUID slider, float min_val, float max_val);
+void tether_ui_set_slider_value(TUID slider, float value);
+float tether_ui_get_slider_value(TUID slider);
+void tether_ui_set_slider_range(TUID slider, float min_val, float max_val);
 
 #ifdef __cplusplus
 }

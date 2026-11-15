@@ -62,9 +62,9 @@ The test suite is organized into modular layers reflecting system boundaries:
 
 ### 1. ECS Kernel Correctness (`tests/unit/ecs_test.c`)
 Validates fundamental ECS guarantees under stress:
-- **Generation Increment**: Verifies that destroying an entity increments its upper 32-bit generation and invalidates cached GUIDs.
+- **Generation Increment**: Verifies that destroying an entity increments its upper 32-bit generation and invalidates cached TUIDs.
 - **Dense Array Contiguity**: Confirms that adding and removing components via Swap-and-Pop preserves a contiguous memory block without gaps.
-- **Sparse-Dense Bi-directional Mapping**: Tests that sparse array lookups accurately resolve dense indices, and `entity_map` points back to valid GUIDs.
+- **Sparse-Dense Bi-directional Mapping**: Tests that sparse array lookups accurately resolve dense indices, and `entity_map` points back to valid TUIDs.
 - **Cascading Destruction**: Asserts that deleting a parent entity recursively destroys its full subtree, freeing all attached components and recycling slot indices.
 
 ### 2. Behavioral Contract Scenarios (`tests/unit/behavior_test.c`)

@@ -29,7 +29,7 @@ int main() {
     tether_ecs_register_component_static(COMPONENT_TRANSFORM, sizeof(Transform), NULL);
     
     printf("[1] Spawning 10,000 entities with Transform components...\n");
-    Tether_GUID entities[10000];
+    TUID entities[10000];
     for (int i = 0; i < 10000; i++) {
         entities[i] = tether_ecs_create_entity();
         Transform* t = (Transform*)tether_ecs_add_component(entities[i], COMPONENT_TRANSFORM);
@@ -60,7 +60,7 @@ int main() {
     printf("[3] Verifying Dense Array is 100%% contiguous with no holes...\n");
     bool valid = true;
     for (uint32_t i = 0; i < dense->count; i++) {
-        Tether_GUID e = dense->entity_map[i];
+        TUID e = dense->entity_map[i];
         if (!tether_ecs_is_valid(e)) {
             printf("    [FAILED] Found invalid or dead entity at dense index %u\n", i);
             valid = false;
@@ -89,7 +89,7 @@ int main() {
         printf("    [FAILED] Custom component ID should be >= 32 (got %d)\n", custom_id);
         valid = false;
     } else {
-        Tether_GUID p1 = tether_ecs_create_entity();
+        TUID p1 = tether_ecs_create_entity();
         CustomStats* stats = (CustomStats*)tether_ecs_add_component(p1, custom_id);
         CustomStats* check = (CustomStats*)tether_ecs_get_component(p1, custom_id);
         if (check->hp != 100 || check->mp != 50) {
@@ -103,10 +103,10 @@ int main() {
     // Ensure TETHER_COMPONENT_HIERARCHY is registered
     tether_ecs_register_component_static(TETHER_COMPONENT_HIERARCHY, sizeof(Tether_Hierarchy), NULL); // 3 is TETHER_COMPONENT_HIERARCHY
     
-    Tether_GUID parent = tether_ecs_create_entity();
-    Tether_GUID c1 = tether_ecs_create_entity();
-    Tether_GUID c2 = tether_ecs_create_entity();
-    Tether_GUID c3 = tether_ecs_create_entity();
+    TUID parent = tether_ecs_create_entity();
+    TUID c1 = tether_ecs_create_entity();
+    TUID c2 = tether_ecs_create_entity();
+    TUID c3 = tether_ecs_create_entity();
     
     // Add hierarchy components
     Tether_Hierarchy* hp = (Tether_Hierarchy*)tether_ecs_add_component(parent, TETHER_COMPONENT_HIERARCHY);
@@ -162,8 +162,8 @@ int main() {
     
     // Test Overlay Root
     printf("[7] Testing Global Overlay Root...\n");
-    Tether_GUID overlay = tether_ecs_get_overlay_root();
-    Tether_GUID main_r = tether_ecs_get_main_root();
+    TUID overlay = tether_ecs_get_overlay_root();
+    TUID main_r = tether_ecs_get_main_root();
     if (!tether_ecs_is_valid(overlay) || !tether_ecs_is_valid(main_r) || overlay == main_r) {
         printf("    [FAILED] Global overlay root not initialized properly\n");
         valid = false;

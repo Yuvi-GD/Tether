@@ -19,14 +19,14 @@ extern "C" {
  *   └── [0] Indicator: Shape 15x15
  * Place a separate Text widget alongside the checkbox when a label is needed.
  */
-Tether_GUID tether_ui_checkbox(Tether_GUID parent);
+TUID tether_ui_checkbox(TUID parent);
 
 /* ========================================================================== */
 /* 2. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_checked(Tether_GUID checkbox, bool checked);
-bool tether_ui_get_checked(Tether_GUID checkbox);
+void tether_ui_set_checked(TUID checkbox, bool checked);
+bool tether_ui_get_checked(TUID checkbox);
 
 #ifdef __cplusplus
 }

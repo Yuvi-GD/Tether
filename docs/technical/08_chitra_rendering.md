@@ -105,7 +105,7 @@ Text rendering in Chitra leverages dynamic glyph atlas caching:
 During the visual update stage of `tether_engine_frame()`, the engine iterates through all entities tagged with `TETHER_COMPONENT_DIRTY_VISUAL` and executes `apply_visual_rules(entity)`:
 
 ```c
-static void apply_visual_rules(Tether_GUID id) {
+static void apply_visual_rules(TUID id) {
     Tether_SlotTransform* st = tether_ecs_get_component(id, TETHER_COMPONENT_SLOT_TRANSFORM);
     Tether_RenderTransform* rt = tether_ecs_get_component(id, TETHER_COMPONENT_RENDER_TRANSFORM);
     Tether_Visibility* vis = tether_ecs_get_component(id, TETHER_COMPONENT_VISIBILITY);

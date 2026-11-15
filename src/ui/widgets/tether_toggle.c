@@ -3,14 +3,14 @@
 #include "tether/ui/tether_widgets.h"
 
 /* Forward declaration */
-static void toggle_handle_click(Tether_GUID entity, const Tether_Event *event_info, void *user_data);
-static void toggle_handle_feedback(Tether_GUID entity, const Tether_Event *event_info, void *user_data);
+static void toggle_handle_click(TUID entity, const Tether_Event *event_info, void *user_data);
+static void toggle_handle_feedback(TUID entity, const Tether_Event *event_info, void *user_data);
 
 /* ========================================================================== */
 /* 1. Widget Creation & Visual Sync                                           */
 /* ========================================================================== */
 
-static void toggle_update(Tether_GUID entity, bool state_changed) {
+static void toggle_update(TUID entity, bool state_changed) {
     if (!tether_ui_has_bool(entity)) return;
     bool is_on = tether_ui_get_bool(entity);
 
@@ -22,8 +22,8 @@ static void toggle_update(Tether_GUID entity, bool state_changed) {
     tether_ui_set_active_color(entity, tether_ui_adjust_color(base, offset));
 
     if (!state_changed) return;
-    Tether_GUID thumb = tether_widget_get_child_at(entity, 0);
-    if (thumb != TETHER_INVALID_GUID) {
+    TUID thumb = tether_widget_get_child_at(entity, 0);
+    if (thumb != TETHER_INVALID_TUID) {
         if (is_on) {
             /* 46px wide container - 20px thumb - 3px margin = 23px from left */
             tether_ui_set_anchor(thumb, 1.0f, 0.5f, 1.0f, 0.5f);
@@ -35,8 +35,8 @@ static void toggle_update(Tether_GUID entity, bool state_changed) {
     }
 }
 
-Tether_GUID tether_ui_toggle(Tether_GUID parent) {
-    Tether_GUID entity = tether_ui_panel(parent);
+TUID tether_ui_toggle(TUID parent) {
+    TUID entity = tether_ui_panel(parent);
     tether_ui_set_container(entity, TETHER_FLOW_NONE);
     tether_ui_set_size(entity, 46.0f, 26.0f);
     Tether_FlexSlot *flex = tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
@@ -51,7 +51,7 @@ Tether_GUID tether_ui_toggle(Tether_GUID parent) {
     tether_ecs_add_component(entity, TETHER_COMPONENT_BOOL_STATE);
 
     /* Child 0: Thumb panel */
-    Tether_GUID thumb = tether_ui_panel(entity);
+    TUID thumb = tether_ui_panel(entity);
     tether_ui_set_size(thumb, 20.0f, 20.0f);
     tether_ui_set_color(thumb, (Tether_Color){225, 225, 225, 255});
     tether_ui_set_border(thumb, 0.0f, (Tether_Color){0, 0, 0, 0}, 10.0f);
@@ -72,13 +72,13 @@ Tether_GUID tether_ui_toggle(Tether_GUID parent) {
 /* 2. Internal Event Handling                                                 */
 /* ========================================================================== */
 
-static void toggle_handle_feedback(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void toggle_handle_feedback(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
     toggle_update(entity, false);
 }
 
-static void toggle_handle_click(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void toggle_handle_click(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
     if (!tether_ui_has_bool(entity)) return;
@@ -92,13 +92,13 @@ static void toggle_handle_click(Tether_GUID entity, const Tether_Event *event_in
 /* 3. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_toggle(Tether_GUID toggle, bool is_on) {
-    if (toggle == TETHER_INVALID_GUID) return;
+void tether_ui_set_toggle(TUID toggle, bool is_on) {
+    if (toggle == TETHER_INVALID_TUID) return;
     tether_ui_set_bool(toggle, is_on);
     toggle_update(toggle, true);
     tether_dispatch_event(toggle, TETHER_EVENT_CHANGE);
 }
 
-bool tether_ui_get_toggle(Tether_GUID toggle) {
+bool tether_ui_get_toggle(TUID toggle) {
     return tether_ui_get_bool(toggle);
 }
