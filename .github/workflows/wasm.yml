@@ -25,8 +25,11 @@ jobs:
         with:
           version: latest
 
-      - name: Ensure shader compiler is executable
-        run: chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc
+      - name: Ensure shader compiler is executable and directories exist
+        run: |
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc
+          mkdir -p third_party/chitra/src/backends/shaders/gen
 
       - name: Configure WebGL2 build
         run: |
@@ -65,8 +68,11 @@ jobs:
         with:
           version: latest
 
-      - name: Ensure shader compiler is executable
-        run: chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc
+      - name: Ensure shader compiler is executable and directories exist
+        run: |
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc
+          mkdir -p third_party/chitra/src/backends/shaders/gen
 
       - name: Configure WebGPU build
         run: |
