@@ -2,6 +2,7 @@
 #include "lab.h"
 #include "results.h"
 #include "tool.h"
+#include "tether/platform/tether_platform.h"
 #include "sandbox_events.h"
 #include "sandbox_widgets_zoo.h"
 #include "tether/tether.h"
@@ -28,11 +29,16 @@ static void sandbox_refresh(void) {
     refresh_requested = true;
 }
 
+static void on_refresh_completed(void *data) {
+    (void)data;
+    sandbox_refresh();
+}
+
 static void on_refresh_clicked(TUID entity, const Tether_Event *event, void *data) {
     (void)entity;
     (void)event;
     (void)data;
-    sandbox_refresh();
+    tether_platform_sync_ui(on_refresh_completed, NULL);
 }
 
 void sandbox_navigate(SandboxView view) {
@@ -314,15 +320,9 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i], "--showcase")) {
             wanted = SANDBOX_SHOWCASE;
         } else if (!strcmp(argv[i], "--result") && i + 1 < argc) {
-#ifdef _WIN32
-            if (!_fullpath(initial_result, argv[++i], sizeof initial_result)) {
+            if (!tether_platform_resolve_path(argv[++i], initial_result, sizeof initial_result)) {
                 return 2;
             }
-#else
-            if (!realpath(argv[++i], initial_result)) {
-                return 2;
-            }
-#endif
         } else {
             printf(
                 "Usage: tether_sandbox [--showcase | --result PATH | --smoke | "

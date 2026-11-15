@@ -6,6 +6,7 @@
 #include "tether/engine/parser/tether_yaml_widgets.h"
 
 #include "tether/ui/tether_widgets.h"
+#include "tether/ui/widgets/tether_text.h"
 
 #include <stdlib.h>
 #include <string.h>

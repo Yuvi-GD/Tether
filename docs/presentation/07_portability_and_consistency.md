@@ -86,10 +86,10 @@ Tether's minimal requirements allow it to deploy across a wide spectrum of hardw
 - **Backend Strategy**: **Pipeline 1 (Pure C Imperative)** paired with a software framebuffer driver for SPI, I8080, or parallel LCD displays.
 - **Resource Goal**: Sub-64 KB static SRAM operation without AST/YAML parser overhead (roadmap target, not yet measured).
 
-### Tier 4: WebAssembly (WASM - Roadmap Target)
+### Tier 4: WebAssembly (WASM - Supported & Verified)
 - **Target Environments**: Modern web browsers (Chrome, Firefox, Safari, Edge).
-- **Backend Strategy**: Emscripten builds targeting WebGL2/WebGPU via Sokol or custom JS/WASM `Tether_Backend` glue.
-- **Use Cases**: High-performance interactive web tools, CAD viewers, embedded playground sandboxes.
+- **Backend Strategy**: Emscripten builds targeting WebGL2 (`SOKOL_GLES3`) and WebGPU (`SOKOL_WGPU` via Dawn port) with native high-DPI scaling, virtual MEMFS live asset synchronization, and declarative CMake integration via `cmake/TetherWasm.cmake`.
+- **Use Cases**: High-performance interactive web tools, CAD viewers, embedded playground sandboxes, and zero-install web applications.
 
 ---
 

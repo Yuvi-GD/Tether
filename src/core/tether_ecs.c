@@ -1,5 +1,6 @@
 #include "tether/core/tether_ecs.h"
 #include "tether/core/tether_components.h"
+#include "tether/core/tether_registry.h"
 
 #include <stdlib.h>
 #include <string.h>

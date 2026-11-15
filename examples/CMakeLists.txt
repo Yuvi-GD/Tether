@@ -13,6 +13,13 @@ target_include_directories(tether_sandbox PRIVATE
     sandbox/results
 )
 target_link_libraries(tether_sandbox PRIVATE tether_runtime tether_run_support)
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    tether_configure_wasm_target(tether_sandbox
+        PRELOAD_DIRS
+            "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/ui/scripts@UI"
+            "${CMAKE_CURRENT_SOURCE_DIR}/Font@Font"
+    )
+endif()
 target_compile_definitions(tether_sandbox PRIVATE SANDBOX_REPORT_DIR="report/workbench")
 if(TARGET tether_bench AND TARGET tether_test)
     add_dependencies(tether_sandbox tether_test tether_bench)

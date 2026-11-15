@@ -144,6 +144,19 @@ flowchart LR
 
 ---
 
+### ADR-07: First-Class WebAssembly and Platform Abstraction
+- **Status**: Adopted in `v0.0.3-preview`.
+- **Context**: Porting native UI engines to the web often forces host applications to write custom HTML shells, manage Emscripten virtual filesystem (MEMFS) synchronizations, and hack browser file dialogs.
+- **Decision**:
+  1. Provide an engine-level platform abstraction in `include/tether/platform/tether_platform.h` and `src/platform/tether_platform.c` handling file picking dialogs, path normalization, and asset synchronization uniformly across Web, Windows, and POSIX.
+  2. Provide an official full-viewport canvas shell in `web/shell.html` with native high-DPI scaling and boot-time asset synchronization.
+  3. Provide `cmake/TetherWasm.cmake` with `tether_configure_wasm_target()` to encapsulate Emscripten linker options, memory growth, and symbol exports.
+- **Consequences**:
+  - Downstream host applications target WebAssembly with zero custom JavaScript or Emscripten-specific boilerplate.
+  - The core engine remains 100% pure ISO C99, while the platform layer cleanly isolates OS and browser specifics behind uniform C callback contracts.
+
+---
+
 ## 4. Current Limitations & Engineering Trade-offs
 
 | Design Aspect | Current Architecture | Strategic Rationale | Trade-off / Limitation |

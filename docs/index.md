@@ -39,17 +39,19 @@ flowchart TD
         Engine["Engine Orchestrator (Transforms, Hierarchy, Input Dispatch, Invalidation)"]
         Kernel["ECS Kernel Cell (Sparse Sets, Dense Arrays, TUIDs, SSO Memory)"]
         Layout["Layout Solver Interface (Tree Solver, Anchor/Flex, Future Vinyasa)"]
+        Platform["Platform Cell (File Pickers, Virtual MEMFS Sync, Path Resolution)"]
         Backend["Backend Interface (Windowing HAL + Rendering RHI Contracts)"]
     end
 
     subgraph Adapters["Platform & Engine Adapters"]
-        Chitra["Chitra Backend (Hardware-Accelerated 2D GPU Rendering - GPU API Agnostic)"]
+        Chitra["Chitra Backend (Hardware-Accelerated 2D: D3D11, Metal, GL Core, WebGL2, WebGPU)"]
         Vinyasa["Vinyasa Engine (Advanced Flexbox/Constraint Solver - Planned)"]
         OtherBackends["Alternative Backends (ThorVG, raylib, SDL, Headless)"]
     end
 
     Host --> UI
     Host --> Engine
+    Host --> Platform
     UI --> Engine
     Authoring --> Engine
     
@@ -92,7 +94,7 @@ The Tether documentation is organized into two primary pillars: **Category A** f
 
 | # | Chapter | Focus & Summary |
 |:---:|:---|:---|
-| 01 | [Getting Started and Examples](technical/01_getting_started.md) | Prerequisites, CMake build instructions, running the sandbox showcase, and building a minimal C or YAML UI. |
+| 01 | [Getting Started and Examples](technical/01_getting_started.md) | Prerequisites, desktop & WebAssembly (WebGL2/WebGPU) CMake build instructions, running the sandbox showcase, and building a minimal C or YAML UI. |
 | 02 | [Tether Core Architecture and Execution Model](technical/02_core_architecture.md) | Engine lifecycle (`tether_run`), frame execution stages, subsystem dependencies, and thread ownership contracts. |
 | 03 | [ECS, Memory Management, and Lifecycle](technical/03_ecs_and_memory.md) | 64-bit generation TUIDs, sparse sets, dense arrays, swap-and-pop deallocation, and small string optimization (SSO). |
 | 04 | [Components, State, Invalidation, and Updates](technical/04_components_and_invalidation.md) | Base node components (`SlotTransform`, `Hierarchy`, `Visibility`), dirty flags (`DIRTY_VISUAL`, `DIRTY_LAYOUT`), and `VOLATILE` continuous mode. |
@@ -105,7 +107,7 @@ The Tether documentation is organized into two primary pillars: **Category A** f
 | 11 | [Language Bindings and Scripting](technical/11_language_bindings.md) | C API boundaries, dynamic state binding, and the planned multi-language interoperability layer (Python, JS, Rust). |
 | 12 | [API Reference and Integration Guides](technical/12_api_reference.md) | Public header references, types, memory ownership rules, and integrating Tether into host CMake projects. |
 | 13 | [Testing, Benchmarks, and Profiling](technical/13_testing_and_benchmarks.md) | Unit correctness tests, integration smoke tests, benchmark runners, and validation reporting. |
-| 14 | [Portability Contracts, Limitations, and Architectural Decisions](technical/14_portability_and_decisions.md) | Architectural decision records (ADRs), memory safety considerations, and platform constraints. |
+| 14 | [Portability Contracts, Limitations, and Architectural Decisions](technical/14_portability_and_decisions.md) | Architectural decision records (ADRs), WebAssembly & WebGPU portability, platform abstraction (`tether_platform.h`), and platform constraints. |
 
 ---
 
