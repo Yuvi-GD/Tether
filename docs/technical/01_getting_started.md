@@ -67,7 +67,59 @@ ctest --test-dir build -C Release --output-on-failure
 
 ---
 
-## 4. Copy-Paste Example 1: Minimal Pure C Application
+## 4. Building for WebAssembly (WebGL2 and WebGPU)
+
+Tether natively supports WebAssembly compilation via Emscripten, enabling browser execution with zero garbage collection overhead and high-DPI canvas scaling. Both WebGL2 and modern WebGPU backends are fully supported.
+
+### Prerequisites for Web
+- **Emscripten SDK (emsdk)**: Version 3.1.x or 4.0+.
+- **Python 3.x**: For running a local HTTP test server.
+
+Install and activate Emscripten in your terminal:
+```powershell
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+.\emsdk install latest
+.\emsdk activate latest
+.\emsdk_env.ps1
+```
+
+### Option A: WebGL2 Backend (Default Web Target)
+```powershell
+emcmake cmake -B build/build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build/build-wasm
+python -m http.server -d build/build-wasm 8080
+```
+Open `http://localhost:8080/tether_sandbox.html` in your browser.
+
+### Option B: WebGPU Backend (Next-Gen GPU Target)
+```powershell
+emcmake cmake -B build/build-wasm-wgpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=WGPU
+cmake --build build/build-wasm-wgpu
+python -m http.server -d build/build-wasm-wgpu 8081
+```
+Open `http://localhost:8081/tether_sandbox.html` in a WebGPU-supported browser (Chrome 113+, Edge 113+, Firefox Nightly, Safari 18+).
+
+### Using Tether Web in Host CMake Projects
+Tether provides `cmake/TetherWasm.cmake` with the `tether_configure_wasm_target()` helper. In your host `CMakeLists.txt`:
+```cmake
+include(cmake/TetherWasm.cmake)
+
+add_executable(my_web_app main.c)
+target_link_libraries(my_web_app PRIVATE tether_runtime)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    tether_configure_wasm_target(my_web_app
+        PRELOAD_DIRS
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets@assets"
+    )
+endif()
+```
+This automatically links Tether's official full-viewport web shell (`web/shell.html`), configures memory growth, exports required runtime symbols, and packages virtual filesystem mounts.
+
+---
+
+## 5. Copy-Paste Example 1: Minimal Pure C Application
 
 This complete, self-contained C program creates a window, constructs a reactive UI with a title and an interactive counter button, updates text state on click, and cleans up on shutdown.
 
@@ -173,7 +225,7 @@ int main(int argc, char** argv) {
 
 ---
 
-## 5. Copy-Paste Example 2: Declarative YAML UI
+## 6. Copy-Paste Example 2: Declarative YAML UI
 
 Tether allows declaring UI structure, styles, and nesting declaratively in **YAML**. Both YAML and C construct the exact same runtime ECS components in memory.
 
@@ -281,7 +333,7 @@ int main(int argc, char** argv) {
 
 ---
 
-## 6. Copy-Paste Host `CMakeLists.txt`
+## 7. Copy-Paste Host `CMakeLists.txt`
 
 To embed Tether into your own CMake project, place Tether in your project tree (e.g. as a `git submodule` in `third_party/tether`) and use this `CMakeLists.txt`:
 
@@ -316,7 +368,7 @@ add_custom_command(TARGET my_tether_app POST_BUILD
 
 ---
 
-## 7. Common Pitfalls & Troubleshooting
+## 8. Common Pitfalls & Troubleshooting
 
 | Problem | Cause | Solution |
 | :--- | :--- | :--- |

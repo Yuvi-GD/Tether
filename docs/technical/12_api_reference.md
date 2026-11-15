@@ -408,6 +408,45 @@ Parses a declarative YAML scene file and attaches the resulting entity hierarchy
 
 ---
 
+### Platform Abstraction Interface (`tether/platform/tether_platform.h`)
+
+Provides cross-platform dialogs, virtual filesystem asset synchronization, and path normalization across Web (Emscripten), Windows, Linux, and macOS:
+
+```c
+typedef void (*Tether_FilePickedFn)(const char *path, void *user_data);
+typedef void (*Tether_SyncCompleteFn)(void *user_data);
+
+/* Asynchronously or synchronously pick a file using the host platform's dialog.
+ * filter_ext: Comma-separated extensions, e.g. "yaml,yml" or "json"
+ * title: Dialog title or filter description (e.g. "YAML files (*.yaml;*.yml)")
+ * on_picked: Callback called when a file is selected (or NULL if cancelled).
+ * user_data: User context pointer passed to callback.
+ */
+void tether_platform_pick_file(const char *filter_ext, const char *title,
+                               Tether_FilePickedFn on_picked, void *user_data);
+
+/* Resolves an input path to a canonical/absolute path. Returns true on success. */
+bool tether_platform_resolve_path(const char *in_path, char *out_path, size_t size);
+
+/* On web, re-fetches UI files from the web server into virtual MEMFS.
+ * On desktop, immediately invokes on_complete.
+ */
+void tether_platform_sync_ui(Tether_SyncCompleteFn on_complete, void *user_data);
+
+/* On web, re-fetches a single file from the web server into virtual MEMFS.
+ * On desktop, immediately invokes on_complete.
+ */
+void tether_platform_sync_file(const char *rel_path, Tether_SyncCompleteFn on_complete, void *user_data);
+```
+
+#### Platform Behavior Contracts
+- **Web (Emscripten)**: `tether_platform_pick_file` triggers an HTML5 `<input type="file">`, reads chosen files via `FileReader`, writes the byte payload into virtual MEMFS `/tmp/<filename>` and `/tmp/chosen.yaml`, and delivers the virtual path to the callback. `tether_platform_sync_ui` and `tether_platform_sync_file` re-query the web server with `cache: 'no-store'` to update MEMFS with live edits.
+- **Windows**: `tether_platform_pick_file` invokes the Win32 `GetOpenFileNameA` common dialog. `tether_platform_resolve_path` uses `_fullpath`. Sync functions invoke `on_complete` immediately.
+- **Linux & macOS**: Resolves paths using standard POSIX `realpath()`. Sync functions invoke `on_complete` immediately.
+
+
+---
+
 ## 7. Host Integration Guides
 
 ### Pattern 1: CMake Subdirectory Integration

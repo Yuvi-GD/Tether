@@ -9,8 +9,14 @@
 Tether's backend contract can support additional adapters. The current default adapter uses **Chitra** (`src/backends/chitra_backend.c`); other adapters require implementation and validation.
 
 Chitra is a lightweight, hardware-accelerated 2D GPU rendering engine. Internally, Chitra encapsulates its own Hardware Abstraction Layer (HAL) and Rendering Hardware Interface (RHI):
-- **Windowing & Platform Integration**: The bundled backend uses Sokol for its application loop and graphics integration.
-- **Graphics APIs**: The selected Sokol backend depends on the build and platform; the preview CI currently validates Windows.
+- **Windowing & Platform Integration**: The bundled backend uses Sokol for its application loop and graphics integration across desktop (Win32, Cocoa, X11/Wayland) and web (HTML5 Canvas).
+- **Graphics APIs**: Supports multiple first-class backends selectable via `-DCHITRA_BACKEND=<BACKEND>` (defaults to `AUTO`):
+  - `D3D11`: Windows Direct3D 11 (`SOKOL_D3D11`).
+  - `GLCORE`: Linux and macOS OpenGL 3.3+ Core profile (`SOKOL_GLCORE`).
+  - `METAL`: macOS Apple Metal (`SOKOL_METAL`).
+  - `GLES3`: WebAssembly WebGL2 (`SOKOL_GLES3`).
+  - `WGPU`: Modern WebAssembly WebGPU (`SOKOL_WGPU` via Dawn port).
+- **Display & Scaling**: Native High-DPI scaling (`devicePixelRatio`) ensures sharp rendering on Retina and 4K displays. Continuous presentation on WebAssembly avoids browser compositor blanking.
 
 This chapter details the internal graphics architecture of the Chitra backend:
 1. **Retained GPU Primitives**: Signed Distance Field (SDF) vector rasterization for rounded rectangles and borders.
