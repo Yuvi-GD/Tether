@@ -38,7 +38,7 @@ flowchart TD
     Env --> RegQuery
     RegQuery --> ApplyProps
     ApplyProps --> AliasReg
-    AliasReg --> LiveScene["Live ECS Scene Hierarchy (Tether_GUID)"]
+    AliasReg --> LiveScene["Live ECS Scene Hierarchy (TUID)"]
 ```
 
 ---
@@ -177,7 +177,7 @@ struct Tether_ASTNode {
 The parser does **not contain switch statements for specific widgets**. When it encounters a node key (e.g., `- Slider:`), it simply asks the Central Registry:
 
 ```c
-Tether_GUID new_ent = tether_create_widget(key_str, parent);
+TUID new_ent = tether_create_widget(key_str, parent);
 ```
 
 If an application has registered a custom widget factory via `tether_register_widget("Slider", create_slider)`, the YAML parser instantiates it immediately without engine modifications.
@@ -213,7 +213,7 @@ Because any structured document format (JSON, XML, HTML, or custom domain-specif
 
 Tether makes no architectural distinction between entities spawned by declarative parsers, scripting environments, or compiled host code:
 1. **Creation Symmetry**: An entity can be spawned from YAML, configured by a Lua script, and animated inside a native C frame loop.
-2. **Transparent Querying**: `tether_registry_find_entity("header_title")` resolves the exact same 64-bit `Tether_GUID` regardless of where the entity was declared.
+2. **Transparent Querying**: `tether_registry_find_entity("header_title")` resolves the exact same 64-bit `TUID` regardless of where the entity was declared.
 3. **Cross-Language Mutation**: High-level scripts can mutate component data directly through the C FFI, and native C systems immediately observe the changes on the subsequent frame.
 4. **Dynamic Reparenting**: Entities constructed in C can be attached as children to containers loaded from YAML or script templates at runtime without restrictions.
 
@@ -256,7 +256,7 @@ flowchart LR
 User interface parsers must remain resilient against malformed files, invalid widget properties, and deep/cyclic template definitions:
 - **Reentrancy & Depth Limits**: `tether_yaml_load()` rejects reentrant loads from callbacks while loading is active, and `instantiate_node()` enforces a hard recursion depth ceiling of `64` levels to prevent stack exhaustion on cyclic `$slot` or template expansions.
 - **Template Lifetime Separation**: Cached `- Widget:` templates store deep clones via `tether_ast_clone()`, allow replacement only at top-level load depth (`template_depth == 0`), and release all cached definitions cleanly during `tether_yaml_term()`.
-- **Entity Cleanup on Failure**: When a detected load failure occurs, the loader walks recorded entities in reverse order, removes their aliases, destroys their widget subtrees, and returns `TETHER_INVALID_GUID`. Cached template definitions registered or replaced during the failed load are not rolled back. Property validation is limited to checks implemented by the parser and widget adapters.
+- **Entity Cleanup on Failure**: When a detected load failure occurs, the loader walks recorded entities in reverse order, removes their aliases, destroys their widget subtrees, and returns `TETHER_INVALID_TUID`. Cached template definitions registered or replaced during the failed load are not rolled back. Property validation is limited to checks implemented by the parser and widget adapters.
 
 ---
 

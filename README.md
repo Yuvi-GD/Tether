@@ -63,7 +63,7 @@ Component pools grow as needed, and text may allocate when its contents change. 
 ### 4. Separation of Layout Space from Render Space
 Tether separates layout geometry (`Tether_SlotTransform`) from presentation (`Tether_RenderTransform`). Some visual updates can avoid layout; text transform changes may rebuild glyph geometry and are not GPU-only operations.
 
-### 5. Universal 64-Bit Generational Handles (`Tether_GUID`)
+### 5. Universal 64-Bit Generational Handles (`TUID`)
 Entity identifiers contain an index and generation, and `tether_ecs_is_valid()` checks their validity. Component APIs also expose pointers; callers must reacquire them after mutations that can move component storage.
 
 ### 6. YAML and C Authoring

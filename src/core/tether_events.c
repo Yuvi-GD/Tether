@@ -5,7 +5,7 @@
 
 
 typedef struct {
-    Tether_GUID entity;
+    TUID entity;
     Tether_EventType type;
     Tether_MouseButton button;
     Tether_EventCallback callback;
@@ -43,7 +43,7 @@ static void remove_binding(size_t index) {
     }
 }
 
-static void bind_event(Tether_GUID entity, Tether_EventType type, Tether_MouseButton button,
+static void bind_event(TUID entity, Tether_EventType type, Tether_MouseButton button,
                        Tether_EventCallback callback, void *user_data) {
     if (!tether_ecs_is_valid(entity) || !callback) return;
 
@@ -67,17 +67,17 @@ static void bind_event(Tether_GUID entity, Tether_EventType type, Tether_MouseBu
     g_binding_count++;
 }
 
-void tether_bind_event(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback, void *user_data) {
+void tether_bind_event(TUID entity, Tether_EventType type, Tether_EventCallback callback, void *user_data) {
     bind_event(entity, type, TETHER_MOUSE_BUTTON_LEFT, callback, user_data);
 }
 
-void tether_bind_pointer_event(Tether_GUID entity, Tether_EventType type, Tether_MouseButton button,
+void tether_bind_pointer_event(TUID entity, Tether_EventType type, Tether_MouseButton button,
                                Tether_EventCallback callback, void *user_data) {
     if (!is_pointer_action(type) || button < TETHER_MOUSE_BUTTON_LEFT || button > TETHER_MOUSE_BUTTON_MIDDLE) return;
     bind_event(entity, type, button, callback, user_data);
 }
 
-void tether_unbind_callback(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback) {
+void tether_unbind_callback(TUID entity, Tether_EventType type, Tether_EventCallback callback) {
     for (size_t i = 0; i < g_binding_count; ) {
         if (g_bindings[i].entity == entity && g_bindings[i].type == type && g_bindings[i].callback == callback) {
             /* Swap and pop */
@@ -87,7 +87,7 @@ void tether_unbind_callback(Tether_GUID entity, Tether_EventType type, Tether_Ev
     }
 }
 
-void tether_unbind_event(Tether_GUID entity, Tether_EventType type) {
+void tether_unbind_event(TUID entity, Tether_EventType type) {
     for (size_t i = 0; i < g_binding_count; ) {
         if (g_bindings[i].entity == entity && g_bindings[i].type == type) {
             remove_binding(i);
@@ -98,7 +98,7 @@ void tether_unbind_event(Tether_GUID entity, Tether_EventType type) {
     }
 }
 
-void tether_clear_bindings(Tether_GUID entity) {
+void tether_clear_bindings(TUID entity) {
     for (size_t i = 0; i < g_binding_count; ) {
         if (g_bindings[i].entity == entity) {
             remove_binding(i);
@@ -109,7 +109,7 @@ void tether_clear_bindings(Tether_GUID entity) {
     }
 }
 
-bool tether_has_event(Tether_GUID entity, Tether_EventType type) {
+bool tether_has_event(TUID entity, Tether_EventType type) {
     if (!tether_ecs_is_valid(entity)) return false;
     for (size_t i = 0; i < g_binding_count; i++) {
         if (g_bindings[i].callback && g_bindings[i].entity == entity && g_bindings[i].type == type) {
@@ -119,13 +119,13 @@ bool tether_has_event(Tether_GUID entity, Tether_EventType type) {
     return false;
 }
 
-void tether_dispatch_event(Tether_GUID entity, Tether_EventType type) {
+void tether_dispatch_event(TUID entity, Tether_EventType type) {
     Tether_Event event = { .type = type,
         .button = is_pointer_action(type) ? TETHER_MOUSE_BUTTON_LEFT : TETHER_MOUSE_BUTTON_NONE };
     tether_dispatch_event_data(entity, &event);
 }
 
-void tether_dispatch_event_data(Tether_GUID entity, const Tether_Event *event) {
+void tether_dispatch_event_data(TUID entity, const Tether_Event *event) {
     if (!event || !tether_ecs_is_valid(entity)) return;
     size_t limit = g_binding_count;
     g_dispatch_depth++;

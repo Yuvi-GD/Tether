@@ -8,8 +8,8 @@
 /* ========================================================================== */
 
 /* Create a visual panel with shape (bg_color, border, radius) */
-Tether_GUID tether_ui_panel(Tether_GUID parent) {
-    Tether_GUID entity = tether_widget_create_container(parent);
+TUID tether_ui_panel(TUID parent) {
+    TUID entity = tether_widget_create_container(parent);
     Tether_Shape *shape = tether_ecs_add_component(entity, TETHER_COMPONENT_SHAPE);
     if (shape) shape->bg_color = (Tether_Color){30, 36, 48, 255};
     return entity;
@@ -20,8 +20,8 @@ Tether_GUID tether_ui_panel(Tether_GUID parent) {
 /* ========================================================================== */
 
 /* Container Layout Configuration */
-void tether_ui_set_container(Tether_GUID entity, Tether_Flow flow) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_container(TUID entity, Tether_Flow flow) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Layout *layout = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     if (layout) {
         layout->flow = flow;
@@ -29,8 +29,8 @@ void tether_ui_set_container(Tether_GUID entity, Tether_Flow flow) {
     }
 }
 
-void tether_ui_set_position(Tether_GUID entity, Tether_PositionMode position) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_position(TUID entity, Tether_PositionMode position) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Layout *layout = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     if (layout) {
         layout->position = position;
@@ -39,14 +39,14 @@ void tether_ui_set_position(Tether_GUID entity, Tether_PositionMode position) {
     }
 }
 
-Tether_PositionMode tether_ui_get_position(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return TETHER_POSITION_RELATIVE;
+Tether_PositionMode tether_ui_get_position(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return TETHER_POSITION_RELATIVE;
     Tether_Layout *layout = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     return layout ? layout->position : TETHER_POSITION_RELATIVE;
 }
 
-void tether_ui_set_content_align(Tether_GUID entity, Tether_Align align_x, Tether_Align align_y) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_content_align(TUID entity, Tether_Align align_x, Tether_Align align_y) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Layout *layout = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     if (layout) {
         layout->content_align_x = align_x;
@@ -55,16 +55,16 @@ void tether_ui_set_content_align(Tether_GUID entity, Tether_Align align_x, Tethe
     }
 }
 
-void tether_ui_set_interactable(Tether_GUID entity, Tether_HitBehavior behavior) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_interactable(TUID entity, Tether_HitBehavior behavior) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Interactable *interact = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
     if (interact) {
         interact->hit_behavior = behavior;
     }
 }
 
-Tether_HitBehavior tether_ui_get_interactable(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return TETHER_HIT_IGNORE;
+Tether_HitBehavior tether_ui_get_interactable(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return TETHER_HIT_IGNORE;
     Tether_Interactable *interact = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
     return interact ? interact->hit_behavior : TETHER_HIT_IGNORE;
 }
@@ -73,19 +73,19 @@ Tether_HitBehavior tether_ui_get_interactable(Tether_GUID entity) {
 /* Boolean State Operations                                                   */
 /* ========================================================================== */
 
-bool tether_ui_has_bool(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return false;
+bool tether_ui_has_bool(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return false;
     return tether_ecs_get_component(entity, TETHER_COMPONENT_BOOL_STATE) != NULL;
 }
 
-bool tether_ui_get_bool(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return false;
+bool tether_ui_get_bool(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return false;
     Tether_BoolState *b = (Tether_BoolState*)tether_ecs_get_component(entity, TETHER_COMPONENT_BOOL_STATE);
     return b ? b->value : false;
 }
 
-bool tether_ui_set_bool(Tether_GUID entity, bool value) {
-    if (entity == TETHER_INVALID_GUID) return false;
+bool tether_ui_set_bool(TUID entity, bool value) {
+    if (entity == TETHER_INVALID_TUID) return false;
     Tether_BoolState *b = (Tether_BoolState*)tether_ecs_get_component(entity, TETHER_COMPONENT_BOOL_STATE);
     if (!b) return false;
     b->value = value;
@@ -93,8 +93,8 @@ bool tether_ui_set_bool(Tether_GUID entity, bool value) {
     return true;
 }
 
-bool tether_ui_toggle_bool(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return false;
+bool tether_ui_toggle_bool(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return false;
     Tether_BoolState *b = (Tether_BoolState*)tether_ecs_get_component(entity, TETHER_COMPONENT_BOOL_STATE);
     if (!b) return false;
     b->value = !b->value;
@@ -106,14 +106,14 @@ bool tether_ui_toggle_bool(Tether_GUID entity) {
 /* Value Range Operations                                                     */
 /* ========================================================================== */
 
-float tether_ui_get_value(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return 0.0f;
+float tether_ui_get_value(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return 0.0f;
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(entity, TETHER_COMPONENT_VALUE_RANGE);
     return vr ? vr->value : 0.0f;
 }
 
-bool tether_ui_set_value(Tether_GUID entity, float value) {
-    if (entity == TETHER_INVALID_GUID) return false;
+bool tether_ui_set_value(TUID entity, float value) {
+    if (entity == TETHER_INVALID_TUID) return false;
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(entity, TETHER_COMPONENT_VALUE_RANGE);
     if (!vr) return false;
 
@@ -122,8 +122,8 @@ bool tether_ui_set_value(Tether_GUID entity, float value) {
     return true;
 }
 
-void tether_ui_set_range(Tether_GUID entity, float min_val, float max_val) {
-    if (entity == TETHER_INVALID_GUID || max_val <= min_val) return;
+void tether_ui_set_range(TUID entity, float min_val, float max_val) {
+    if (entity == TETHER_INVALID_TUID || max_val <= min_val) return;
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(entity, TETHER_COMPONENT_VALUE_RANGE);
     if (!vr) return;
 
@@ -132,8 +132,8 @@ void tether_ui_set_range(Tether_GUID entity, float min_val, float max_val) {
     tether_ui_set_value(entity, vr->value);
 }
 
-void tether_ui_get_range(Tether_GUID entity, float *out_min, float *out_max) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_get_range(TUID entity, float *out_min, float *out_max) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(entity, TETHER_COMPONENT_VALUE_RANGE);
     if (vr) {
         if (out_min) *out_min = vr->min_val;
@@ -145,7 +145,7 @@ void tether_ui_get_range(Tether_GUID entity, float *out_min, float *out_max) {
 /* Fluent Layout & Style Modifiers                                            */
 /* ========================================================================== */
 
-void tether_ui_set_size(Tether_GUID entity, float width, float height) {
+void tether_ui_set_size(TUID entity, float width, float height) {
     Tether_Layout *layout = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     if (layout) {
         layout->size_box.x = width;
@@ -155,7 +155,7 @@ void tether_ui_set_size(Tether_GUID entity, float width, float height) {
     }
 }
 
-void tether_ui_set_padding(Tether_GUID entity, float top, float right, float bottom, float left) {
+void tether_ui_set_padding(TUID entity, float top, float right, float bottom, float left) {
     Tether_Layout *layout = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     if (layout) {
         layout->padding = (Tether_Edges){top, right, bottom, left};
@@ -164,7 +164,7 @@ void tether_ui_set_padding(Tether_GUID entity, float top, float right, float bot
     }
 }
 
-void tether_ui_set_gap(Tether_GUID entity, float gap_x, float gap_y) {
+void tether_ui_set_gap(TUID entity, float gap_x, float gap_y) {
     Tether_Layout *layout = (Tether_Layout*)tether_ecs_get_component(entity, TETHER_COMPONENT_LAYOUT);
     if (layout) {
         layout->gap.x = gap_x;
@@ -174,7 +174,7 @@ void tether_ui_set_gap(Tether_GUID entity, float gap_x, float gap_y) {
     }
 }
 
-void tether_ui_set_flex(Tether_GUID entity, float fill_ratio) {
+void tether_ui_set_flex(TUID entity, float fill_ratio) {
     Tether_FlexSlot *flex = (Tether_FlexSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_FLEX_SLOT);
     if (flex) {
         flex->fill_ratio = fill_ratio;
@@ -183,8 +183,8 @@ void tether_ui_set_flex(Tether_GUID entity, float fill_ratio) {
     }
 }
 
-void tether_ui_set_anchor(Tether_GUID entity, float min_x, float min_y, float max_x, float max_y) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_anchor(TUID entity, float min_x, float min_y, float max_x, float max_y) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_AnchorSlot *ta = (Tether_AnchorSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
     if (ta) {
         ta->anchor_min = (Tether_Vec2){min_x, min_y};
@@ -194,8 +194,8 @@ void tether_ui_set_anchor(Tether_GUID entity, float min_x, float min_y, float ma
     }
 }
 
-void tether_ui_set_offsets(Tether_GUID entity, float top, float right, float bottom, float left) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_offsets(TUID entity, float top, float right, float bottom, float left) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_AnchorSlot *ta = (Tether_AnchorSlot*)tether_ecs_get_component(entity, TETHER_COMPONENT_ANCHOR_SLOT);
     if (ta) {
         ta->offset = (Tether_Edges){top, right, bottom, left};
@@ -204,8 +204,8 @@ void tether_ui_set_offsets(Tether_GUID entity, float top, float right, float bot
     }
 }
 
-void tether_ui_set_color(Tether_GUID entity, Tether_Color bg_color) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_color(TUID entity, Tether_Color bg_color) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Shape *shape = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
     if (shape) {
         shape->bg_color = bg_color;
@@ -214,8 +214,8 @@ void tether_ui_set_color(Tether_GUID entity, Tether_Color bg_color) {
     }
 }
 
-Tether_Color tether_ui_get_color(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return (Tether_Color){0, 0, 0, 0};
+Tether_Color tether_ui_get_color(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return (Tether_Color){0, 0, 0, 0};
     Tether_Shape *shape = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
     return shape ? shape->bg_color : (Tether_Color){0, 0, 0, 0};
 }
@@ -234,7 +234,7 @@ Tether_Color tether_ui_adjust_color(Tether_Color color, int offset) {
                           (uint8_t)channels[2], color.a};
 }
 
-int tether_ui_interaction_offset(Tether_GUID entity) {
+int tether_ui_interaction_offset(TUID entity) {
     Tether_Interactable *interaction =
         tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
     if (!interaction || !interaction->is_enabled) return 0;
@@ -243,8 +243,8 @@ int tether_ui_interaction_offset(Tether_GUID entity) {
     return 0;
 }
 
-void tether_ui_set_border(Tether_GUID entity, float width, Tether_Color color, float radius) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_border(TUID entity, float width, Tether_Color color, float radius) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Shape *shape = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
     if (shape) {
         shape->border_width = width;
@@ -255,8 +255,8 @@ void tether_ui_set_border(Tether_GUID entity, float width, Tether_Color color, f
     }
 }
 
-void tether_ui_set_active_color(Tether_GUID entity, Tether_Color color) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_active_color(TUID entity, Tether_Color color) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Shape *shape = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
     if (shape) {
         shape->active_bg = color;
@@ -264,8 +264,8 @@ void tether_ui_set_active_color(Tether_GUID entity, Tether_Color color) {
     }
 }
 
-void tether_ui_reset_active_color(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_reset_active_color(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Shape *shape = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
     if (shape) {
         shape->active_bg = shape->bg_color;
@@ -273,8 +273,8 @@ void tether_ui_reset_active_color(Tether_GUID entity) {
     }
 }
 
-void tether_ui_set_active_border(Tether_GUID entity, Tether_Color color) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_set_active_border(TUID entity, Tether_Color color) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Shape *shape = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
     if (shape) {
         shape->active_border = color;
@@ -282,8 +282,8 @@ void tether_ui_set_active_border(Tether_GUID entity, Tether_Color color) {
     }
 }
 
-void tether_ui_reset_active_border(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_ui_reset_active_border(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Shape *shape = (Tether_Shape*)tether_ecs_get_component(entity, TETHER_COMPONENT_SHAPE);
     if (shape) {
         shape->active_border = shape->border_color;

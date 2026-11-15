@@ -26,7 +26,7 @@ Tether's architecture is categorized into subsystems implemented in the `v0.0.3-
   - Packed contiguous dense component arrays (`realloc` geometric growth) and 64-bit sparse set indexing ($O(1)$ lookup).
   - $O(1)$ swap-and-pop deallocation keeping component arrays packed without holes.
 - **Entity Identity & Handle Safety**:
-  - 64-bit scalar `Tether_GUID` handles (index + generation) checked in $O(1)$ via `tether_ecs_is_valid()`.
+  - 64-bit scalar `TUID` handles (index + generation) checked in $O(1)$ via `tether_ecs_is_valid()`.
 - **Decoupled Spatial & Visual Transforms**:
   - Separation of layout space (`SlotTransform`: $x, y, w, h$) from presentation (`RenderTransform`: translation, scale, rotation, pivot, opacity). Shape/opacity animations skip layout reflow, while text transforms rebuild CPU-side glyph geometry via `DIRTY_TEXT_CONTENT`.
 - **Reactive Invalidation & Dirty-Most Parent Root Finding**:
@@ -74,9 +74,9 @@ Every major architectural decision in Tether involves a conscious trade-off:
 - **Strategic Rationale**: Traditional UI engines tessellate curved geometry into many triangle vertices, increasing CPU/vertex traffic. SDF shaders deliver crisp, resolution-independent rounded boxes and borders directly per pixel.
 - **The Trade-off**: While SDF shaders excel for UI primitives, rendering arbitrary complex SVG vector paths requires specialized vector rasterizer backends (such as ThorVG).
 
-### 4. 64-Bit Scalar GUIDs vs. Raw Entity Pointers
-- **The Decision**: Host applications, foreign language bindings, and scripts identify entities via 64-bit scalar values (`Tether_GUID`) rather than raw `Entity*` pointers.
-- **Strategic Rationale**: Exposing raw entity pointers across language boundaries risks dangling pointers and use-after-free bugs when elements are destroyed. A 64-bit generational GUID allows $O(1)$ safety validation (`tether_ecs_is_valid()`).
+### 4. 64-Bit Scalar TUIDs vs. Raw Entity Pointers
+- **The Decision**: Host applications, foreign language bindings, and scripts identify entities via 64-bit scalar values (`TUID`) rather than raw `Entity*` pointers.
+- **Strategic Rationale**: Exposing raw entity pointers across language boundaries risks dangling pointers and use-after-free bugs when elements are destroyed. A 64-bit generational TUID allows $O(1)$ safety validation (`tether_ecs_is_valid()`).
 - **The Trade-off**: Component access performs an $O(1)$ sparse-map lookup instead of a direct pointer dereference, and C callers holding pointers returned by `tether_ecs_get_component()` must re-query them after ECS mutations that resize or swap dense arrays.
 
 ---

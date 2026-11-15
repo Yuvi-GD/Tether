@@ -83,7 +83,7 @@ void tether_on_init(void) {
 
     /* Load initial YAML after backend is ready (g_backend must be valid for tether_engine_realize) */
     if (g_config.initial_yaml) {
-        tether_yaml_load(g_config.initial_yaml, TETHER_INVALID_GUID);
+        tether_yaml_load(g_config.initial_yaml, TETHER_INVALID_TUID);
     }
 
     if (g_config.on_init) {

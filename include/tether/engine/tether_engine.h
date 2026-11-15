@@ -19,10 +19,10 @@ void tether_engine_init(void);
 void tether_engine_term(void);
 
 /* Allocates RHI memory for an entity (and children) */
-void tether_engine_realize(Tether_GUID entity);
+void tether_engine_realize(TUID entity);
 
 /* Frees RHI memory for an entity (and children) recursively */
-void tether_engine_unrealize(Tether_GUID entity);
+void tether_engine_unrealize(TUID entity);
 
 /*
  * The main Render Engine synchronization function.

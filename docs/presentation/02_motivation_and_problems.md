@@ -127,7 +127,7 @@ Tether was engineered from first principles to occupy the critical **missing mid
 | **Working Set Memory** | $200\text{ MB} - 500+\text{ MB}$ | $15\text{ MB} - 50\text{ MB}$ | $< 5\text{ MB}$ | **Compact ECS Arrays (Sub-64KB SRAM Target)** |
 | **Layout Model** | CSS Flex / Grid / DOM Reflow | Manual Layout Classes | Single-pass procedural | **2-Pass Solver (Planned Vinyasa Integration)** |
 | **Animation Impact** | Reflows parent/sibling DOM | Reflows parent layout | Re-executes full loop | **Separated `SlotTransform` / `RenderTransform` (Text rebuilds glyphs)** |
-| **Language Interoperability** | Complex WebSockets / IPC | Complex C++ Wrappers | C-shim wrappers (cimgui) | **Native C ABI (Scalar GUIDs; Bindings on Roadmap)** |
+| **Language Interoperability** | Complex WebSockets / IPC | Complex C++ Wrappers | C-shim wrappers (cimgui) | **Native C ABI (Scalar TUIDs; Bindings on Roadmap)** |
 | **Hardware Portability** | Desktop / Mobile Browsers only | Desktop / Mobile OS only | Desktop / Console Games | **Desktop Preview (`v0.0.3-preview`) -> MCU/VR Roadmap** |
 
 ### What Tether Pursues

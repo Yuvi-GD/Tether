@@ -10,33 +10,33 @@ extern "C" {
 #endif
 
 /* Low-Level Widget Entity Allocation (transforms, layout, slot, visibility, overflow) */
-Tether_GUID tether_widget_create_container(Tether_GUID parent);
+TUID tether_widget_create_container(TUID parent);
 
 /* Hierarchy Management */
-void tether_widget_add_to_parent(Tether_GUID entity, Tether_GUID parent);
-void tether_widget_remove_from_parent(Tether_GUID entity);
+void tether_widget_add_to_parent(TUID entity, TUID parent);
+void tether_widget_remove_from_parent(TUID entity);
 
 /* Hierarchy Queries (index: 0 = first child, -1 = last child, >0 = nth sibling) */
-Tether_GUID tether_widget_get_parent(Tether_GUID entity);
-Tether_GUID tether_widget_get_child_at(Tether_GUID entity, int index);
-int tether_widget_get_child_count(Tether_GUID entity);
+TUID tether_widget_get_parent(TUID entity);
+TUID tether_widget_get_child_at(TUID entity, int index);
+int tether_widget_get_child_count(TUID entity);
 
 /* Visibility Management */
-void tether_widget_set_visibility(Tether_GUID entity, Tether_VisibilityState state);
-bool tether_widget_is_visible(Tether_GUID entity);
-bool tether_widget_is_collapsed(Tether_GUID entity);
+void tether_widget_set_visibility(TUID entity, Tether_VisibilityState state);
+bool tether_widget_is_visible(TUID entity);
+bool tether_widget_is_collapsed(TUID entity);
 
 /* Interaction & State Management */
-void tether_widget_add_interaction(Tether_GUID entity, Tether_HitBehavior behavior);
-void tether_widget_set_enabled(Tether_GUID entity, bool enabled);
-bool tether_widget_is_enabled(Tether_GUID entity);
+void tether_widget_add_interaction(TUID entity, Tether_HitBehavior behavior);
+void tether_widget_set_enabled(TUID entity, bool enabled);
+bool tether_widget_is_enabled(TUID entity);
 
 /* Unified Widget Lifecycle: visibility + RHI realize/unrealize */
-void tether_widget_show(Tether_GUID entity);
-void tether_widget_hide(Tether_GUID entity);
+void tether_widget_show(TUID entity);
+void tether_widget_hide(TUID entity);
 
 /* Cleans up GPU/RHI memory for this widget (and its children) and removes it from ECS */
-void tether_widget_destroy(Tether_GUID entity);
+void tether_widget_destroy(TUID entity);
 
 #ifdef __cplusplus
 }

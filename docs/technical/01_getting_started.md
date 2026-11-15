@@ -83,13 +83,13 @@ This complete, self-contained C program creates a window, constructs a reactive 
 #include <stdio.h>
 #include <stdbool.h>
 
-static Tether_GUID g_app_root = TETHER_INVALID_GUID;
-static Tether_GUID g_counter_label = TETHER_INVALID_GUID;
+static TUID g_app_root = TETHER_INVALID_TUID;
+static TUID g_counter_label = TETHER_INVALID_TUID;
 static unsigned int g_click_count = 0;
 static bool g_update_pending = false;
 
 /* Event Callback: Triggered when the user clicks the button */
-static void on_button_clicked(Tether_GUID entity, const Tether_Event* event, void* user_data) {
+static void on_button_clicked(TUID entity, const Tether_Event* event, void* user_data) {
     (void)entity;
     (void)event;
     (void)user_data;
@@ -110,7 +110,7 @@ static void on_app_init(void) {
     tether_ui_set_color(g_app_root, (Tether_Color){24, 30, 42, 255}); /* Dark slate background */
 
     /* 3. Add a header text label */
-    Tether_GUID header = tether_ui_text(g_app_root);
+    TUID header = tether_ui_text(g_app_root);
     tether_ui_set_text(header, "Welcome to Tether");
     tether_ui_set_text_size(header, 28.0f);
     tether_ui_set_text_color(header, (Tether_Color){240, 244, 250, 255});
@@ -124,7 +124,7 @@ static void on_app_init(void) {
     tether_ui_set_size(g_counter_label, 0.0f, 32.0f);
 
     /* 5. Add an interactive button with a click callback */
-    Tether_GUID btn = tether_ui_button(g_app_root);
+    TUID btn = tether_ui_button(g_app_root);
     tether_ui_set_button_label(btn, "Click Me");
     tether_ui_set_button_color(btn, (Tether_Color){45, 105, 215, 255}); /* Blue accent */
     tether_ui_set_size(btn, 160.0f, 48.0f);
@@ -220,17 +220,17 @@ Panel:
 
 #include <stdbool.h>
 
-static Tether_GUID g_scene_root = TETHER_INVALID_GUID;
+static TUID g_scene_root = TETHER_INVALID_TUID;
 static bool g_toggle_state = false;
 
-static void on_toggle_clicked(Tether_GUID entity, const Tether_Event* event, void* user_data) {
+static void on_toggle_clicked(TUID entity, const Tether_Event* event, void* user_data) {
     (void)entity;
     (void)event;
     (void)user_data;
 
     g_toggle_state = !g_toggle_state;
-    Tether_GUID label = tether_registry_find_entity("status_label");
-    if (label != TETHER_INVALID_GUID) {
+    TUID label = tether_registry_find_entity("status_label");
+    if (label != TETHER_INVALID_TUID) {
         tether_ui_set_text(label, g_toggle_state ? "Status: Active" : "Status: Ready");
         tether_ui_set_text_color(label, g_toggle_state ? (Tether_Color){70, 200, 120, 255} : (Tether_Color){160, 180, 210, 255});
     }
@@ -241,13 +241,13 @@ static void on_yaml_init(void) {
 
     /* 1. Parse and instantiate the YAML tree under the main root */
     g_scene_root = tether_yaml_load("app.yaml", tether_ecs_get_main_root());
-    if (g_scene_root == TETHER_INVALID_GUID) {
+    if (g_scene_root == TETHER_INVALID_TUID) {
         return;
     }
 
     /* 2. Bind application callbacks to entities defined with an 'id' in YAML */
-    Tether_GUID action_btn = tether_registry_find_entity("action_btn");
-    if (action_btn != TETHER_INVALID_GUID) {
+    TUID action_btn = tether_registry_find_entity("action_btn");
+    if (action_btn != TETHER_INVALID_TUID) {
         tether_bind_event(action_btn, TETHER_EVENT_CLICK, on_toggle_clicked, NULL);
     }
 

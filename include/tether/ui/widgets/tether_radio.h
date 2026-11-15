@@ -26,26 +26,26 @@ extern "C" {
  *         │     └── [0] Dot: Shape 10x10
  *         └── [1] Label: Text
  */
-Tether_GUID tether_ui_radio(Tether_GUID parent);
+TUID tether_ui_radio(TUID parent);
 
 /* Change the option direction after creation; only ROW and COLUMN are supported. */
-void tether_ui_set_radio_flow(Tether_GUID radio, Tether_Flow flow);
+void tether_ui_set_radio_flow(TUID radio, Tether_Flow flow);
 
 /* ========================================================================== */
 /* 2. Operations (Setters, Getters, Item Management)                          */
 /* ========================================================================== */
 
 /* Dynamic Item Management */
-Tether_GUID tether_ui_add_radio_option(Tether_GUID radio, const char *label);
-void        tether_ui_set_radio_option(Tether_GUID radio, int index, const char *label);
-const char* tether_ui_get_radio_option(Tether_GUID radio, int index);
-void        tether_ui_remove_radio_option(Tether_GUID radio, int index);
-void        tether_ui_clear_radio_options(Tether_GUID radio);
+TUID tether_ui_add_radio_option(TUID radio, const char *label);
+void        tether_ui_set_radio_option(TUID radio, int index, const char *label);
+const char* tether_ui_get_radio_option(TUID radio, int index);
+void        tether_ui_remove_radio_option(TUID radio, int index);
+void        tether_ui_clear_radio_options(TUID radio);
 
 /* Selection Operations */
-void        tether_ui_set_radio_selected(Tether_GUID radio, int selected_index);
-int         tether_ui_get_radio_selected(Tether_GUID radio);
-void        tether_ui_unselect_radio(Tether_GUID radio);
+void        tether_ui_set_radio_selected(TUID radio, int selected_index);
+int         tether_ui_get_radio_selected(TUID radio);
+void        tether_ui_unselect_radio(TUID radio);
 
 #ifdef __cplusplus
 }

@@ -89,7 +89,7 @@ flowchart LR
 ### ADR-01: Data-Oriented ECS over C++ OOP Class Hierarchy
 - **Status**: Adopted in `v0.0.3-preview`.
 - **Context**: Traditional UI frameworks (Qt, wxWidgets, DOM) model UI elements as deep inheritance trees (`Widget -> Frame -> Container -> Button`), spreading objects across the heap and coupling state to base classes.
-- **Decision**: Tether uses a data-oriented Entity Component System (ECS) where entities are 64-bit integer GUIDs and component data is stored in contiguous dense arrays indexed via sparse sets.
+- **Decision**: Tether uses a data-oriented Entity Component System (ECS) where entities are 64-bit integer TUIDs and component data is stored in contiguous dense arrays indexed via sparse sets.
 - **Consequences**:
   - Sequential array iteration improves CPU cache locality and avoids vtable indirection.
   - Component pointers returned by lookup APIs can move during pool growth or swap-and-pop deletion and must be re-queried after structural mutations.
@@ -125,10 +125,10 @@ flowchart LR
 
 ---
 
-### ADR-05: 64-Bit Scalar GUIDs over Raw Entity Pointers
+### ADR-05: 64-Bit Scalar TUIDs over Raw Entity Pointers
 - **Status**: Adopted in `v0.0.3-preview`.
 - **Context**: Storing raw entity object pointers across callbacks or external handles risks use-after-free bugs when elements are destroyed.
-- **Decision**: Represent entities as scalar 64-bit integer GUIDs composed of a 32-bit slot index and a 32-bit generational version counter.
+- **Decision**: Represent entities as scalar 64-bit integer TUIDs composed of a 32-bit slot index and a 32-bit generational version counter.
 - **Consequences**:
   - Stale handles fail safely in $O(1)$ time via `tether_ecs_is_valid()`.
   - Component lookups still go through the sparse-set index, and component data pointers must be re-queried after structural ECS mutations.
@@ -162,7 +162,7 @@ flowchart LR
 | **Data Architecture** | Contiguous ECS Dense Arrays | Scattered Heap Node Graphs | Transient Stack Buffers | Heap Node Tree with V8 Objects |
 | **Update Model** | Retained Dirty Flags (`tether_did_draw` skips unchanged frames) | Event-driven | Continuous per-frame submission | DOM / Chromium event loops |
 | **Memory Strategy** | Compact ECS structs + Chitra backend resources | $15 - 50\text{ MB}$ | $< 5\text{ MB}$ | $150 - 500+\text{ MB}$ |
-| **Foreign Language Interop** | C99 Scalar GUID ABI (bindings on roadmap) | Complex C++ Wrappers / SIP | C++ Wrappers (`cimgui`) | Node.js IPC / WebSockets |
+| **Foreign Language Interop** | C99 Scalar TUID ABI (bindings on roadmap) | Complex C++ Wrappers / SIP | C++ Wrappers (`cimgui`) | Node.js IPC / WebSockets |
 | **Layout Separation** | Separated `SlotTransform` vs `RenderTransform` (text rebuilds glyphs) | Combined widget layout | Immediate per-frame cursor | CSS box layout coupling |
 
 ---

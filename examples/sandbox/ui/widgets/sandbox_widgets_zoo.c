@@ -11,35 +11,35 @@
 #include <stdio.h>
 #include <string.h>
 
-extern Tether_GUID tether_ecs_get_main_root(void);
+extern TUID tether_ecs_get_main_root(void);
 
-static Tether_GUID s_prog_bar = TETHER_INVALID_GUID;
-static Tether_GUID s_slider_label = TETHER_INVALID_GUID;
-static Tether_GUID s_toggle_label = TETHER_INVALID_GUID;
-static Tether_GUID s_cb_label = TETHER_INVALID_GUID;
-static Tether_GUID s_radio_label = TETHER_INVALID_GUID;
-static Tether_GUID s_dd_label = TETHER_INVALID_GUID;
-static Tether_GUID s_switcher = TETHER_INVALID_GUID;
+static TUID s_prog_bar = TETHER_INVALID_TUID;
+static TUID s_slider_label = TETHER_INVALID_TUID;
+static TUID s_toggle_label = TETHER_INVALID_TUID;
+static TUID s_cb_label = TETHER_INVALID_TUID;
+static TUID s_radio_label = TETHER_INVALID_TUID;
+static TUID s_dd_label = TETHER_INVALID_TUID;
+static TUID s_switcher = TETHER_INVALID_TUID;
 
-static void on_slider_change(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void on_slider_change(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
     float val = tether_ui_get_slider_value(entity);
-    if (s_prog_bar != TETHER_INVALID_GUID) {
+    if (s_prog_bar != TETHER_INVALID_TUID) {
         tether_ui_set_progress(s_prog_bar, val / 100.0f);
     }
-    if (s_slider_label != TETHER_INVALID_GUID) {
+    if (s_slider_label != TETHER_INVALID_TUID) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Value: %.0f%%", val);
         tether_ui_set_text(s_slider_label, buf);
     }
 }
 
-static void on_toggle_change(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void on_toggle_change(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
     bool is_on = tether_ui_get_toggle(entity);
-    if (s_toggle_label != TETHER_INVALID_GUID) {
+    if (s_toggle_label != TETHER_INVALID_TUID) {
         if (is_on) {
             tether_ui_set_text(s_toggle_label, "Example toggle: ON");
             tether_ui_set_text_color(s_toggle_label, (Tether_Color){145, 190, 245, 255});
@@ -50,11 +50,11 @@ static void on_toggle_change(Tether_GUID entity, const Tether_Event *event_info,
     }
 }
 
-static void on_checkbox_change(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void on_checkbox_change(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
     bool checked = tether_ui_get_checked(entity);
-    if (s_cb_label != TETHER_INVALID_GUID) {
+    if (s_cb_label != TETHER_INVALID_TUID) {
         if (checked) {
             tether_ui_set_text(s_cb_label, "Example checkbox: checked");
             tether_ui_set_text_color(s_cb_label, (Tether_Color){90, 180, 250, 255});
@@ -65,11 +65,11 @@ static void on_checkbox_change(Tether_GUID entity, const Tether_Event *event_inf
     }
 }
 
-static void on_radio_change(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void on_radio_change(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
     int sel = tether_ui_get_radio_selected(entity);
-    if (s_radio_label != TETHER_INVALID_GUID) {
+    if (s_radio_label != TETHER_INVALID_TUID) {
         const char *desc = "Selected: High Precision";
         if (sel == 1) {
             desc = "Selected: Low Power";
@@ -80,11 +80,11 @@ static void on_radio_change(Tether_GUID entity, const Tether_Event *event_info, 
     }
 }
 
-static void on_dropdown_change(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void on_dropdown_change(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
     int sel = tether_ui_get_dropdown_selected(entity);
-    if (s_dd_label != TETHER_INVALID_GUID) {
+    if (s_dd_label != TETHER_INVALID_TUID) {
         const char *theme = "Selected example palette: Dark Slate";
         if (sel == 1) theme = "Selected example palette: Cyber Blue";
         else if (sel == 2) theme = "Selected example palette: Emerald Terminal";
@@ -99,12 +99,12 @@ static const char *s_ctx_items[] = {
     "Example action D"
 };
 
-static void on_ctx_menu_select(Tether_GUID item, const Tether_Event *event_info, void *user_data) {
+static void on_ctx_menu_select(TUID item, const Tether_Event *event_info, void *user_data) {
     (void)user_data;
     (void)event_info;
     const char *item_text = tether_ui_get_button_label(item);
     if (!item_text) return;
-    if (s_dd_label != TETHER_INVALID_GUID) {
+    if (s_dd_label != TETHER_INVALID_TUID) {
         char buf[128];
         snprintf(buf, sizeof(buf), "Selected menu item: %s", item_text);
         tether_ui_set_text(s_dd_label, buf);
@@ -112,11 +112,11 @@ static void on_ctx_menu_select(Tether_GUID item, const Tether_Event *event_info,
     }
 }
 
-static Tether_GUID s_context_view = TETHER_INVALID_GUID;
-static Tether_GUID s_context_menu = TETHER_INVALID_GUID;
-static Tether_GUID s_context_host = TETHER_INVALID_GUID;
+static TUID s_context_view = TETHER_INVALID_TUID;
+static TUID s_context_menu = TETHER_INVALID_TUID;
+static TUID s_context_host = TETHER_INVALID_TUID;
 
-static void on_root_context_menu(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void on_root_context_menu(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)entity;
     (void)user_data;
     Tether_Visibility *visibility = tether_ecs_get_component(s_context_view, TETHER_COMPONENT_VISIBILITY);
@@ -124,16 +124,16 @@ static void on_root_context_menu(Tether_GUID entity, const Tether_Event *event_i
     tether_ui_context_menu_open_at(s_context_menu, event_info->x, event_info->y);
 }
 
-static void on_switcher_tab(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void on_switcher_tab(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
     int sel = tether_ui_get_segment_selected(entity);
-    if (s_switcher != TETHER_INVALID_GUID) {
+    if (s_switcher != TETHER_INVALID_TUID) {
         tether_ui_switcher_show_index(s_switcher, sel);
     }
 }
 
-static void on_demo_button(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void on_demo_button(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)entity;
     (void)event_info;
     (void)user_data;
@@ -143,17 +143,17 @@ static void on_demo_button(Tether_GUID entity, const Tether_Event *event_info, v
 void sandbox_widgets_zoo_cleanup(void) {
     tether_unbind_callback(tether_ecs_get_main_root(), TETHER_EVENT_CLICK, on_root_context_menu);
     if (tether_ecs_is_valid(s_context_host)) tether_widget_destroy(s_context_host);
-    s_context_host = TETHER_INVALID_GUID;
-    s_context_menu = TETHER_INVALID_GUID;
-    s_context_view = TETHER_INVALID_GUID;
+    s_context_host = TETHER_INVALID_TUID;
+    s_context_menu = TETHER_INVALID_TUID;
+    s_context_view = TETHER_INVALID_TUID;
 }
 
-Tether_GUID sandbox_widgets_zoo_create(Tether_GUID parent) {
+TUID sandbox_widgets_zoo_create(TUID parent) {
     /* Declarative YAML scene loading */
-    Tether_GUID root = tether_yaml_load("UI/widgets.yaml", parent);
-    if (root == TETHER_INVALID_GUID) {
+    TUID root = tether_yaml_load("UI/widgets.yaml", parent);
+    if (root == TETHER_INVALID_TUID) {
         /* Fallback if YAML is not present */
-        return TETHER_INVALID_GUID;
+        return TETHER_INVALID_TUID;
     }
 
     /* Keep the examples independent: each disabled widget stays visible. */
@@ -188,42 +188,42 @@ Tether_GUID sandbox_widgets_zoo_create(Tether_GUID parent) {
     /* Bind dynamic control state and event callbacks via entity aliases */
     s_slider_label = tether_registry_find_entity("zoo_slider_label");
     s_prog_bar = tether_registry_find_entity("zoo_prog_bar");
-    Tether_GUID slider = tether_registry_find_entity("zoo_slider");
-    if (slider != TETHER_INVALID_GUID) {
+    TUID slider = tether_registry_find_entity("zoo_slider");
+    if (slider != TETHER_INVALID_TUID) {
         tether_bind_event(slider, TETHER_EVENT_CHANGE, on_slider_change, NULL);
     }
 
     s_toggle_label = tether_registry_find_entity("zoo_toggle_label");
-    Tether_GUID toggle = tether_registry_find_entity("zoo_toggle");
-    if (toggle != TETHER_INVALID_GUID) {
+    TUID toggle = tether_registry_find_entity("zoo_toggle");
+    if (toggle != TETHER_INVALID_TUID) {
         tether_bind_event(toggle, TETHER_EVENT_CHANGE, on_toggle_change, NULL);
     }
 
     s_cb_label = tether_registry_find_entity("zoo_cb_label");
-    Tether_GUID cb = tether_registry_find_entity("zoo_checkbox");
-    if (cb != TETHER_INVALID_GUID) {
+    TUID cb = tether_registry_find_entity("zoo_checkbox");
+    if (cb != TETHER_INVALID_TUID) {
         tether_bind_event(cb, TETHER_EVENT_CHANGE, on_checkbox_change, NULL);
     }
 
     s_radio_label = tether_registry_find_entity("zoo_radio_label");
-    Tether_GUID rad = tether_registry_find_entity("zoo_radio");
-    if (rad != TETHER_INVALID_GUID) {
+    TUID rad = tether_registry_find_entity("zoo_radio");
+    if (rad != TETHER_INVALID_TUID) {
         tether_bind_event(rad, TETHER_EVENT_CHANGE, on_radio_change, NULL);
     }
 
     s_dd_label = tether_registry_find_entity("zoo_dropdown_label");
-    Tether_GUID dd = tether_registry_find_entity("zoo_dropdown");
-    if (dd != TETHER_INVALID_GUID) {
+    TUID dd = tether_registry_find_entity("zoo_dropdown");
+    if (dd != TETHER_INVALID_TUID) {
         tether_bind_event(dd, TETHER_EVENT_CHANGE, on_dropdown_change, NULL);
     }
 
-    Tether_GUID tabs = tether_registry_find_entity("zoo_switcher_tabs");
+    TUID tabs = tether_registry_find_entity("zoo_switcher_tabs");
     s_switcher = tether_registry_find_entity("zoo_switcher");
     tether_bind_event(tabs, TETHER_EVENT_CHANGE, on_switcher_tab, NULL);
     return root;
 }
 
-static bool gallery_text_fits(Tether_GUID entity, const Tether_SlotTransform *bounds) {
+static bool gallery_text_fits(TUID entity, const Tether_SlotTransform *bounds) {
     Tether_Visibility *visibility = tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
     if (visibility && visibility->computed_state != TETHER_VISIBLE) return true;
     Tether_Text *text = tether_ecs_get_component(entity, TETHER_COMPONENT_TEXT);
@@ -236,18 +236,18 @@ static bool gallery_text_fits(Tether_GUID entity, const Tether_SlotTransform *bo
         return false;
     }
     Tether_Hierarchy *hierarchy = tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    Tether_GUID child = hierarchy ? hierarchy->first_child : TETHER_INVALID_GUID;
-    while (child != TETHER_INVALID_GUID) {
+    TUID child = hierarchy ? hierarchy->first_child : TETHER_INVALID_TUID;
+    while (child != TETHER_INVALID_TUID) {
         if (!gallery_text_fits(child, bounds)) return false;
         hierarchy = tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-        child = hierarchy ? hierarchy->next_sibling : TETHER_INVALID_GUID;
+        child = hierarchy ? hierarchy->next_sibling : TETHER_INVALID_TUID;
     }
     return true;
 }
 
 /* Used by the desktop smoke test after the gallery has been laid out. */
 bool sandbox_widgets_zoo_check(void) {
-    Tether_GUID toggle = tether_registry_find_entity("zoo_toggle");
+    TUID toggle = tether_registry_find_entity("zoo_toggle");
     Tether_SlotTransform *toggle_slot = tether_ecs_get_component(toggle, TETHER_COMPONENT_SLOT_TRANSFORM);
     if (!toggle_slot || toggle_slot->width != 46.0f || toggle_slot->height != 26.0f) {
         fprintf(stderr, "Gallery toggle does not preserve its default size\n");
@@ -261,11 +261,11 @@ bool sandbox_widgets_zoo_check(void) {
         "zoo_col1", "zoo_collapsible_disabled", "zoo_switcher_tabs", "zoo_switcher_tabs_disabled",
         "zoo_switcher", "zoo_switcher_disabled"
     };
-    Tether_GUID root = tether_registry_find_entity("zoo_root");
+    TUID root = tether_registry_find_entity("zoo_root");
     Tether_SlotTransform *bounds = tether_ecs_get_component(root, TETHER_COMPONENT_SLOT_TRANSFORM);
     if (!bounds || !gallery_text_fits(root, bounds)) return false;
     for (unsigned i = 0; i < sizeof ids / sizeof *ids; ++i) {
-        Tether_GUID entity = tether_registry_find_entity(ids[i]);
+        TUID entity = tether_registry_find_entity(ids[i]);
         Tether_SlotTransform *slot = tether_ecs_get_component(entity, TETHER_COMPONENT_SLOT_TRANSFORM);
         if (!slot || slot->width <= 0 || slot->height <= 0 || slot->x < bounds->x ||
             slot->y < bounds->y || slot->x + slot->width > bounds->x + bounds->width + 1 ||
@@ -278,7 +278,7 @@ bool sandbox_widgets_zoo_check(void) {
             return false;
         }
         if (i % 2) {
-            Tether_GUID hit = tether_hit_test(slot->x + slot->width * 0.5f,
+            TUID hit = tether_hit_test(slot->x + slot->width * 0.5f,
                                               slot->y + slot->height * 0.5f);
             while (tether_ecs_is_valid(hit)) {
                 if (hit == entity) {
@@ -291,10 +291,10 @@ bool sandbox_widgets_zoo_check(void) {
     }
 
     /* The enabled button responds; the disabled button must not invoke the same callback. */
-    Tether_GUID status = tether_registry_find_entity("zoo_button_status");
+    TUID status = tether_registry_find_entity("zoo_button_status");
     for (unsigned i = 0; i < 2; ++i) {
         const char *id = i == 0 ? "zoo_button_disabled" : "zoo_button_enabled";
-        Tether_GUID button = tether_registry_find_entity(id);
+        TUID button = tether_registry_find_entity(id);
         Tether_SlotTransform *slot = tether_ecs_get_component(button, TETHER_COMPONENT_SLOT_TRANSFORM);
         Tether_Pointer_Event event = {.type = TETHER_POINTER_DOWN, .button = TETHER_MOUSE_BUTTON_LEFT,
                                       .x = slot->x + slot->width * 0.5f,
@@ -307,10 +307,10 @@ bool sandbox_widgets_zoo_check(void) {
         if (!message || strcmp(message, expected)) return false;
     }
 
-    Tether_GUID disabled_bar = tether_registry_find_entity("zoo_switcher_tabs_disabled");
+    TUID disabled_bar = tether_registry_find_entity("zoo_switcher_tabs_disabled");
     int selected = tether_ui_get_segment_selected(disabled_bar);
     for (int i = 0; i < 3; ++i) {
-        Tether_GUID segment = tether_widget_get_child_at(disabled_bar, i);
+        TUID segment = tether_widget_get_child_at(disabled_bar, i);
         Tether_SlotTransform *segment_slot = tether_ecs_get_component(segment, TETHER_COMPONENT_SLOT_TRANSFORM);
         if (!segment_slot) return false;
         Tether_Pointer_Event event = {.type = TETHER_POINTER_DOWN, .button = TETHER_MOUSE_BUTTON_LEFT,
@@ -325,8 +325,8 @@ bool sandbox_widgets_zoo_check(void) {
         }
     }
 
-    Tether_GUID slider = tether_registry_find_entity("zoo_slider");
-    Tether_GUID thumb = tether_widget_get_child_at(slider, 1);
+    TUID slider = tether_registry_find_entity("zoo_slider");
+    TUID thumb = tether_widget_get_child_at(slider, 1);
     Tether_SlotTransform *slot = tether_ecs_get_component(thumb, TETHER_COMPONENT_SLOT_TRANSFORM);
     if (!slot) return false;
     Tether_Pointer_Event hover = {.type = TETHER_POINTER_MOVE, .button = TETHER_MOUSE_BUTTON_NONE,

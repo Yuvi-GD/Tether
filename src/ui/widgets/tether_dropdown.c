@@ -12,26 +12,26 @@
 #define DROPDOWN_CHILD_MENU   1
 
 /* Forward declarations */
-static void dropdown_handle_header_click(Tether_GUID entity, const Tether_Event *event_info, void *user_data);
-static void dropdown_handle_menu_change(Tether_GUID entity, const Tether_Event *event_info, void *user_data);
+static void dropdown_handle_header_click(TUID entity, const Tether_Event *event_info, void *user_data);
+static void dropdown_handle_menu_change(TUID entity, const Tether_Event *event_info, void *user_data);
 
 /* ========================================================================== */
 /* 1. Hierarchy Helpers                                                       */
 /* ========================================================================== */
 
-static Tether_GUID dropdown_get_header(Tether_GUID outer) {
+static TUID dropdown_get_header(TUID outer) {
     return tether_widget_get_child_at(outer, DROPDOWN_CHILD_HEADER);
 }
 
-static Tether_GUID dropdown_get_menu(Tether_GUID outer) {
+static TUID dropdown_get_menu(TUID outer) {
     return tether_widget_get_child_at(outer, DROPDOWN_CHILD_MENU);
 }
 
-static Tether_GUID dropdown_get_header_label(Tether_GUID header) {
+static TUID dropdown_get_header_label(TUID header) {
     return tether_widget_get_child_at(header, 0);
 }
 
-static Tether_GUID dropdown_get_arrow_text(Tether_GUID header) {
+static TUID dropdown_get_arrow_text(TUID header) {
     return tether_widget_get_child_at(header, 1);
 }
 
@@ -39,14 +39,14 @@ static Tether_GUID dropdown_get_arrow_text(Tether_GUID header) {
 /* 2. Visual Sync                                                             */
 /* ========================================================================== */
 
-static void dropdown_sync_visuals(Tether_GUID outer) {
-    Tether_GUID header = dropdown_get_header(outer);
-    Tether_GUID label = dropdown_get_header_label(header);
-    Tether_GUID arrow = dropdown_get_arrow_text(header);
-    Tether_GUID menu = dropdown_get_menu(outer);
+static void dropdown_sync_visuals(TUID outer) {
+    TUID header = dropdown_get_header(outer);
+    TUID label = dropdown_get_header_label(header);
+    TUID arrow = dropdown_get_arrow_text(header);
+    TUID menu = dropdown_get_menu(outer);
 
     /* Rotate the same bracket right when closed and down when open. */
-    if (arrow != TETHER_INVALID_GUID) {
+    if (arrow != TETHER_INVALID_TUID) {
         Tether_RenderTransform *rt = (Tether_RenderTransform*)tether_ecs_get_component(arrow, TETHER_COMPONENT_RENDER_TRANSFORM);
         if (rt) {
             rt->rotation_deg = tether_ui_menu_is_open(menu) ? -90.0f : 180.0f;
@@ -59,7 +59,7 @@ static void dropdown_sync_visuals(Tether_GUID outer) {
     }
 
     /* Update header label from menu's selected text */
-    if (label != TETHER_INVALID_GUID && menu != TETHER_INVALID_GUID) {
+    if (label != TETHER_INVALID_TUID && menu != TETHER_INVALID_TUID) {
         const char *item_txt = tether_ui_menu_get_item_text(menu, tether_ui_menu_get_selected(menu));
         const char *current = tether_ui_get_text(label);
         if (item_txt && (!current || strcmp(current, item_txt) != 0)) {
@@ -80,14 +80,14 @@ static void dropdown_sync_visuals(Tether_GUID outer) {
 /* 3. Widget Creation                                                         */
 /* ========================================================================== */
 
-Tether_GUID tether_ui_dropdown(Tether_GUID parent) {
+TUID tether_ui_dropdown(TUID parent) {
     /* Outer container: FLOW_NONE anchors header inside 36px box */
-    Tether_GUID outer = tether_widget_create_container(parent);
+    TUID outer = tether_widget_create_container(parent);
     tether_ui_set_container(outer, TETHER_FLOW_NONE);
     tether_ui_set_size(outer, 0.0f, 36.0f);
 
     /* Child 0: Header toggle button */
-    Tether_GUID header = tether_ui_button(outer);
+    TUID header = tether_ui_button(outer);
     tether_ui_set_container(header, TETHER_FLOW_ROW);
     tether_ui_set_size(header, 0.0f, 36.0f);
     tether_ui_set_padding(header, 6.0f, 12.0f, 6.0f, 12.0f);
@@ -98,8 +98,8 @@ Tether_GUID tether_ui_dropdown(Tether_GUID parent) {
     tether_ui_set_offsets(header, 0.0f, 0.0f, 0.0f, 0.0f);
 
     /* Header text label (Child 0 of button) */
-    Tether_GUID label = dropdown_get_header_label(header);
-    if (label != TETHER_INVALID_GUID) {
+    TUID label = dropdown_get_header_label(header);
+    if (label != TETHER_INVALID_TUID) {
         tether_ui_set_text(label, "Select...");
         tether_ui_set_text_size(label, 14.0f);
         tether_ui_set_text_color(label, (Tether_Color){225, 225, 225, 255});
@@ -108,7 +108,7 @@ Tether_GUID tether_ui_dropdown(Tether_GUID parent) {
     }
 
     /* Chevron bracket text (Child 1 of header, rotated "<") */
-    Tether_GUID arrow = tether_ui_text(header);
+    TUID arrow = tether_ui_text(header);
     tether_ui_set_text(arrow, "<");
     tether_ui_set_text_size(arrow, 24.0f);
     tether_ui_set_text_color(arrow, (Tether_Color){145, 145, 145, 255});
@@ -122,7 +122,7 @@ Tether_GUID tether_ui_dropdown(Tether_GUID parent) {
     }
 
     /* Child 1: Menu floating panel */
-    Tether_GUID menu = tether_ui_menu(outer);
+    TUID menu = tether_ui_menu(outer);
     tether_ui_menu_position_relative(menu, header, 2.0f);
 
     tether_bind_event(header, TETHER_EVENT_PRESS, dropdown_handle_header_click, (void*)(uintptr_t)outer);
@@ -136,16 +136,16 @@ Tether_GUID tether_ui_dropdown(Tether_GUID parent) {
 /* 4. Event Handlers                                                          */
 /* ========================================================================== */
 
-static void dropdown_handle_header_click(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void dropdown_handle_header_click(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)entity;
-    Tether_GUID outer = (Tether_GUID)(uintptr_t)user_data;
+    TUID outer = (TUID)(uintptr_t)user_data;
     tether_ui_set_dropdown_open(outer, !tether_ui_is_dropdown_open(outer));
 }
 
-static void dropdown_handle_menu_change(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void dropdown_handle_menu_change(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)entity;
-    Tether_GUID outer = (Tether_GUID)(uintptr_t)user_data;
+    TUID outer = (TUID)(uintptr_t)user_data;
     dropdown_sync_visuals(outer);
     tether_dispatch_event_data(outer, event_info);
 }
@@ -154,9 +154,9 @@ static void dropdown_handle_menu_change(Tether_GUID entity, const Tether_Event *
 /* 5. Setters & Getters                                                       */
 /* ========================================================================== */
 
-void tether_ui_set_dropdown_selected(Tether_GUID dropdown, int selected_index) {
-    if (dropdown == TETHER_INVALID_GUID) return;
-    Tether_GUID menu = dropdown_get_menu(dropdown);
+void tether_ui_set_dropdown_selected(TUID dropdown, int selected_index) {
+    if (dropdown == TETHER_INVALID_TUID) return;
+    TUID menu = dropdown_get_menu(dropdown);
     if (selected_index >= 0 && selected_index < tether_ui_menu_get_item_count(menu)) {
         tether_ui_menu_set_selected(menu, selected_index);
         dropdown_sync_visuals(dropdown);
@@ -164,14 +164,14 @@ void tether_ui_set_dropdown_selected(Tether_GUID dropdown, int selected_index) {
     }
 }
 
-int tether_ui_get_dropdown_selected(Tether_GUID dropdown) {
+int tether_ui_get_dropdown_selected(TUID dropdown) {
     return tether_ui_menu_get_selected(dropdown_get_menu(dropdown));
 }
 
-void tether_ui_set_dropdown_open(Tether_GUID dropdown, bool open) {
-    if (dropdown == TETHER_INVALID_GUID) return;
-    Tether_GUID menu = dropdown_get_menu(dropdown);
-    if (menu != TETHER_INVALID_GUID) {
+void tether_ui_set_dropdown_open(TUID dropdown, bool open) {
+    if (dropdown == TETHER_INVALID_TUID) return;
+    TUID menu = dropdown_get_menu(dropdown);
+    if (menu != TETHER_INVALID_TUID) {
         if (open) {
             tether_ui_menu_open(menu);
         } else {
@@ -180,17 +180,17 @@ void tether_ui_set_dropdown_open(Tether_GUID dropdown, bool open) {
     }
 }
 
-bool tether_ui_is_dropdown_open(Tether_GUID dropdown) {
-    if (dropdown == TETHER_INVALID_GUID) return false;
-    Tether_GUID menu = dropdown_get_menu(dropdown);
+bool tether_ui_is_dropdown_open(TUID dropdown) {
+    if (dropdown == TETHER_INVALID_TUID) return false;
+    TUID menu = dropdown_get_menu(dropdown);
     return tether_ui_menu_is_open(menu);
 }
 
-void tether_ui_set_dropdown_options(Tether_GUID dropdown, const char **options, int count) {
-    if (dropdown == TETHER_INVALID_GUID || !options || count <= 0) return;
-    Tether_GUID header = dropdown_get_header(dropdown);
-    Tether_GUID menu = dropdown_get_menu(dropdown);
-    if (menu != TETHER_INVALID_GUID) {
+void tether_ui_set_dropdown_options(TUID dropdown, const char **options, int count) {
+    if (dropdown == TETHER_INVALID_TUID || !options || count <= 0) return;
+    TUID header = dropdown_get_header(dropdown);
+    TUID menu = dropdown_get_menu(dropdown);
+    if (menu != TETHER_INVALID_TUID) {
         tether_ui_menu_set_items(menu, options, count);
         tether_ui_menu_position_relative(menu, header, 2.0f);
     }
@@ -198,7 +198,7 @@ void tether_ui_set_dropdown_options(Tether_GUID dropdown, const char **options, 
     dropdown_sync_visuals(dropdown);
 }
 
-void tether_ui_set_dropdown_type(Tether_GUID dropdown, Tether_DropdownType type) {
+void tether_ui_set_dropdown_type(TUID dropdown, Tether_DropdownType type) {
     (void)type;
     dropdown_sync_visuals(dropdown);
 }

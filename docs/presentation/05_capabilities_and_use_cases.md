@@ -134,7 +134,7 @@ Web and mobile frameworks experience notorious dependency churn:
 ### The Long-Term Stability of Pure C99
 - **The Timelessness of ISO C99**: C99 is one of the most stable, widely supported computing standards in existence. A Tether C99 codebase written today will compile and execute without modification on operating systems and compilers twenty years from now.
 - **Minimal Dependency Footprint**: Core ECS/layout code depends only on standard C99 headers, while default desktop builds vendor lightweight `libyaml` (for optional YAML authoring) and `chitra` cleanly.
-- **Verifiable Memory Safety**: The combination of generational GUID handles, contiguous dense memory pools, and zero heap allocations on frame loops eliminates the vast majority of memory corruption vulnerabilities common to legacy C/C++ codebases.
+- **Verifiable Memory Safety**: The combination of generational TUID handles, contiguous dense memory pools, and zero heap allocations on frame loops eliminates the vast majority of memory corruption vulnerabilities common to legacy C/C++ codebases.
 
 ---
 
@@ -147,7 +147,7 @@ Web and mobile frameworks experience notorious dependency churn:
 | **Idle Efficiency** | Continuous immediate-mode rebuilds | Retained dirty tags (`tether_did_draw() == false` when static) |
 | **Predictable Pacing** | Periodic tracing GC stutter spikes | Zero tracing GC; steady-state zero-alloc audit ongoing |
 | **Rapid Prototyping** | Recompile required on C++ toolkits | Declarative YAML markup with manual Sandbox scene reload |
-| **Multi-Language Interoperability** | Complex C++ vtable wrappers | Scalar 64-bit `Tether_GUID` C ABI (foreign bindings on roadmap) |
+| **Multi-Language Interoperability** | Complex C++ vtable wrappers | Scalar 64-bit `TUID` C ABI (foreign bindings on roadmap) |
 | **Microcontroller Suitability** | Impossible without extensive rewrites | Pipeline 1 (Pure C) with custom framebuffer drivers (roadmap target) |
 
 ---

@@ -15,7 +15,7 @@ static inline uint32_t pack_color(Tether_Color c, float opacity) {
     return ((uint32_t)c.r) | (((uint32_t)c.g) << 8) | (((uint32_t)c.b) << 16) | (((uint32_t)a) << 24);
 }
 
-static void apply_visual_rules(Tether_GUID id) {
+static void apply_visual_rules(TUID id) {
     Tether_SlotTransform* st = (Tether_SlotTransform*)tether_ecs_get_component(id, TETHER_COMPONENT_SLOT_TRANSFORM);
     Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(id, TETHER_COMPONENT_RENDER_TRANSFORM);
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(id, TETHER_COMPONENT_VISIBILITY);
@@ -130,10 +130,10 @@ static void apply_visual_rules(Tether_GUID id) {
     }
 }
 
-extern Tether_GUID tether_ecs_get_main_root(void);
+extern TUID tether_ecs_get_main_root(void);
 
-static void sync_hierarchy_recursive(Tether_GUID id, int* current_z, int* current_abs, uint16_t parent_clip_id, bool is_parent_absolute) {
-    if (id == TETHER_INVALID_GUID) return;
+static void sync_hierarchy_recursive(TUID id, int* current_z, int* current_abs, uint16_t parent_clip_id, bool is_parent_absolute) {
+    if (id == TETHER_INVALID_TUID) return;
 
     Tether_Hierarchy* h       = (Tether_Hierarchy*)tether_ecs_get_component(id, TETHER_COMPONENT_HIERARCHY);
     Tether_Shape* shape       = (Tether_Shape*)tether_ecs_get_component(id, TETHER_COMPONENT_SHAPE);
@@ -181,7 +181,7 @@ static void sync_hierarchy_recursive(Tether_GUID id, int* current_z, int* curren
         }
 
         /* Only register / intersect if there are children to clip */
-        if (h && h->first_child != TETHER_INVALID_GUID) {
+        if (h && h->first_child != TETHER_INVALID_TUID) {
             /* Read the previously-allocated child clip_id from the first child's handle sort key (O(1)) */
             uint16_t existing_clip_id = 0;
             Tether_Shape* fcs = (Tether_Shape*)tether_ecs_get_component(h->first_child, TETHER_COMPONENT_SHAPE);
@@ -203,8 +203,8 @@ static void sync_hierarchy_recursive(Tether_GUID id, int* current_z, int* curren
     }
 
     if (h) {
-        Tether_GUID child = h->first_child;
-        while (child != TETHER_INVALID_GUID) {
+        TUID child = h->first_child;
+        while (child != TETHER_INVALID_TUID) {
             sync_hierarchy_recursive(child, current_z, current_abs, child_clip_id, is_absolute);
             Tether_Hierarchy* ch_comp = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
             if (ch_comp) child = ch_comp->next_sibling;
@@ -269,7 +269,7 @@ bool tether_engine_frame(float screen_w, float screen_h, bool force_redraw) {
 
     if (dirty_layout) {
         for (int i = (int)dirty_layout->count - 1; i >= 0; i--) {
-            Tether_GUID id = dirty_layout->entity_map[i];
+            TUID id = dirty_layout->entity_map[i];
             if (!tether_ecs_get_component(id, TETHER_COMPONENT_VOLATILE)) {
                 tether_ecs_remove_component(id, TETHER_COMPONENT_DIRTY_LAYOUT);
             }
@@ -278,7 +278,7 @@ bool tether_engine_frame(float screen_w, float screen_h, bool force_redraw) {
     
     if (dirty_visual) {
         for (int i = (int)dirty_visual->count - 1; i >= 0; i--) {
-            Tether_GUID id = dirty_visual->entity_map[i];
+            TUID id = dirty_visual->entity_map[i];
             if (!tether_ecs_get_component(id, TETHER_COMPONENT_VOLATILE)) {
                 tether_ecs_remove_component(id, TETHER_COMPONENT_DIRTY_VISUAL);
             }
@@ -287,7 +287,7 @@ bool tether_engine_frame(float screen_w, float screen_h, bool force_redraw) {
     
     if (dirty_hierarchy) {
         for (int i = (int)dirty_hierarchy->count - 1; i >= 0; i--) {
-            Tether_GUID id = dirty_hierarchy->entity_map[i];
+            TUID id = dirty_hierarchy->entity_map[i];
             tether_ecs_remove_component(id, TETHER_COMPONENT_DIRTY_HIERARCHY);
         }
     }
@@ -295,7 +295,7 @@ bool tether_engine_frame(float screen_w, float screen_h, bool force_redraw) {
     Tether_DenseArray* dirty_text = tether_ecs_get_dense_array(TETHER_COMPONENT_DIRTY_TEXT_CONTENT);
     if (dirty_text) {
         for (int i = (int)dirty_text->count - 1; i >= 0; i--) {
-            Tether_GUID id = dirty_text->entity_map[i];
+            TUID id = dirty_text->entity_map[i];
             Tether_Visibility* vis = tether_ecs_get_component(id, TETHER_COMPONENT_VISIBILITY);
             Tether_Text* text = tether_ecs_get_component(id, TETHER_COMPONENT_TEXT);
             /* Hidden/unrealized text has not been submitted yet. Keep its
@@ -322,8 +322,8 @@ bool tether_engine_frame(float screen_w, float screen_h, bool force_redraw) {
 /*                    Add/Remove UI Element from Render                       */
 /* ========================================================================== */
 
-void tether_engine_realize(Tether_GUID id) {
-    if (id == TETHER_INVALID_GUID) return;
+void tether_engine_realize(TUID id) {
+    if (id == TETHER_INVALID_TUID) return;
 
     Tether_Shape* shape = (Tether_Shape*)tether_ecs_get_component(id, TETHER_COMPONENT_SHAPE);
     if (g_rhi.shape && shape && !g_rhi.shape->is_alive(shape->handle)) {
@@ -343,28 +343,28 @@ void tether_engine_realize(Tether_GUID id) {
     
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(id, TETHER_COMPONENT_HIERARCHY);
     if (h) {
-        Tether_GUID child = h->first_child;
-        while (child != TETHER_INVALID_GUID) {
+        TUID child = h->first_child;
+        while (child != TETHER_INVALID_TUID) {
             Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-            Tether_GUID next = ch ? ch->next_sibling : TETHER_INVALID_GUID;
+            TUID next = ch ? ch->next_sibling : TETHER_INVALID_TUID;
             tether_engine_realize(child);
             child = next;
         }
-        tether_ecs_add_component(h->parent != TETHER_INVALID_GUID ? h->parent : id, TETHER_COMPONENT_DIRTY_HIERARCHY);
+        tether_ecs_add_component(h->parent != TETHER_INVALID_TUID ? h->parent : id, TETHER_COMPONENT_DIRTY_HIERARCHY);
     } else {
         tether_ecs_add_component(id, TETHER_COMPONENT_DIRTY_HIERARCHY);
     }
 }
 
-void tether_engine_unrealize(Tether_GUID entity) {
+void tether_engine_unrealize(TUID entity) {
     if (!tether_ecs_is_valid(entity)) return;
 
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
     if (h) {
-        Tether_GUID child = h->first_child;
+        TUID child = h->first_child;
         while (child != 0) {
             Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-            Tether_GUID next = ch ? ch->next_sibling : 0;
+            TUID next = ch ? ch->next_sibling : 0;
             tether_engine_unrealize(child);
             child = next;
         }

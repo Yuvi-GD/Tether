@@ -19,15 +19,15 @@ extern "C" {
  * [Self] Panel (button), Layout, Interactable
  *   └── [0] Label: Text ("Button")
  */
-Tether_GUID tether_ui_button(Tether_GUID parent);
+TUID tether_ui_button(TUID parent);
 
 /* ========================================================================== */
 /* 2. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_button_label(Tether_GUID btn, const char* label);
-const char* tether_ui_get_button_label(Tether_GUID btn);
-void tether_ui_set_button_color(Tether_GUID btn, Tether_Color color);
+void tether_ui_set_button_label(TUID btn, const char* label);
+const char* tether_ui_get_button_label(TUID btn);
+void tether_ui_set_button_color(TUID btn, Tether_Color color);
 
 #ifdef __cplusplus
 }

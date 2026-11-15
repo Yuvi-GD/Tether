@@ -4,7 +4,7 @@
 
 At the foundation of Tether lies its custom Entity Component System (ECS) kernel and memory model. Rather than organizing user interface elements as traditional class instances connected by heap memory pointers, Tether represents UI elements as lightweight integer identifiers, storing their properties in flat, cache-coherent memory pools.
 
-This chapter details Tether's data-oriented memory strategy, generational 64-bit entity identity (`Tether_GUID`), sparse-set storage mechanics, swap-and-pop deallocation algorithms, pointer invalidation contracts, Small String Optimization (SSO), and the global dual-root scene architecture.
+This chapter details Tether's data-oriented memory strategy, generational 64-bit entity identity (`TUID`), sparse-set storage mechanics, swap-and-pop deallocation algorithms, pointer invalidation contracts, Small String Optimization (SSO), and the global dual-root scene architecture.
 
 ---
 
@@ -18,15 +18,15 @@ User interface systems face distinct memory challenges: elements are created, de
 
 Tether eliminates direct pointer chasing across elements through three structural decisions:
 
-1. **Entities are IDs, Never Pointers**: UI elements are addressed exclusively through 64-bit handles (`Tether_GUID`). Elements store IDs for all relationships (parents, children, siblings, event targets). Generational checks prevent stale handle lookups.
+1. **Entities are IDs, Never Pointers**: UI elements are addressed exclusively through 64-bit handles (`TUID`). Elements store IDs for all relationships (parents, children, siblings, event targets). Generational checks prevent stale handle lookups.
 2. **Contiguous Component Pools**: Components of the same type live in packed, contiguous arrays that grow geometrically. Iteration sweeps flat memory sequentially, maximizing CPU L1 and L2 cache prefetching.
 3. **Allocation-Aware Design**: Component pools grow geometrically and stabilize after initial growth, while `TextDynamic` and pool expansion still use standard C heap allocation; minimizing steady-state allocations is an ongoing goal.
 
 ---
 
-## 2. Entity Representation: `Tether_GUID`
+## 2. Entity Representation: `TUID`
 
-Every entity in Tether is identified by a 64-bit integer handle (`Tether_GUID`). To ensure constant-time array access while preventing stale handle corruption, the identifier is split into an Index and a Generation counter:
+Every entity in Tether is identified by a 64-bit integer handle (`TUID`). To ensure constant-time array access while preventing stale handle corruption, the identifier is split into an Index and a Generation counter:
 
 ```
 +-----------------------------------+-----------------------------------+
@@ -38,18 +38,18 @@ Every entity in Tether is identified by a 64-bit integer handle (`Tether_GUID`).
 ### Identification API (`include/tether/core/tether_ecs.h`)
 
 ```c
-typedef uint64_t Tether_GUID;
+typedef uint64_t TUID;
 
-#define TETHER_INVALID_GUID 0
+#define TETHER_INVALID_TUID 0
 
 /* Extracts the 32-bit index for direct array indexing */
-static inline uint32_t tether_ecs_get_index(Tether_GUID guid);
+static inline uint32_t tether_ecs_get_index(TUID tuid);
 
 /* Extracts the 32-bit generation version counter */
-static inline uint32_t tether_ecs_get_generation(Tether_GUID guid);
+static inline uint32_t tether_ecs_get_generation(TUID tuid);
 
-/* Constructs a GUID from an index and generation */
-static inline Tether_GUID tether_ecs_make_guid(uint32_t index, uint32_t generation);
+/* Constructs a TUID from an index and generation */
+static inline TUID tether_ecs_make_tuid(uint32_t index, uint32_t generation);
 ```
 
 ### Generational Safety
@@ -67,12 +67,12 @@ flowchart LR
 
 1. The kernel maintains a global generation table: `uint32_t generations[]`.
 2. When an entity is destroyed, its entry in `generations[index]` increments, and its index is pushed onto `free_indices`.
-3. When the index is reused later, the newly issued `Tether_GUID` contains the incremented generation counter.
-4. Calling `tether_ecs_is_valid(guid)` performs an instant comparison between the GUID's embedded generation and the table:
+3. When the index is reused later, the newly issued `TUID` contains the incremented generation counter.
+4. Calling `tether_ecs_is_valid(tuid)` performs an instant comparison between the TUID's embedded generation and the table:
 
-$$\text{is\_valid}(guid) := (index > 0) \land (index < next\_entity\_index) \land (generations[index] == guid.generation)$$
+$$\text{is\_valid}(tuid) := (index > 0) \land (index < next\_entity\_index) \land (generations[index] == tuid.generation)$$
 
-If an obsolete GUID is checked, the generation mismatch is detected immediately in $O(1)$ time without reading invalid memory. Index `0` is strictly reserved for `TETHER_INVALID_GUID`.
+If an obsolete TUID is checked, the generation mismatch is detected immediately in $O(1)$ time without reading invalid memory. Index `0` is strictly reserved for `TETHER_INVALID_TUID`.
 
 ---
 
@@ -110,8 +110,8 @@ flowchart TD
             D1["Slot 1: Entity 3 Shape Data"]
         end
         subgraph BackMap["entity_map (Reverse Lookup)"]
-            M0["Slot 0: GUID 1"]
-            M1["Slot 1: GUID 3"]
+            M0["Slot 0: TUID 1"]
+            M1["Slot 1: TUID 3"]
         end
     end
 
@@ -137,7 +137,7 @@ typedef struct Tether_SparseMap {
 
 typedef struct Tether_DenseArray {
     void*        data;         /* Flat contiguous component payload */
-    Tether_GUID* entity_map;   /* Maps dense index back to owning Tether_GUID */
+    TUID* entity_map;   /* Maps dense index back to owning TUID */
     size_t       element_size; /* Size of one component struct in bytes */
     uint32_t     count;        /* Active component count */
     uint32_t     capacity;     /* Allocated buffer capacity */
@@ -286,8 +286,8 @@ Because Tether optimizes memory layout through packed buffers that grow via geom
 
 1. **Never Cache Component Pointers Across Mutations**:
    A pointer returned by `tether_ecs_get_component()` references a slot within the dense array. If any entity adds or removes that component type, memory may be reallocated or swapped, leaving the pointer dangling.
-2. **Store Entity GUIDs for Persistent Referencing**:
-   Always store `Tether_GUID`. Re-querying a component via `tether_ecs_get_component(guid, COMP_ID)` is a trivial array lookup that eliminates stale pointer bugs.
+2. **Store Entity TUIDs for Persistent Referencing**:
+   Always store `TUID`. Re-querying a component via `tether_ecs_get_component(tuid, COMP_ID)` is a trivial array lookup that eliminates stale pointer bugs.
 3. **Sequential Dense Batch Iteration is Read-Safe**:
    Systems that process components linearly (such as renderer submissions or layout calculations) can safely iterate over `Tether_DenseArray.data` sequentially, provided the loop does not add or remove components during iteration.
 
@@ -346,10 +346,10 @@ Separating these roots at the kernel level ensures that floating overlays render
 
 ```c
 /* Get the primary root entity for the layout tree */
-Tether_GUID tether_ecs_get_main_root(void);
+TUID tether_ecs_get_main_root(void);
 
 /* Get the global overlay root entity for tooltips and dropdowns */
-Tether_GUID tether_ecs_get_overlay_root(void);
+TUID tether_ecs_get_overlay_root(void);
 ```
 
 ---

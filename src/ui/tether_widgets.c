@@ -5,25 +5,25 @@
 #include "tether/ui/tether_widgets.h"
 
 
-void tether_widget_add_to_parent(Tether_GUID entity, Tether_GUID parent) {
+void tether_widget_add_to_parent(TUID entity, TUID parent) {
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
     if (!h) {
         h = (Tether_Hierarchy*)tether_ecs_add_component(entity, TETHER_COMPONENT_HIERARCHY);
     }
     h->parent = parent;
-    h->first_child = TETHER_INVALID_GUID;
-    h->next_sibling = TETHER_INVALID_GUID;
+    h->first_child = TETHER_INVALID_TUID;
+    h->next_sibling = TETHER_INVALID_TUID;
     h->child_count = 0;
     
-    if (parent != TETHER_INVALID_GUID) {
+    if (parent != TETHER_INVALID_TUID) {
         Tether_Hierarchy* ph = (Tether_Hierarchy*)tether_ecs_get_component(parent, TETHER_COMPONENT_HIERARCHY);
         if (ph) {
             ph->child_count++;
-            if (ph->first_child == TETHER_INVALID_GUID) {
+            if (ph->first_child == TETHER_INVALID_TUID) {
                 ph->first_child = entity;
                 ph->last_child = entity;
             } else {
-                Tether_GUID old_last = ph->last_child;
+                TUID old_last = ph->last_child;
                 Tether_Hierarchy* old_last_h = (Tether_Hierarchy*)tether_ecs_get_component(old_last, TETHER_COMPONENT_HIERARCHY);
                 if (old_last_h) {
                     old_last_h->next_sibling = entity;
@@ -35,51 +35,51 @@ void tether_widget_add_to_parent(Tether_GUID entity, Tether_GUID parent) {
     }
 }
 
-void tether_widget_remove_from_parent(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_widget_remove_from_parent(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return;
     tether_ecs_detach_entity(entity);
     tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_HIERARCHY);
     tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_LAYOUT);
 }
 
-Tether_GUID tether_widget_get_parent(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return TETHER_INVALID_GUID;
+TUID tether_widget_get_parent(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return TETHER_INVALID_TUID;
     Tether_Hierarchy *h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    return h ? h->parent : TETHER_INVALID_GUID;
+    return h ? h->parent : TETHER_INVALID_TUID;
 }
 
-int tether_widget_get_child_count(Tether_GUID entity) {
-    if (entity == TETHER_INVALID_GUID) return 0;
+int tether_widget_get_child_count(TUID entity) {
+    if (entity == TETHER_INVALID_TUID) return 0;
     Tether_Hierarchy *h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
     return h ? (int)h->child_count : 0;
 }
 
-Tether_GUID tether_widget_get_child_at(Tether_GUID entity, int index) {
-    if (entity == TETHER_INVALID_GUID) return TETHER_INVALID_GUID;
+TUID tether_widget_get_child_at(TUID entity, int index) {
+    if (entity == TETHER_INVALID_TUID) return TETHER_INVALID_TUID;
     Tether_Hierarchy *h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    if (!h || h->child_count == 0) return TETHER_INVALID_GUID;
+    if (!h || h->child_count == 0) return TETHER_INVALID_TUID;
 
     if (index == -1) {
         return h->last_child;
     }
     if (index < 0 || (uint32_t)index >= h->child_count) {
-        return TETHER_INVALID_GUID;
+        return TETHER_INVALID_TUID;
     }
     if (index == 0) {
         return h->first_child;
     }
 
-    Tether_GUID curr = h->first_child;
-    for (int i = 0; i < index && curr != TETHER_INVALID_GUID; i++) {
+    TUID curr = h->first_child;
+    for (int i = 0; i < index && curr != TETHER_INVALID_TUID; i++) {
         Tether_Hierarchy *ch = (Tether_Hierarchy*)tether_ecs_get_component(curr, TETHER_COMPONENT_HIERARCHY);
-        curr = ch ? ch->next_sibling : TETHER_INVALID_GUID;
+        curr = ch ? ch->next_sibling : TETHER_INVALID_TUID;
     }
     return curr;
 }
 
 
-Tether_GUID tether_widget_create_container(Tether_GUID parent) {
-    Tether_GUID entity = tether_ecs_create_entity();
+TUID tether_widget_create_container(TUID parent) {
+    TUID entity = tether_ecs_create_entity();
     
     tether_ecs_add_component(entity, TETHER_COMPONENT_SLOT_TRANSFORM);
     tether_ecs_add_component(entity, TETHER_COMPONENT_LAYOUT);
@@ -95,25 +95,25 @@ Tether_GUID tether_widget_create_container(Tether_GUID parent) {
     return entity;
 }
 
-void tether_widget_show(Tether_GUID entity) {
+void tether_widget_show(TUID entity) {
     tether_widget_set_visibility(entity, TETHER_VISIBLE);
     tether_engine_realize(entity);
 }
 
-void tether_widget_hide(Tether_GUID entity) {
+void tether_widget_hide(TUID entity) {
     tether_engine_unrealize(entity);
     tether_widget_set_visibility(entity, TETHER_COLLAPSED);
 }
 
-static void clear_bindings_recursive(Tether_GUID entity) {
+static void clear_bindings_recursive(TUID entity) {
     if (!tether_ecs_is_valid(entity)) return;
     tether_input_clear_route(entity);
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
     if (h) {
-        Tether_GUID child = h->first_child;
-        while (child != TETHER_INVALID_GUID) {
+        TUID child = h->first_child;
+        while (child != TETHER_INVALID_TUID) {
             Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-            Tether_GUID next = ch ? ch->next_sibling : TETHER_INVALID_GUID;
+            TUID next = ch ? ch->next_sibling : TETHER_INVALID_TUID;
             clear_bindings_recursive(child);
             child = next;
         }
@@ -121,7 +121,7 @@ static void clear_bindings_recursive(Tether_GUID entity) {
     tether_clear_bindings(entity);
 }
 
-void tether_widget_destroy(Tether_GUID entity) {
+void tether_widget_destroy(TUID entity) {
     if (!tether_ecs_is_valid(entity)) return;
     
     // Safely unrealize GPU resources recursively before the ECS data is gone
@@ -138,7 +138,7 @@ void tether_widget_destroy(Tether_GUID entity) {
     /*                 Visibility Settings for UI                                 */
     /* ========================================================================== */
 
-static void recompute_visibility_tree(Tether_GUID entity, Tether_VisibilityState parent_computed_state) {
+static void recompute_visibility_tree(TUID entity, Tether_VisibilityState parent_computed_state) {
     if (!tether_ecs_is_valid(entity)) return;
 
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
@@ -162,21 +162,21 @@ static void recompute_visibility_tree(Tether_GUID entity, Tether_VisibilityState
 
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
     if (h) {
-        Tether_GUID child = h->first_child;
-        while (child != TETHER_INVALID_GUID) {
+        TUID child = h->first_child;
+        while (child != TETHER_INVALID_TUID) {
             recompute_visibility_tree(child, vis->computed_state);
             
             Tether_Hierarchy* ch = (Tether_Hierarchy*)tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
             if (ch) {
                 child = ch->next_sibling;
             } else {
-                child = TETHER_INVALID_GUID;
+                child = TETHER_INVALID_TUID;
             }
         }
     }
 }
 
-void tether_widget_set_visibility(Tether_GUID entity, Tether_VisibilityState state) {
+void tether_widget_set_visibility(TUID entity, Tether_VisibilityState state) {
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
     if (!vis) return;
     
@@ -184,7 +184,7 @@ void tether_widget_set_visibility(Tether_GUID entity, Tether_VisibilityState sta
     
     Tether_VisibilityState parent_state = TETHER_VISIBLE;
     Tether_Hierarchy* h = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    if (h && h->parent != TETHER_INVALID_GUID) {
+    if (h && h->parent != TETHER_INVALID_TUID) {
         Tether_Visibility* p_vis = (Tether_Visibility*)tether_ecs_get_component(h->parent, TETHER_COMPONENT_VISIBILITY);
         if (p_vis) {
             parent_state = p_vis->computed_state;
@@ -194,13 +194,13 @@ void tether_widget_set_visibility(Tether_GUID entity, Tether_VisibilityState sta
     recompute_visibility_tree(entity, parent_state);
 }
 
-bool tether_widget_is_visible(Tether_GUID entity) {
+bool tether_widget_is_visible(TUID entity) {
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
     if (!vis) return true; // Default to visible if no component
     return vis->computed_state == TETHER_VISIBLE;
 }
 
-bool tether_widget_is_collapsed(Tether_GUID entity) {
+bool tether_widget_is_collapsed(TUID entity) {
     Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(entity, TETHER_COMPONENT_VISIBILITY);
     if (!vis) return false;
     return vis->computed_state == TETHER_COLLAPSED;
@@ -210,8 +210,8 @@ bool tether_widget_is_collapsed(Tether_GUID entity) {
     /*                 Interaction & State Settings                               */
     /* ========================================================================== */
 
-void tether_widget_add_interaction(Tether_GUID entity, Tether_HitBehavior behavior) {
-    if (entity == TETHER_INVALID_GUID) return;
+void tether_widget_add_interaction(TUID entity, Tether_HitBehavior behavior) {
+    if (entity == TETHER_INVALID_TUID) return;
     Tether_Interactable *interact = (Tether_Interactable*)tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
     if (!interact) {
         interact = (Tether_Interactable*)tether_ecs_add_component(entity, TETHER_COMPONENT_INTERACTABLE);
@@ -222,7 +222,7 @@ void tether_widget_add_interaction(Tether_GUID entity, Tether_HitBehavior behavi
 }
 
 /* Compound widgets use existing child entities; dim and disable them together. */
-static void apply_enabled(Tether_GUID entity, bool enabled) {
+static void apply_enabled(TUID entity, bool enabled) {
     Tether_Interactable *interaction = tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
     if (interaction) {
         interaction->is_hovered = false;
@@ -241,15 +241,15 @@ static void apply_enabled(Tether_GUID entity, bool enabled) {
         tether_ecs_add_component(entity, TETHER_COMPONENT_DIRTY_VISUAL);
     }
     Tether_Hierarchy *hierarchy = tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-    Tether_GUID child = hierarchy ? hierarchy->first_child : TETHER_INVALID_GUID;
-    while (child != TETHER_INVALID_GUID) {
+    TUID child = hierarchy ? hierarchy->first_child : TETHER_INVALID_TUID;
+    while (child != TETHER_INVALID_TUID) {
         apply_enabled(child, enabled);
         hierarchy = tether_ecs_get_component(child, TETHER_COMPONENT_HIERARCHY);
-        child = hierarchy ? hierarchy->next_sibling : TETHER_INVALID_GUID;
+        child = hierarchy ? hierarchy->next_sibling : TETHER_INVALID_TUID;
     }
 }
 
-void tether_widget_set_enabled(Tether_GUID entity, bool enabled) {
+void tether_widget_set_enabled(TUID entity, bool enabled) {
     if (!tether_ecs_is_valid(entity)) return;
     Tether_Interactable *interaction = tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
     if (!interaction) {
@@ -263,7 +263,7 @@ void tether_widget_set_enabled(Tether_GUID entity, bool enabled) {
     apply_enabled(entity, enabled);
 }
 
-bool tether_widget_is_enabled(Tether_GUID entity) {
+bool tether_widget_is_enabled(TUID entity) {
     if (!tether_ecs_is_valid(entity)) return false;
     Tether_Interactable *interaction = tether_ecs_get_component(entity, TETHER_COMPONENT_INTERACTABLE);
     return interaction ? interaction->is_enabled : true;

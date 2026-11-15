@@ -46,7 +46,7 @@ Tether enforces strict unidirectional dependencies between subsystems. **Lower l
 
 1. **C portability**: CMake requests C99. Prefer portable C, document platform-specific code, and validate supported compilers; the current CI covers Windows.
 2. **Memory ownership**: Avoid unnecessary allocations in frame, layout, and input paths. Document allocation and failure behavior, and release owned memory on destruction and shutdown. Existing operations can allocate at runtime.
-3. **Never Hold Raw ECS Pointers Across Mutations**: `tether_ecs_remove_component` uses swap-and-pop. Any `tether_ecs_add_component`, `remove_component`, or `destroy_entity` call can relocate elements in the dense array. Re-query `tether_ecs_get_component()` using `Tether_GUID` instead of caching pointers.
+3. **Never Hold Raw ECS Pointers Across Mutations**: `tether_ecs_remove_component` uses swap-and-pop. Any `tether_ecs_add_component`, `remove_component`, or `destroy_entity` call can relocate elements in the dense array. Re-query `tether_ecs_get_component()` using `TUID` instead of caching pointers.
 4. **Layout vs. Render Separation**: Geometry goes in `Tether_SlotTransform`; visual GPU offsets (`translation`, `scale`, `rotation`, `opacity`) go in `Tether_RenderTransform` without dirtying `TETHER_COMPONENT_DIRTY_LAYOUT`.
 5. **C and YAML**: Keep supported YAML widget properties consistent with the C APIs and validate error handling. YAML does not yet expose every C operation.
 

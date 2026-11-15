@@ -14,7 +14,7 @@ include/tether/
   ├── backends/
   │   └── tether_backend.h         # Pluggable backend interface (System, Shape, Text APIs)
   ├── core/
-  │   ├── tether_ecs.h             # Data-oriented ECS kernel, entity GUIDs, sparse/dense pools
+  │   ├── tether_ecs.h             # Data-oriented ECS kernel, entity TUIDs, sparse/dense pools
   │   ├── tether_components.h      # Component data structs (Layout, Render, Shape, Text, Hierarchy)
   │   ├── tether_registry.h        # Central Registry (Widgets, Aliases, Font table)
   │   ├── tether_events.h          # Event binding and dispatching pipeline
@@ -119,20 +119,20 @@ void  tether_on_input(const Tether_Pointer_Event* event);
 
 ## 3. ECS Kernel and Entity Management API (`tether_ecs.h`)
 
-### Entity GUID Type and Inlines
+### Entity TUID Type and Inlines
 
 ```c
-typedef uint64_t Tether_GUID;
-#define TETHER_INVALID_GUID 0
+typedef uint64_t TUID;
+#define TETHER_INVALID_TUID 0
 
-static inline uint32_t    tether_ecs_get_index(Tether_GUID guid);
-static inline uint32_t    tether_ecs_get_generation(Tether_GUID guid);
-static inline Tether_GUID tether_ecs_make_guid(uint32_t index, uint32_t generation);
+static inline uint32_t    tether_ecs_get_index(TUID tuid);
+static inline uint32_t    tether_ecs_get_generation(TUID tuid);
+static inline TUID tether_ecs_make_tuid(uint32_t index, uint32_t generation);
 ```
 
 - `tether_ecs_get_index`: Extracts the lower 32-bit entity slot index.
 - `tether_ecs_get_generation`: Extracts the upper 32-bit generation version counter.
-- `tether_ecs_make_guid`: Constructs a composite 64-bit GUID from index and generation values.
+- `tether_ecs_make_tuid`: Constructs a composite 64-bit TUID from index and generation values.
 
 ---
 
@@ -140,19 +140,19 @@ static inline Tether_GUID tether_ecs_make_guid(uint32_t index, uint32_t generati
 
 #### `tether_ecs_create_entity`
 ```c
-Tether_GUID tether_ecs_create_entity(void);
+TUID tether_ecs_create_entity(void);
 ```
-Allocates a new entity handle with an incremented generation version. Returns the 64-bit `Tether_GUID`.
+Allocates a new entity handle with an incremented generation version. Returns the 64-bit `TUID`.
 
 #### `tether_ecs_destroy_entity`
 ```c
-void tether_ecs_destroy_entity(Tether_GUID entity);
+void tether_ecs_destroy_entity(TUID entity);
 ```
 Recursively unlinks and destroys `entity` and all of its descendant children. Deallocates attached components across all dense arrays using $O(1)$ Swap-and-Pop, increments the generational counter, and recycles the slot index.
 
 #### `tether_ecs_is_valid`
 ```c
-bool tether_ecs_is_valid(Tether_GUID entity);
+bool tether_ecs_is_valid(TUID entity);
 ```
 Returns `true` if `entity` is currently allocated and alive. Performs an $O(1)$ generation check against the internal generation table.
 
@@ -162,31 +162,31 @@ Returns `true` if `entity` is currently allocated and alive. Performs an $O(1)$ 
 
 #### `tether_ecs_get_main_root`
 ```c
-Tether_GUID tether_ecs_get_main_root(void);
+TUID tether_ecs_get_main_root(void);
 ```
 Retrieves the root entity for the primary scene canvas.
 
 #### `tether_ecs_get_overlay_root`
 ```c
-Tether_GUID tether_ecs_get_overlay_root(void);
+TUID tether_ecs_get_overlay_root(void);
 ```
 Retrieves the overlay root entity used for floating popups, tooltips, and modal dropdowns drawn on top of the main scene.
 
 #### `tether_ecs_attach_entity`
 ```c
-void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity);
+void tether_ecs_attach_entity(TUID parent, TUID entity);
 ```
 Attaches `entity` as the last child of `parent`. Verifies that `parent` does not possess the `TETHER_COMPONENT_IS_LEAF` tag. Tags `parent` with `DIRTY_HIERARCHY`.
 
 #### `tether_ecs_detach_entity`
 ```c
-void tether_ecs_detach_entity(Tether_GUID entity);
+void tether_ecs_detach_entity(TUID entity);
 ```
 Unlinks `entity` from its current parent and sibling chain, cleanly stitching surrounding siblings.
 
 #### `tether_ecs_bring_to_front`
 ```c
-void tether_ecs_bring_to_front(Tether_GUID entity);
+void tether_ecs_bring_to_front(TUID entity);
 ```
 Moves `entity` to the tail of its parent's child chain, guaranteeing highest local draw order (Z-index).
 
@@ -196,19 +196,19 @@ Moves `entity` to the tail of its parent's child chain, guaranteeing highest loc
 
 #### `tether_ecs_add_component`
 ```c
-void* tether_ecs_add_component(Tether_GUID entity, int component_id);
+void* tether_ecs_add_component(TUID entity, int component_id);
 ```
 Attaches a component to `entity`, growing the dense array if needed. A new non-tag component receives its registered default data, or zero-initialized data if no default was supplied. Returns a pointer to the component; later ECS mutations may invalidate it.
 
 #### `tether_ecs_get_component`
 ```c
-void* tether_ecs_get_component(Tether_GUID entity, int component_id);
+void* tether_ecs_get_component(TUID entity, int component_id);
 ```
 Returns a direct pointer to the entity's component data in the dense array, or `NULL` if not attached.
 
 #### `tether_ecs_remove_component`
 ```c
-void tether_ecs_remove_component(Tether_GUID entity, int component_id);
+void tether_ecs_remove_component(TUID entity, int component_id);
 ```
 Removes the component from `entity` using $O(1)$ Swap-and-Pop.
 
@@ -231,10 +231,10 @@ Dynamically registers a custom component type with an optional `default_data` te
 ### Widget Factory Registration
 
 ```c
-typedef Tether_GUID (*Tether_WidgetCreateFn)(Tether_GUID parent);
+typedef TUID (*Tether_WidgetCreateFn)(TUID parent);
 
 void        tether_register_widget(const char* name, Tether_WidgetCreateFn create_fn);
-Tether_GUID tether_create_widget(const char* name, Tether_GUID parent);
+TUID tether_create_widget(const char* name, TUID parent);
 ```
 - `tether_register_widget`: Associates a string name (e.g., `"Slider"`) with a constructor function pointer.
 - `tether_create_widget`: Instantiates the named widget under `parent`. Used by declarative markup parsers to instantiate widgets without hardcoded switch tables.
@@ -244,13 +244,13 @@ Tether_GUID tether_create_widget(const char* name, Tether_GUID parent);
 ### String-ID Aliases
 
 ```c
-void        tether_registry_alias_entity(Tether_GUID entity, const char* alias);
-const char* tether_registry_get_alias(Tether_GUID entity);
-Tether_GUID tether_registry_find_entity(const char* alias);
-void        tether_registry_remove_alias(Tether_GUID entity);
+void        tether_registry_alias_entity(TUID entity, const char* alias);
+const char* tether_registry_get_alias(TUID entity);
+TUID tether_registry_find_entity(const char* alias);
+void        tether_registry_remove_alias(TUID entity);
 ```
-- `tether_registry_alias_entity`: Associates a human-readable alias (e.g., `"submit_btn"`) with an entity GUID.
-- `tether_registry_find_entity`: Resolves an alias string to its live `Tether_GUID` in $O(1)$ time using the internal Robin Hood hashmap. Returns `TETHER_INVALID_GUID` if not found.
+- `tether_registry_alias_entity`: Associates a human-readable alias (e.g., `"submit_btn"`) with an entity TUID.
+- `tether_registry_find_entity`: Resolves an alias string to its live `TUID` in $O(1)$ time using the internal Robin Hood hashmap. Returns `TETHER_INVALID_TUID` if not found.
 
 ---
 
@@ -271,56 +271,56 @@ const char* tether_font_get_name(uint32_t font_id);
 ### Primitives & Built-In Widget Constructors (`tether_ui.h` & `widgets/*.h`)
 
 ```c
-Tether_GUID tether_widget_create_container(Tether_GUID parent);
-Tether_GUID tether_ui_panel(Tether_GUID parent);
-Tether_GUID tether_ui_text(Tether_GUID parent);
-Tether_GUID tether_ui_button(Tether_GUID parent);
-Tether_GUID tether_ui_progress_bar(Tether_GUID parent);
-Tether_GUID tether_ui_slider(Tether_GUID parent);
-Tether_GUID tether_ui_toggle(Tether_GUID parent);
-Tether_GUID tether_ui_checkbox(Tether_GUID parent);
-Tether_GUID tether_ui_radio(Tether_GUID parent);
-Tether_GUID tether_ui_segmented_bar(Tether_GUID parent);
-Tether_GUID tether_ui_menu(Tether_GUID parent);
-Tether_GUID tether_ui_dropdown(Tether_GUID parent);
-Tether_GUID tether_ui_context_menu(Tether_GUID parent);
-Tether_GUID tether_ui_collapsible(Tether_GUID parent);
-Tether_GUID tether_ui_switcher(Tether_GUID parent);
+TUID tether_widget_create_container(TUID parent);
+TUID tether_ui_panel(TUID parent);
+TUID tether_ui_text(TUID parent);
+TUID tether_ui_button(TUID parent);
+TUID tether_ui_progress_bar(TUID parent);
+TUID tether_ui_slider(TUID parent);
+TUID tether_ui_toggle(TUID parent);
+TUID tether_ui_checkbox(TUID parent);
+TUID tether_ui_radio(TUID parent);
+TUID tether_ui_segmented_bar(TUID parent);
+TUID tether_ui_menu(TUID parent);
+TUID tether_ui_dropdown(TUID parent);
+TUID tether_ui_context_menu(TUID parent);
+TUID tether_ui_collapsible(TUID parent);
+TUID tether_ui_switcher(TUID parent);
 ```
 
 ### Property, Layout & State Setters (`tether_ui.h`)
 
 | Function Signature | Description |
 | :--- | :--- |
-| `void tether_ui_set_container(Tether_GUID entity, Tether_Flow flow)` | Sets container flow mode (`NONE`, `ROW`, `COLUMN`). |
-| `void tether_ui_set_position(Tether_GUID entity, Tether_PositionMode position)` | Sets `RELATIVE`, `ABSOLUTE`, or `FIXED` overlay positioning mode. |
-| `void tether_ui_set_content_align(Tether_GUID entity, Tether_Align align_x, Tether_Align align_y)` | Configures child alignment inside a flow container. |
-| `void tether_ui_set_size(Tether_GUID entity, float width, float height)` | Sets explicit layout dimensions. `0` indicates auto shrink-wrap. |
-| `void tether_ui_set_padding(Tether_GUID entity, float top, float right, float bottom, float left)` | Sets container inner padding in pixels. |
-| `void tether_ui_set_gap(Tether_GUID entity, float gap_x, float gap_y)` | Sets spacing between sequential child elements. |
-| `void tether_ui_set_flex(Tether_GUID entity, float fill_ratio)` | Sets flex expansion ratio along parent layout flow axis. |
-| `void tether_ui_set_color(Tether_GUID entity, Tether_Color bg_color)` | Sets background shape fill color. |
-| `void tether_ui_set_active_color(Tether_GUID entity, Tether_Color color)` | Sets transient hover/press highlight fill (`active_bg`); reset with `tether_ui_reset_active_color()`. |
-| `void tether_ui_set_border(Tether_GUID entity, float width, Tether_Color color, float radius)` | Configures border stroke thickness, color, and corner radius. |
-| `bool tether_ui_set_text(Tether_GUID entity, const char* string)` | Updates text string content, automatically invalidating layout and visual tags. |
-| `const char* tether_ui_get_text(Tether_GUID entity)` | Reads the text string attached to an entity. |
-| `void tether_ui_set_text_color(Tether_GUID entity, Tether_Color color)` | Updates font render color. |
-| `bool tether_ui_set_bool(Tether_GUID entity, bool value)` | Mutates `Tether_BoolState` (`get_bool`, `toggle_bool` also provided). |
-| `bool tether_ui_set_value(Tether_GUID entity, float value)` | Clamps and updates `Tether_ValueRange` (`set_range`, `get_value` also provided). |
+| `void tether_ui_set_container(TUID entity, Tether_Flow flow)` | Sets container flow mode (`NONE`, `ROW`, `COLUMN`). |
+| `void tether_ui_set_position(TUID entity, Tether_PositionMode position)` | Sets `RELATIVE`, `ABSOLUTE`, or `FIXED` overlay positioning mode. |
+| `void tether_ui_set_content_align(TUID entity, Tether_Align align_x, Tether_Align align_y)` | Configures child alignment inside a flow container. |
+| `void tether_ui_set_size(TUID entity, float width, float height)` | Sets explicit layout dimensions. `0` indicates auto shrink-wrap. |
+| `void tether_ui_set_padding(TUID entity, float top, float right, float bottom, float left)` | Sets container inner padding in pixels. |
+| `void tether_ui_set_gap(TUID entity, float gap_x, float gap_y)` | Sets spacing between sequential child elements. |
+| `void tether_ui_set_flex(TUID entity, float fill_ratio)` | Sets flex expansion ratio along parent layout flow axis. |
+| `void tether_ui_set_color(TUID entity, Tether_Color bg_color)` | Sets background shape fill color. |
+| `void tether_ui_set_active_color(TUID entity, Tether_Color color)` | Sets transient hover/press highlight fill (`active_bg`); reset with `tether_ui_reset_active_color()`. |
+| `void tether_ui_set_border(TUID entity, float width, Tether_Color color, float radius)` | Configures border stroke thickness, color, and corner radius. |
+| `bool tether_ui_set_text(TUID entity, const char* string)` | Updates text string content, automatically invalidating layout and visual tags. |
+| `const char* tether_ui_get_text(TUID entity)` | Reads the text string attached to an entity. |
+| `void tether_ui_set_text_color(TUID entity, Tether_Color color)` | Updates font render color. |
+| `bool tether_ui_set_bool(TUID entity, bool value)` | Mutates `Tether_BoolState` (`get_bool`, `toggle_bool` also provided). |
+| `bool tether_ui_set_value(TUID entity, float value)` | Clamps and updates `Tether_ValueRange` (`set_range`, `get_value` also provided). |
 
 ---
 
 ### Visibility, Enabled State & Lifecycle (`tether_widgets.h`)
 
 ```c
-void tether_widget_set_visibility(Tether_GUID entity, Tether_VisibilityState state);
-bool tether_widget_is_visible(Tether_GUID entity);
-bool tether_widget_is_collapsed(Tether_GUID entity);
-void tether_widget_set_enabled(Tether_GUID entity, bool enabled);
-bool tether_widget_is_enabled(Tether_GUID entity);
-void tether_widget_show(Tether_GUID entity);
-void tether_widget_hide(Tether_GUID entity);
-void tether_widget_destroy(Tether_GUID entity);
+void tether_widget_set_visibility(TUID entity, Tether_VisibilityState state);
+bool tether_widget_is_visible(TUID entity);
+bool tether_widget_is_collapsed(TUID entity);
+void tether_widget_set_enabled(TUID entity, bool enabled);
+bool tether_widget_is_enabled(TUID entity);
+void tether_widget_show(TUID entity);
+void tether_widget_hide(TUID entity);
+void tether_widget_destroy(TUID entity);
 ```
 
 - `TETHER_VISIBLE`: Rendered, receives input, occupies layout space.
@@ -350,15 +350,15 @@ typedef struct {
     float x, y;
 } Tether_Event;
 
-typedef void (*Tether_EventCallback)(Tether_GUID entity, const Tether_Event *event, void* user_data);
+typedef void (*Tether_EventCallback)(TUID entity, const Tether_Event *event, void* user_data);
 
-void tether_bind_event(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback, void* user_data);
-void tether_bind_pointer_event(Tether_GUID entity, Tether_EventType type, Tether_MouseButton button,
+void tether_bind_event(TUID entity, Tether_EventType type, Tether_EventCallback callback, void* user_data);
+void tether_bind_pointer_event(TUID entity, Tether_EventType type, Tether_MouseButton button,
                                Tether_EventCallback callback, void* user_data);
-void tether_unbind_event(Tether_GUID entity, Tether_EventType type);
-void tether_unbind_callback(Tether_GUID entity, Tether_EventType type, Tether_EventCallback callback);
-void tether_dispatch_event(Tether_GUID entity, Tether_EventType type);
-void tether_dispatch_event_data(Tether_GUID entity, const Tether_Event *event);
+void tether_unbind_event(TUID entity, Tether_EventType type);
+void tether_unbind_callback(TUID entity, Tether_EventType type, Tether_EventCallback callback);
+void tether_dispatch_event(TUID entity, Tether_EventType type);
+void tether_dispatch_event_data(TUID entity, const Tether_Event *event);
 ```
 
 ---
@@ -386,14 +386,14 @@ typedef struct Tether_Pointer_Event {
     float y;
 } Tether_Pointer_Event;
 
-typedef void (*Tether_InputRouteCallback)(Tether_GUID entity, const Tether_Pointer_Event *event,
-                                         Tether_GUID hit, Tether_GUID pressed);
+typedef void (*Tether_InputRouteCallback)(TUID entity, const Tether_Pointer_Event *event,
+                                         TUID hit, TUID pressed);
 
 void        tether_input_process_event(const Tether_Pointer_Event* event);
-Tether_GUID tether_hit_test(float x, float y);
+TUID tether_hit_test(float x, float y);
 void        tether_input_get_pointer_pos(float* out_x, float* out_y);
-void        tether_input_set_route(Tether_GUID entity, Tether_InputRouteCallback callback);
-void        tether_input_clear_route(Tether_GUID entity);
+void        tether_input_set_route(TUID entity, Tether_InputRouteCallback callback);
+void        tether_input_clear_route(TUID entity);
 ```
 
 ---
@@ -401,10 +401,10 @@ void        tether_input_clear_route(Tether_GUID entity);
 ### Declarative Scene Loader (`tether_yaml.h`)
 
 ```c
-Tether_GUID tether_yaml_load(const char* filepath, Tether_GUID parent);
+TUID tether_yaml_load(const char* filepath, TUID parent);
 void        tether_yaml_term(void);
 ```
-Parses a declarative YAML scene file and attaches the resulting entity hierarchy to `parent`. If `parent` is `TETHER_INVALID_GUID`, the scene attaches to the main root. On a detected load failure, the loader destroys recorded entities and removes their aliases. Template definitions registered or replaced during the load are not rolled back. Call `tether_yaml_term()` on the UI thread (outside a load) to free cached template definitions.
+Parses a declarative YAML scene file and attaches the resulting entity hierarchy to `parent`. If `parent` is `TETHER_INVALID_TUID`, the scene attaches to the main root. On a detected load failure, the loader destroys recorded entities and removes their aliases. Template definitions registered or replaced during the load are not rolled back. Call `tether_yaml_term()` on the UI thread (outside a load) to free cached template definitions.
 
 ---
 
@@ -436,8 +436,8 @@ In `src/main.c`:
 #include <tether/ui/tether_ui.h>
 
 static void on_init(void) {
-    Tether_GUID root = tether_ecs_get_main_root();
-    Tether_GUID panel = tether_ui_panel(root);
+    TUID root = tether_ecs_get_main_root();
+    TUID panel = tether_ui_panel(root);
     tether_ui_set_color(panel, (Tether_Color){40, 44, 52, 255});
 }
 

@@ -14,7 +14,7 @@
 #include <string.h>
 
 typedef struct {
-    Tether_GUID id;
+    TUID id;
     uint64_t value;
 } Item;
 /* One runner owns one engine on its main thread. Component pointers never
@@ -24,7 +24,7 @@ static struct {
     ToolResult *r;
     Item *items;
     uint32_t count, capacity, component, serial, frame, columns;
-    Tether_GUID root;
+    TUID root;
     bool render, finished, measuring;
     double started, cpu_start, frame_start, previous_frame;
     double run_started;
@@ -49,7 +49,7 @@ static uint32_t color(uint64_t value) {
     return 0xFF000000u | (x & 0x00FFFFFFu);
 }
 
-static void set_color(Tether_GUID id, uint64_t value) {
+static void set_color(TUID id, uint64_t value) {
     uint32_t rgba = color(value);
     Tether_Shape *shape = tether_ecs_get_component(id, TETHER_COMPONENT_SHAPE);
     shape->bg_color =
@@ -62,7 +62,7 @@ static bool append_object(void) {
         return false;
     }
     uint32_t index = run.count;
-    Tether_GUID id = run.render ? tether_ui_panel(run.root) : tether_ecs_create_entity();
+    TUID id = run.render ? tether_ui_panel(run.root) : tether_ecs_create_entity();
     if (!tether_ecs_is_valid(id)) {
         return false;
     }
@@ -95,7 +95,7 @@ static bool append_object(void) {
 }
 
 static void remove_object(void) {
-    Tether_GUID id = run.items[--run.count].id;
+    TUID id = run.items[--run.count].id;
     if (run.render) {
         tether_widget_destroy(id);
     } else {
@@ -342,10 +342,10 @@ static void hierarchy_test(void) {
     begin_measurement();
     for (uint32_t round = 0; round < run.o->frames; round++) {
         double start = tool_now_ms();
-        Tether_GUID parent = tether_ecs_create_entity();
+        TUID parent = tether_ecs_create_entity();
         tether_ecs_add_component(parent, TETHER_COMPONENT_HIERARCHY);
         for (uint32_t i = 0; i < run.o->count; i++) {
-            Tether_GUID child = tether_ecs_create_entity();
+            TUID child = tether_ecs_create_entity();
             run.items[i].id = child;
             tether_ecs_add_component(child, TETHER_COMPONENT_HIERARCHY);
             tether_ecs_attach_entity(parent, child);

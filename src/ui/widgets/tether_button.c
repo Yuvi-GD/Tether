@@ -4,15 +4,15 @@
 #include "tether/core/tether_components.h"
 
 /* Forward declaration of internal event handlers */
-static void button_handle_feedback(Tether_GUID entity, const Tether_Event *event_info, void *user_data);
+static void button_handle_feedback(TUID entity, const Tether_Event *event_info, void *user_data);
 
 /* ========================================================================== */
 /* 1. Widget Creation & Visual Sync                                           */
 /* ========================================================================== */
 
 
-Tether_GUID tether_ui_button(Tether_GUID parent) {
-    Tether_GUID btn = tether_ui_panel(parent);
+TUID tether_ui_button(TUID parent) {
+    TUID btn = tether_ui_panel(parent);
     tether_ui_set_size(btn, 0.0f, 44.0f);
     tether_ui_set_padding(btn, 8.0f, 16.0f, 8.0f, 16.0f);
     tether_ui_set_content_align(btn, TETHER_ALIGN_CENTER, TETHER_ALIGN_CENTER);
@@ -22,7 +22,7 @@ Tether_GUID tether_ui_button(Tether_GUID parent) {
 
     tether_widget_add_interaction(btn, TETHER_HIT_BLOCK);
 
-    Tether_GUID label = tether_ui_text(btn);
+    TUID label = tether_ui_text(btn);
     tether_ui_set_text(label, "Button");
     tether_ui_set_text_size(label, 16.0f);
     tether_ui_set_text_color(label, (Tether_Color){235, 235, 235, 255});
@@ -42,7 +42,7 @@ Tether_GUID tether_ui_button(Tether_GUID parent) {
 /* 2. Internal Event Handling                                                 */
 /* ========================================================================== */
 
-static void button_handle_feedback(Tether_GUID entity, const Tether_Event *event_info, void *user_data) {
+static void button_handle_feedback(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)user_data;
 
@@ -60,18 +60,18 @@ static void button_handle_feedback(Tether_GUID entity, const Tether_Event *event
 /* 3. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_button_label(Tether_GUID btn, const char* label) {
-    Tether_GUID lbl = tether_widget_get_child_at(btn, 0);
-    if (lbl != TETHER_INVALID_GUID && label) {
+void tether_ui_set_button_label(TUID btn, const char* label) {
+    TUID lbl = tether_widget_get_child_at(btn, 0);
+    if (lbl != TETHER_INVALID_TUID && label) {
         tether_ui_set_text(lbl, label);
     }
 }
 
-const char* tether_ui_get_button_label(Tether_GUID btn) {
-    Tether_GUID lbl = tether_widget_get_child_at(btn, 0);
-    return (lbl != TETHER_INVALID_GUID) ? tether_ui_get_text(lbl) : NULL;
+const char* tether_ui_get_button_label(TUID btn) {
+    TUID lbl = tether_widget_get_child_at(btn, 0);
+    return (lbl != TETHER_INVALID_TUID) ? tether_ui_get_text(lbl) : NULL;
 }
 
-void tether_ui_set_button_color(Tether_GUID btn, Tether_Color color) {
+void tether_ui_set_button_color(TUID btn, Tether_Color color) {
     tether_ui_set_color(btn, color);
 }

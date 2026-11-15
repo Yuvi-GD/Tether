@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static Tether_GUID views[4];
+static TUID views[4];
 static SandboxView wanted = SANDBOX_WIDGETS;
 static int current = -1, exit_code;
 static bool syncing_navigation;
@@ -28,7 +28,7 @@ static void sandbox_refresh(void) {
     refresh_requested = true;
 }
 
-static void on_refresh_clicked(Tether_GUID entity, const Tether_Event *event, void *data) {
+static void on_refresh_clicked(TUID entity, const Tether_Event *event, void *data) {
     (void)entity;
     (void)event;
     (void)data;
@@ -39,11 +39,11 @@ void sandbox_navigate(SandboxView view) {
     wanted = view;
 }
 
-static void sandbox_mount_scene(Tether_GUID root) {
+static void sandbox_mount_scene(TUID root) {
     tether_ui_set_flex(root, 1.0f);
 }
 
-static void navigate(Tether_GUID id, const Tether_Event *event_info, void *data) {
+static void navigate(TUID id, const Tether_Event *event_info, void *data) {
     (void)event_info;
     (void)data;
     if (syncing_navigation) return;
@@ -59,8 +59,8 @@ static void switch_view(void) {
         sandbox_showcase_close_overlays();
     }
     if (wanted == SANDBOX_SHOWCASE && !showcase_loaded) {
-        Tether_GUID root = tether_yaml_load("UI/index.yaml", views[SANDBOX_SHOWCASE]);
-        if (root == TETHER_INVALID_GUID) {
+        TUID root = tether_yaml_load("UI/index.yaml", views[SANDBOX_SHOWCASE]);
+        if (root == TETHER_INVALID_TUID) {
             results_message("Cannot load showcase UI/index.yaml.");
             wanted = SANDBOX_RESULTS;
         } else {
@@ -84,7 +84,7 @@ static void switch_view(void) {
 }
 
 static bool create_views(void) {
-    Tether_GUID app_root = tether_yaml_load("UI/app.yaml", tether_ecs_get_main_root());
+    TUID app_root = tether_yaml_load("UI/app.yaml", tether_ecs_get_main_root());
     views[SANDBOX_WIDGETS] = tether_registry_find_entity("view_widgets");
     views[SANDBOX_LAB] = tether_registry_find_entity("view_lab");
     views[SANDBOX_SHOWCASE] = tether_registry_find_entity("view_showcase");
@@ -101,8 +101,8 @@ static bool create_views(void) {
         return false;
     }
 
-    Tether_GUID lab = tether_yaml_load("UI/lab.yaml", views[SANDBOX_LAB]);
-    if (lab == TETHER_INVALID_GUID || !lab_bind()) {
+    TUID lab = tether_yaml_load("UI/lab.yaml", views[SANDBOX_LAB]);
+    if (lab == TETHER_INVALID_TUID || !lab_bind()) {
         exit_code = 1;
         return false;
     }
@@ -144,7 +144,7 @@ static void update(void) {
         refresh_requested = false;
         sandbox_showcase_cleanup();
         sandbox_widgets_zoo_cleanup();
-        Tether_GUID root = tether_registry_find_entity("sandbox_root");
+        TUID root = tether_registry_find_entity("sandbox_root");
         if (tether_ecs_is_valid(root)) tether_widget_destroy(root);
         showcase_loaded = false;
         current = -1;
@@ -165,7 +165,7 @@ static void update(void) {
 
 static void after_frame(void) {
     static unsigned smoke_stage;
-    static Tether_GUID old_showcase_root;
+    static TUID old_showcase_root;
     if (smoke_report) {
         const char *status = tether_ui_get_text(tether_registry_find_entity("res_status_badge"));
         exit_code = status && !strcmp(status, smoke_expected_badge) && results_has_geometry()
@@ -187,7 +187,7 @@ static void after_frame(void) {
         return;
     }
     if (smoke && smoke_stage == 1 && current == SANDBOX_SHOWCASE) {
-        Tether_GUID root = tether_registry_find_entity("AppRoot");
+        TUID root = tether_registry_find_entity("AppRoot");
         Tether_Hierarchy *hierarchy = tether_ecs_get_component(root, TETHER_COMPONENT_HIERARCHY);
         if (!hierarchy || hierarchy->parent != views[SANDBOX_SHOWCASE]) {
             exit_code = 1;
@@ -204,14 +204,14 @@ static void after_frame(void) {
         return;
     }
     if (smoke && smoke_stage == 2 && current == SANDBOX_SHOWCASE) {
-        Tether_GUID canvas = tether_registry_find_entity("showcase_preview");
+        TUID canvas = tether_registry_find_entity("showcase_preview");
         Tether_SlotTransform *canvas_slot = tether_ecs_get_component(canvas, TETHER_COMPONENT_SLOT_TRANSFORM);
-        Tether_GUID wrapper = tether_widget_get_child_at(canvas, 0);
-        Tether_GUID content = tether_widget_get_child_at(wrapper, 0);
+        TUID wrapper = tether_widget_get_child_at(canvas, 0);
+        TUID content = tether_widget_get_child_at(wrapper, 0);
         Tether_SlotTransform *wrapper_slot = tether_ecs_get_component(wrapper, TETHER_COMPONENT_SLOT_TRANSFORM);
         Tether_SlotTransform *content_slot = tether_ecs_get_component(content, TETHER_COMPONENT_SLOT_TRANSFORM);
-        Tether_GUID toast = tether_registry_find_entity("showcase_toast");
-        Tether_GUID toast_panel = tether_widget_get_child_at(toast, 0);
+        TUID toast = tether_registry_find_entity("showcase_toast");
+        TUID toast_panel = tether_widget_get_child_at(toast, 0);
         Tether_SlotTransform *toast_slot = tether_ecs_get_component(toast_panel, TETHER_COMPONENT_SLOT_TRANSFORM);
         if (!canvas_slot || canvas_slot->width < 400 || canvas_slot->height < 200 ||
             !wrapper_slot || !content_slot ||
@@ -229,15 +229,15 @@ static void after_frame(void) {
         return;
     }
     if (smoke && smoke_stage == 3 && current == SANDBOX_SHOWCASE) {
-        Tether_GUID dialog = tether_registry_find_entity("showcase_dialog");
+        TUID dialog = tether_registry_find_entity("showcase_dialog");
         Tether_SlotTransform *dialog_slot = tether_ecs_get_component(dialog, TETHER_COMPONENT_SLOT_TRANSFORM);
         if (!dialog_slot || dialog_slot->width < 1000 || dialog_slot->height < 700 ||
             tether_hit_test(5.0f, 5.0f) != dialog) {
             fprintf(stderr, "Showcase dialog geometry failed\n");
             exit_code = 1;
         }
-        Tether_GUID example = tether_registry_find_entity("example_target");
-        Tether_GUID cards = tether_registry_find_entity("example_card_row");
+        TUID example = tether_registry_find_entity("example_target");
+        TUID cards = tether_registry_find_entity("example_card_row");
         Tether_SlotTransform *example_slot = tether_ecs_get_component(example, TETHER_COMPONENT_SLOT_TRANSFORM);
         Tether_SlotTransform *cards_slot = tether_ecs_get_component(cards, TETHER_COMPONENT_SLOT_TRANSFORM);
         if (!example_slot || !cards_slot || example_slot->height < 120 || cards_slot->height < 40 ||
@@ -251,7 +251,7 @@ static void after_frame(void) {
         return;
     }
     if (smoke && smoke_stage == 4 && current == SANDBOX_SHOWCASE) {
-        Tether_GUID root = tether_registry_find_entity("AppRoot");
+        TUID root = tether_registry_find_entity("AppRoot");
         Tether_Hierarchy *hierarchy = tether_ecs_get_component(root, TETHER_COMPONENT_HIERARCHY);
         if (!root || root == old_showcase_root || !hierarchy ||
             hierarchy->parent != views[SANDBOX_SHOWCASE] ||

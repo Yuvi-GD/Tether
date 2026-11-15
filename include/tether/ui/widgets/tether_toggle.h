@@ -18,14 +18,14 @@ extern "C" {
  * [Self] Panel 46x26, BoolState, Interactable
  *   └── [0] Thumb: Panel 20x20
  */
-Tether_GUID tether_ui_toggle(Tether_GUID parent);
+TUID tether_ui_toggle(TUID parent);
 
 /* ========================================================================== */
 /* 2. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_toggle(Tether_GUID toggle, bool is_on);
-bool tether_ui_get_toggle(Tether_GUID toggle);
+void tether_ui_set_toggle(TUID toggle, bool is_on);
+bool tether_ui_get_toggle(TUID toggle);
 
 #ifdef __cplusplus
 }

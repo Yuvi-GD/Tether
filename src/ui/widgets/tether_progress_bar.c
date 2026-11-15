@@ -10,7 +10,7 @@
 /* 1. Widget Creation & Visual Sync                                           */
 /* ========================================================================== */
 
-static void progress_bar_sync_visuals(Tether_GUID progress_bar) {
+static void progress_bar_sync_visuals(TUID progress_bar) {
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(progress_bar, TETHER_COMPONENT_VALUE_RANGE);
     if (!vr) return;
 
@@ -19,16 +19,16 @@ static void progress_bar_sync_visuals(Tether_GUID progress_bar) {
     if (frac < 0.0f) frac = 0.0f;
     if (frac > 1.0f) frac = 1.0f;
 
-    Tether_GUID fill = tether_widget_get_child_at(progress_bar, 0);
-    if (fill != TETHER_INVALID_GUID) {
+    TUID fill = tether_widget_get_child_at(progress_bar, 0);
+    if (fill != TETHER_INVALID_TUID) {
         tether_ui_set_anchor(fill, 0.0f, 0.0f, frac, 1.0f);
         tether_ui_set_offsets(fill, 0.0f, 0.0f, 0.0f, 0.0f);
         tether_ecs_add_component(fill, TETHER_COMPONENT_DIRTY_VISUAL);
     }
 }
 
-Tether_GUID tether_ui_progress_bar(Tether_GUID parent) {
-    Tether_GUID track = tether_ui_panel(parent);
+TUID tether_ui_progress_bar(TUID parent) {
+    TUID track = tether_ui_panel(parent);
     Tether_Layout *layout = (Tether_Layout*)tether_ecs_get_component(track, TETHER_COMPONENT_LAYOUT);
     if (layout) {
         layout->flow = TETHER_FLOW_NONE;
@@ -47,7 +47,7 @@ Tether_GUID tether_ui_progress_bar(Tether_GUID parent) {
 
     tether_ecs_add_component(track, TETHER_COMPONENT_VALUE_RANGE);
 
-    Tether_GUID fill = tether_ui_panel(track);
+    TUID fill = tether_ui_panel(track);
     tether_ui_set_anchor(fill, 0.0f, 0.0f, 0.0f, 1.0f);
     tether_ui_set_offsets(fill, 0.0f, 0.0f, 0.0f, 0.0f);
     tether_ui_set_color(fill, (Tether_Color){38, 112, 232, 255});
@@ -60,8 +60,8 @@ Tether_GUID tether_ui_progress_bar(Tether_GUID parent) {
 /* 2. Operations (Setters & Getters)                                          */
 /* ========================================================================== */
 
-void tether_ui_set_progress(Tether_GUID progress_bar, float progress) {
-    if (progress_bar == TETHER_INVALID_GUID) return;
+void tether_ui_set_progress(TUID progress_bar, float progress) {
+    if (progress_bar == TETHER_INVALID_TUID) return;
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(progress_bar, TETHER_COMPONENT_VALUE_RANGE);
     if (!vr) return;
 
@@ -71,8 +71,8 @@ void tether_ui_set_progress(Tether_GUID progress_bar, float progress) {
     progress_bar_sync_visuals(progress_bar);
 }
 
-float tether_ui_get_progress(Tether_GUID progress_bar) {
-    if (progress_bar == TETHER_INVALID_GUID) return 0.0f;
+float tether_ui_get_progress(TUID progress_bar) {
+    if (progress_bar == TETHER_INVALID_TUID) return 0.0f;
     Tether_ValueRange *vr = (Tether_ValueRange*)tether_ecs_get_component(progress_bar, TETHER_COMPONENT_VALUE_RANGE);
     if (!vr) return 0.0f;
     float range = vr->max_val - vr->min_val;

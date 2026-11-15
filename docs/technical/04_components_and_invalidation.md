@@ -6,7 +6,7 @@
 
 ## 1. Executive Summary
 
-In Tether, user interface entities do not exist as heavyweight object-oriented class instances or DOM nodes. Instead, every visual element, layout container, interactive control, and structural node is represented by a lightweight 64-bit entity identifier (`Tether_GUID`) attached to flat, typed component payloads stored within the ECS kernel.
+In Tether, user interface entities do not exist as heavyweight object-oriented class instances or DOM nodes. Instead, every visual element, layout container, interactive control, and structural node is represented by a lightweight 64-bit entity identifier (`TUID`) attached to flat, typed component payloads stored within the ECS kernel.
 
 This chapter details:
 1. **Base Node Components**: The foundational data structures that constitute an element in the scene graph, initialized automatically from `default_data` templates.
@@ -38,7 +38,7 @@ When a UI element is instantiated via the widget subsystem (e.g., `tether_widget
 
 ```mermaid
 flowchart TD
-    Entity["Tether_GUID (Entity ID)"]
+    Entity["TUID (Entity ID)"]
     
     subgraph CoreSpatial["Spatial & Structural Components"]
         ST["Tether_SlotTransform\n(x, y, width, height)"]
@@ -180,18 +180,18 @@ Scene graphs in Tether are structured as contiguous doubly-linked trees stored i
 
 ```c
 typedef struct Tether_Hierarchy {
-    uint64_t parent;        /* Parent entity GUID (0 if root or detached) */
-    uint64_t first_child;   /* First child entity GUID */
-    uint64_t last_child;    /* Last child entity GUID */
-    uint64_t prev_sibling;  /* Previous sibling entity GUID */
-    uint64_t next_sibling;  /* Next sibling entity GUID */
+    uint64_t parent;        /* Parent entity TUID (0 if root or detached) */
+    uint64_t first_child;   /* First child entity TUID */
+    uint64_t last_child;    /* Last child entity TUID */
+    uint64_t prev_sibling;  /* Previous sibling entity TUID */
+    uint64_t next_sibling;  /* Next sibling entity TUID */
     uint32_t child_count;   /* Count of active direct children */
 } Tether_Hierarchy;
 ```
 
 ```mermaid
 flowchart LR
-    subgraph ParentEntity["Parent Entity (Tether_GUID)"]
+    subgraph ParentEntity["Parent Entity (TUID)"]
         FC["first_child"]
         LC["last_child"]
         CC["child_count = 3"]
@@ -220,7 +220,7 @@ The ECS kernel provides core primitive functions for manipulating tree structure
 
 | API Function | Algorithmic Complexity | Execution Semantics |
 | :--- | :---: | :--- |
-| `tether_ecs_attach_entity(parent, entity)` | $O(1)$ | Validates GUIDs, verifies parent is not a leaf, detaches entity from previous parent, appends to tail via `last_child`, increments `child_count`, and tags parent with `DIRTY_HIERARCHY`. |
+| `tether_ecs_attach_entity(parent, entity)` | $O(1)$ | Validates TUIDs, verifies parent is not a leaf, detaches entity from previous parent, appends to tail via `last_child`, increments `child_count`, and tags parent with `DIRTY_HIERARCHY`. |
 | `tether_ecs_detach_entity(entity)` | $O(1)$ | Unlinks entity from parent and sibling chain, stitches adjacent siblings (`prev->next = next`, `next->prev = prev`), decrements parent `child_count`, and tags parent with `DIRTY_HIERARCHY`. |
 | `tether_ecs_bring_to_front(entity)` | $O(1)$ | Detaches entity and re-attaches it to the tail of the parent's sibling chain. Because rendering traverses siblings from first to last, the tail child receives the highest Z-order. |
 
@@ -246,7 +246,7 @@ flowchart TD
 2. **Subtree Cascade**: The kernel traverses `first_child` through `next_sibling`, recursively invoking `tether_ecs_destroy_entity()` on all descendants. Subtrees are destroyed from the leaves up to prevent orphan references.
 3. **Dynamic Buffer Teardown**: If an entity contains dynamic heap-allocated memory (e.g., Tier 4 `Tether_TextDynamic`), the buffer is deallocated.
 4. **Swap-and-Pop Component Removal**: All attached components across all dense arrays are removed using $O(1)$ Swap-and-Pop.
-5. **Generational Invalidation**: The generation counter for the slot is incremented. Any stale GUID stored by application callbacks or scripts is immediately invalidated.
+5. **Generational Invalidation**: The generation counter for the slot is incremented. Any stale TUID stored by application callbacks or scripts is immediately invalidated.
 6. **Slot Recycling**: The integer index is added to `free_indices` for subsequent entity reuse.
 
 ---
@@ -391,7 +391,7 @@ Tether flushes dirty tags through safe **reverse dense array iteration**:
 Tether_DenseArray* dirty_visual = tether_ecs_get_dense_array(TETHER_COMPONENT_DIRTY_VISUAL);
 if (dirty_visual) {
     for (int i = (int)dirty_visual->count - 1; i >= 0; i--) {
-        Tether_GUID id = dirty_visual->entity_map[i];
+        TUID id = dirty_visual->entity_map[i];
         if (!tether_ecs_get_component(id, TETHER_COMPONENT_VOLATILE)) {
             tether_ecs_remove_component(id, TETHER_COMPONENT_DIRTY_VISUAL);
         }

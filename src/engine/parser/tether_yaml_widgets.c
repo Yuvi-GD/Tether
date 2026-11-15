@@ -86,7 +86,7 @@ static bool read_int(Tether_ASTNode* node, Tether_ASTEnvironment* env, int* valu
     return true;
 }
 
-static bool apply_dropdown(Tether_GUID entity, Tether_ASTNode* props, Tether_ASTEnvironment* env) {
+static bool apply_dropdown(TUID entity, Tether_ASTNode* props, Tether_ASTEnvironment* env) {
     Tether_ASTNode* options = resolve_node(find_property(props, "options"), env);
     Tether_ASTNode* selected_node = find_property(props, "selected");
     Tether_ASTNode* open_node = find_property(props, "open");
@@ -99,7 +99,7 @@ static bool apply_dropdown(Tether_GUID entity, Tether_ASTNode* props, Tether_AST
         fprintf(stderr, "YAML Dropdown: options must be a sequence\n");
         return false;
     }
-    Tether_GUID menu = tether_widget_get_child_at(entity, 1);
+    TUID menu = tether_widget_get_child_at(entity, 1);
     int count = options ? (int)options->child_count : tether_ui_menu_get_item_count(menu);
     if (selected_node && (!read_int(selected_node, env, &selected) ||
                           selected < 0 || selected >= count)) {
@@ -145,9 +145,9 @@ static bool apply_dropdown(Tether_GUID entity, Tether_ASTNode* props, Tether_AST
     return true;
 }
 
-bool tether_yaml_apply_widget_properties(Tether_GUID entity, const char* widget_name,
+bool tether_yaml_apply_widget_properties(TUID entity, const char* widget_name,
                                          Tether_ASTNode* props, Tether_ASTEnvironment* env) {
-    if (!props || !widget_name || entity == TETHER_INVALID_GUID) return false;
+    if (!props || !widget_name || entity == TETHER_INVALID_TUID) return false;
     if (props->type != TETHER_AST_MAPPING) return false;
 
     if (!strcmp(widget_name, "Dropdown")) return apply_dropdown(entity, props, env);
@@ -200,11 +200,11 @@ bool tether_yaml_apply_widget_properties(Tether_GUID entity, const char* widget_
         }
         else if (is_col && strcmp(key, "title") == 0 && val) {
             Tether_Hierarchy *oh = (Tether_Hierarchy*)tether_ecs_get_component(entity, TETHER_COMPONENT_HIERARCHY);
-            if (oh && oh->first_child != TETHER_INVALID_GUID) {
+            if (oh && oh->first_child != TETHER_INVALID_TUID) {
                 Tether_Hierarchy *hh = (Tether_Hierarchy*)tether_ecs_get_component(oh->first_child, TETHER_COMPONENT_HIERARCHY);
-                if (hh && hh->first_child != TETHER_INVALID_GUID) {
+                if (hh && hh->first_child != TETHER_INVALID_TUID) {
                     Tether_Hierarchy *ah = (Tether_Hierarchy*)tether_ecs_get_component(hh->first_child, TETHER_COMPONENT_HIERARCHY);
-                    if (ah && ah->next_sibling != TETHER_INVALID_GUID) {
+                    if (ah && ah->next_sibling != TETHER_INVALID_TUID) {
                         tether_ui_set_text(ah->next_sibling, val);
                     }
                 }

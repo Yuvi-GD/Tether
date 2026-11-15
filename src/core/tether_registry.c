@@ -58,8 +58,8 @@ void tether_register_widget(const char* name, Tether_WidgetCreateFn create_fn) {
     tether_hashmap_set(&g_widget_registry, name, (uint64_t)create_fn);
 }
 
-Tether_GUID tether_create_widget(const char* name, Tether_GUID parent) {
-    if (!name) return TETHER_INVALID_GUID;
+TUID tether_create_widget(const char* name, TUID parent) {
+    if (!name) return TETHER_INVALID_TUID;
 
     uint64_t fn_ptr = 0;
     if (tether_hashmap_get(&g_widget_registry, name, &fn_ptr)) {
@@ -68,18 +68,18 @@ Tether_GUID tether_create_widget(const char* name, Tether_GUID parent) {
     }
 
     printf("[Tether Registry] Warning: Unrecognized widget '%s'\n", name);
-    return TETHER_INVALID_GUID;
+    return TETHER_INVALID_TUID;
 }
 
 /* =========================================================================
  * ID Registry
  * ========================================================================= */
-void tether_registry_alias_entity(Tether_GUID entity, const char* alias) {
+void tether_registry_alias_entity(TUID entity, const char* alias) {
     if (!tether_ecs_is_valid(entity) || !alias || alias[0] == '\0') return;
 
     /* Remove existing if any */
     tether_registry_remove_alias(entity);
-    Tether_GUID old_entity = tether_registry_find_entity(alias);
+    TUID old_entity = tether_registry_find_entity(alias);
     if (tether_ecs_is_valid(old_entity)) {
         tether_registry_remove_alias(old_entity);
     }
@@ -88,7 +88,7 @@ void tether_registry_alias_entity(Tether_GUID entity, const char* alias) {
     tether_u64map_set(&g_entity_to_alias, (uint64_t)entity, alias);
 }
 
-const char* tether_registry_get_alias(Tether_GUID entity) {
+const char* tether_registry_get_alias(TUID entity) {
     if (!tether_ecs_is_valid(entity)) return NULL;
     
     const char* alias = NULL;
@@ -96,17 +96,17 @@ const char* tether_registry_get_alias(Tether_GUID entity) {
     return alias;
 }
 
-Tether_GUID tether_registry_find_entity(const char* alias) {
-    if (!alias || alias[0] == '\0') return TETHER_INVALID_GUID;
+TUID tether_registry_find_entity(const char* alias) {
+    if (!alias || alias[0] == '\0') return TETHER_INVALID_TUID;
     
     uint64_t entity = 0;
     if (tether_hashmap_get(&g_alias_to_entity, alias, &entity)) {
-        return (Tether_GUID)entity;
+        return (TUID)entity;
     }
-    return TETHER_INVALID_GUID;
+    return TETHER_INVALID_TUID;
 }
 
-void tether_registry_remove_alias(Tether_GUID entity) {
+void tether_registry_remove_alias(TUID entity) {
     if (!tether_ecs_is_valid(entity)) return;
 
     const char* alias = NULL;

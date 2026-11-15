@@ -23,12 +23,12 @@ Tether models spatial geometry through three strictly decoupled concepts:
 ```mermaid
 flowchart LR
     subgraph ParentEntity["Parent Container Entity"]
-        P_Prim["Primitive (Tether_GUID)"]
+        P_Prim["Primitive (TUID)"]
         P_Rules["Tether_Layout\n(flow, align, padding, gap, size_box)"]
     end
 
     subgraph ChildEntity["Child Item Entity"]
-        C_Prim["Primitive (Tether_GUID)"]
+        C_Prim["Primitive (TUID)"]
         C_Slot["Slot Settings\n(Tether_FlexSlot OR Tether_AnchorSlot)"]
         C_Trans["Tether_SlotTransform\n(Computed Output: x, y, w, h)"]
     end
@@ -38,7 +38,7 @@ flowchart LR
 ```
 
 ### 1. Primitive
-A Primitive is an individual UI entity represented by a generational `Tether_GUID`. It can be a container, a child, or both simultaneously. The primitive owns the output `Tether_SlotTransform` struct containing its resolved physical screen boundaries.
+A Primitive is an individual UI entity represented by a generational `TUID`. It can be a container, a child, or both simultaneously. The primitive owns the output `Tether_SlotTransform` struct containing its resolved physical screen boundaries.
 
 ### 2. Container Rules (`Tether_Layout`)
 Attached to an entity when it acts as a parent managing children:
@@ -209,8 +209,8 @@ A visual-only change need not alter layout geometry. Text transforms are applied
 To prevent `src/engine/tether_layout.c` from accumulating monolithic conditional statements as new container types are added, a future design could decouple container mathematics into a **Layout Strategy Registry**. The current solver handles its flow modes directly:
 
 ```c
-typedef void (*Tether_LayoutMeasureFn)(Tether_GUID entity, void* layout_data);
-typedef float (*Tether_LayoutArrangeFn)(Tether_GUID entity, void* layout_data,
+typedef void (*Tether_LayoutMeasureFn)(TUID entity, void* layout_data);
+typedef float (*Tether_LayoutArrangeFn)(TUID entity, void* layout_data,
                                         float x, float y, float w, float h);
 
 typedef struct {
@@ -237,7 +237,7 @@ In layout engine design, debates between "immediate-mode" and "retained-mode" of
 - **Layout is On-Demand**: Layout does not need to run continuously every frame, nor does it require permanent caching. It is a pure mathematical calculation that executes **only when needed** (e.g., when `DIRTY_LAYOUT` tags indicate mutations or when display boundaries change).
 - **Engineered for High-Frequency Frame Execution**: Because layout is on-demand, interactive interfaces (such as live window resizing, splitter dragging, or animated layout reflows) may trigger layout resolution every single frame. Vinyasa is optimized specifically for this scenario: zero heap allocations during calculation, linear traversal over contiguous memory, and execution time that must be measured for each workload.
 - **Stateless Operation**: Vinyasa does **not store persistent data**. It maintains no internal persistent tree, no retain cache, and no dirty change trackers.
-- **Host Ownership**: Tether retains complete ownership of entity identity (`Tether_GUID`), scene graph hierarchy, component storage, input handling, and rendering.
+- **Host Ownership**: Tether retains complete ownership of entity identity (`TUID`), scene graph hierarchy, component storage, input handling, and rendering.
 - **Root-Independent Calculation**: Any supplied node is treated as the calculation root for that pass. Vinyasa does not need to know whether ancestors exist elsewhere in the host hierarchy, enabling localized sub-tree layout recalculations.
 
 ### 2. Temporary Working Memory (`vin_context`)
@@ -270,7 +270,7 @@ typedef struct vin_host {
 ```
 
 1. **`element()`**: Queries the element's layout rule (`vin_rule`), rule settings (e.g., Row, Column, Grid), and child count from Tether's components.
-2. **`child()`**: Resolves the child node identity (`vin_node`, mapping directly to `Tether_GUID`) and its slot settings (e.g., grow weight, alignment).
+2. **`child()`**: Resolves the child node identity (`vin_node`, mapping directly to `TUID`) and its slot settings (e.g., grow weight, alignment).
 3. **`measure_content()`**: Invokes Tether's font or image subsystem to measure intrinsic content size under supplied available constraints.
 4. **`write_rect()`**: Vinyasa writes the final parent-relative geometry (`vin_rect { x, y, width, height }`) directly into Tether's `Tether_SlotTransform` component.
 
@@ -280,7 +280,7 @@ To support Vinyasa natively, Tether's layout components will adapt to match Viny
 ```mermaid
 flowchart LR
     subgraph TetherECS["Tether ECS Architecture"]
-        GUID["Entity (vin_node)"]
+        TUID["Entity (vin_node)"]
         SlotTrans["Tether_SlotTransform (Output Geometry)"]
     end
 
@@ -290,8 +290,8 @@ flowchart LR
         Content["Content Measurement\n(Text / Image Intrinsic Bounds)"]
     end
 
-    GUID --> Elem
-    GUID --> Child
+    TUID --> Elem
+    TUID --> Child
     Elem -->|vin_host.write_rect| SlotTrans
     Content -->|vin_host.measure_content| Elem
 ```

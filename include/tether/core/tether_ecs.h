@@ -10,28 +10,28 @@ extern "C" {
 #endif
 
 /*
- * Tether_GUID: A 64-bit Globally Unique Identifier for an Entity.
+ * TUID: A 64-bit Tether Unique Identifier for an Entity.
  * - Lower 32 bits: The Entity Index (used for fast array lookups).
  * - Upper 32 bits: The Generation version (prevents use-after-free bugs when
- * indices are recycled).
+ *   indices are recycled).
  */
-typedef uint64_t Tether_GUID;
+typedef uint64_t TUID;
 
-#define TETHER_INVALID_GUID 0
+#define TETHER_INVALID_TUID 0
 
-/* Extracts the 32-bit index from a GUID */
-static inline uint32_t tether_ecs_get_index(Tether_GUID guid) {
-  return (uint32_t)(guid & 0xFFFFFFFF);
+/* Extracts the 32-bit index from a TUID */
+static inline uint32_t tether_ecs_get_index(TUID tuid) {
+  return (uint32_t)(tuid & 0xFFFFFFFF);
 }
 
-/* Extracts the 32-bit generation from a GUID */
-static inline uint32_t tether_ecs_get_generation(Tether_GUID guid) {
-  return (uint32_t)((guid >> 32) & 0xFFFFFFFF);
+/* Extracts the 32-bit generation from a TUID */
+static inline uint32_t tether_ecs_get_generation(TUID tuid) {
+  return (uint32_t)((tuid >> 32) & 0xFFFFFFFF);
 }
 
-/* Construct a GUID from index and generation */
-static inline Tether_GUID tether_ecs_make_guid(uint32_t index,
-                                               uint32_t generation) {
+/* Construct a TUID from index and generation */
+static inline TUID tether_ecs_make_tuid(uint32_t index,
+                                        uint32_t generation) {
   return ((uint64_t)generation << 32) | index;
 }
 
@@ -52,7 +52,7 @@ typedef struct Tether_SparseMap {
  */
 typedef struct Tether_DenseArray {
   void *data;              /* Raw block of memory */
-  Tether_GUID *entity_map; /* Maps Dense Array index BACK to the Entity GUID */
+  TUID *entity_map;        /* Maps Dense Array index BACK to the Entity TUID */
   size_t element_size;     /* Size of one component in bytes */
   uint32_t count;          /* Number of active elements */
   uint32_t capacity;       /* Allocated capacity */
@@ -73,10 +73,10 @@ void tether_ecs_init_roots(void);
 void tether_ecs_term(void);
 
 /* Get the primary root entity for the layout tree. */
-Tether_GUID tether_ecs_get_main_root(void);
+TUID tether_ecs_get_main_root(void);
 
 /* Get the global overlay root entity for tooltips and dropdowns. */
-Tether_GUID tether_ecs_get_overlay_root(void);
+TUID tether_ecs_get_overlay_root(void);
 
 /* Exposes the dense array for raw linear iteration (maximum cache locality) */
 Tether_DenseArray *tether_ecs_get_dense_array(int component_id);
@@ -85,21 +85,21 @@ Tether_DenseArray *tether_ecs_get_dense_array(int component_id);
 /*                              Entity Lifecycle                              */
 /* ========================================================================== */
 
-/* Create a new entity and return its GUID. */
-Tether_GUID tether_ecs_create_entity(void);
+/* Create a new entity and return its TUID. */
+TUID tether_ecs_create_entity(void);
 
 /* Check if an entity is still alive. */
-bool tether_ecs_is_valid(Tether_GUID entity);
+bool tether_ecs_is_valid(TUID entity);
 
 /* Destroy an entity, immediately cascading the destroy to all its children. */
-void tether_ecs_destroy_entity(Tether_GUID entity);
+void tether_ecs_destroy_entity(TUID entity);
 
 /*
  * Backwards-compatible string ID lookup.
  * This resolves through the registry layer and is kept for compatibility
  * while the user-facing ID system migrates to registry-backed lookups.
  */
-Tether_GUID tether_ecs_find_by_id(const char* id);
+TUID tether_ecs_find_by_id(const char* id);
 
 /* ========================================================================== */
 /*                          Component Management                              */
@@ -117,16 +117,16 @@ uint32_t tether_ecs_register_component_dynamic(size_t element_size, const void* 
  * Add a component to an entity.
  * Returns a pointer to the uninitialized memory block in the dense array.
  */
-void *tether_ecs_add_component(Tether_GUID entity, int component_id);
+void *tether_ecs_add_component(TUID entity, int component_id);
 
 /*
  * Get a component for an entity.
  * Returns NULL if the entity does not have this component.
  */
-void *tether_ecs_get_component(Tether_GUID entity, int component_id);
+void *tether_ecs_get_component(TUID entity, int component_id);
 
 /* Remove a component from an entity using Swap-and-Pop. */
-void tether_ecs_remove_component(Tether_GUID entity, int component_id);
+void tether_ecs_remove_component(TUID entity, int component_id);
 
 /* ========================================================================== */
 /*                            Hierarchy API                                   */
@@ -135,17 +135,17 @@ void tether_ecs_remove_component(Tether_GUID entity, int component_id);
 /*
  * Safely detach an entity from its parent (stitches siblings together).
  */
-void tether_ecs_detach_entity(Tether_GUID entity);
+void tether_ecs_detach_entity(TUID entity);
 
 /*
  * Attach an entity as the last child of a parent.
  */
-void tether_ecs_attach_entity(Tether_GUID parent, Tether_GUID entity);
+void tether_ecs_attach_entity(TUID parent, TUID entity);
 
 /*
  * Bring an entity to the front of its parent's local draw order.
  */
-void tether_ecs_bring_to_front(Tether_GUID entity);
+void tether_ecs_bring_to_front(TUID entity);
 
 #ifdef __cplusplus
 }

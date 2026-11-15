@@ -90,7 +90,7 @@ flowchart TD
 
 #### 3. ABI Friction and Language Interoperability
 - **Qt**: Relies on a proprietary preprocessor, the Meta-Object Compiler (`moc`), to implement signals and slots. Interfacing Qt with other programming languages (such as Rust, Python, or Zig) requires complex C++ wrapper layers and foreign function boundary gymnastics.
-- **Tether**: Exposes a C99 header surface with 64-bit scalar `Tether_GUID` handles, ready for foreign-language wrappers (official Rust/Python/Zig bindings are on the roadmap).
+- **Tether**: Exposes a C99 header surface with 64-bit scalar `TUID` handles, ready for foreign-language wrappers (official Rust/Python/Zig bindings are on the roadmap).
 
 ---
 
@@ -128,7 +128,7 @@ flowchart TD
 
 #### 1. Scope: Layout Solver vs. Full Retained UI Framework
 - **Clay UI**: Clay is strictly a layout calculation engine. It computes bounding boxes based on declarative C macros and emits a flat array of `Clay_RenderCommand` structs for the host application to draw. Clay has no retained ECS state, no persistent entity handles, no input state machine (hover, active, focus transitions must be written manually by the host), and no graphics rendering implementation.
-- **Tether UI**: Tether is a complete retained-mode UI architecture. While Tether includes high-performance layout solving (via Vinyasa and its built-in two-pass engine), it also provides the entire UI ecosystem: 64-bit generational GUID handles, contiguous ECS component storage, reactive dirty tag invalidation, normalized event dispatching, spatial hit-testing, dynamic font glyph atlases, and GPU Signed Distance Field (SDF) rasterization.
+- **Tether UI**: Tether is a complete retained-mode UI architecture. While Tether includes high-performance layout solving (via Vinyasa and its built-in two-pass engine), it also provides the entire UI ecosystem: 64-bit generational TUID handles, contiguous ECS component storage, reactive dirty tag invalidation, normalized event dispatching, spatial hit-testing, dynamic font glyph atlases, and GPU Signed Distance Field (SDF) rasterization.
 
 #### 2. Execution Model: Scratch Arena Reset vs. Retained Invalidation
 - **Clay UI**: Re-evaluates layout declarations every frame using a linear scratch arena allocator that is reset at the conclusion of each frame. While very fast, this requires continuously re-declaring the UI tree in code every frame.

@@ -131,7 +131,7 @@ Other possible future work includes automatic watched-file reload, diagnostic in
   - **Opt-in CMake Build Flags**: Wrap GPU dependencies cleanly: `TETHER_GPU_API=GL`, `WGPU`, `D3D11`, `METAL`, or `VULKAN`, allowing developers to compile minimal binaries without downloading massive external SDKs.
 
 #### 4. Official Foreign Language Bindings
-- **Context**: Tether's 64-bit scalar GUID architecture enables zero-overhead language interop.
+- **Context**: Tether's 64-bit scalar TUID architecture enables zero-overhead language interop.
 - **Milestone Goals**:
   - **Rust**: Safe, idiomatic Rust bindings providing compile-time type safety over Tether's C ABI.
   - **Python**: Dynamic scripting wrappers for scientific visualization, telemetry dashboards, and rapid desktop utility prototyping.
