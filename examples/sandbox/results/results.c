@@ -1,4 +1,5 @@
 #include "results.h"
+#include "tether/platform/tether_platform.h"
 #include "tether/ui/tether_ui.h"
 #include "tool.h"
 #include "tether/core/tether_registry.h"
@@ -26,14 +27,18 @@ static const struct {
 #define CARD_COUNT (sizeof metrics / sizeof *metrics)
 static TUID cards[CARD_COUNT], values[CARD_COUNT];
 
+static void on_result_chosen(const char *path, void *user_data) {
+    (void)user_data;
+    if (path) {
+        results_load(path);
+    }
+}
+
 static void import_result(TUID id, const Tether_Event *event_info, void *data) {
     (void)event_info;
     (void)id;
     (void)data;
-    char path[4096];
-    if (tool_pick_result(path, sizeof path)) {
-        results_load(path);
-    }
+    tether_platform_pick_file("json", "Tether results (*.json)", on_result_chosen, NULL);
 }
 static void set_status(const char *label, Tether_Color color) {
     tether_ui_set_text(status_label, label);

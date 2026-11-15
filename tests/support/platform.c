@@ -180,6 +180,11 @@ bool tool_executable_directory(char *out, size_t size) {
     if (_NSGetExecutablePath(out, &n)) {
         return false;
     }
+#elif defined(__EMSCRIPTEN__)
+    if (size < 2) return false;
+    out[0] = '/';
+    out[1] = '\0';
+    return true;
 #else
     ssize_t n = readlink("/proc/self/exe", out, size - 1);
     if (n < 0 || (size_t)n >= size - 1) {
@@ -200,6 +205,9 @@ bool tool_executable_directory(char *out, size_t size) {
 }
 
 bool tool_enter_executable_directory(void) {
+#if defined(__EMSCRIPTEN__)
+    return true;
+#else
     char dir[4096];
     if (!tool_executable_directory(dir, sizeof dir)) {
         return false;
@@ -208,6 +216,7 @@ bool tool_enter_executable_directory(void) {
     return _chdir(dir) == 0;
 #else
     return chdir(dir) == 0;
+#endif
 #endif
 }
 

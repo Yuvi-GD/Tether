@@ -23,6 +23,7 @@ endif()
 option(TETHER_BUILD_RUNNERS "Build standalone test and benchmark runners" ${TETHER_STANDALONE})
 option(TETHER_ENABLE_INSTALL "Enable installation and CMake package exports" ${TETHER_STANDALONE})
 include(cmake/TetherSanitizers.cmake)
+include(cmake/TetherWasm.cmake)
 
 include(GNUInstallDirs)
 set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
@@ -37,6 +38,7 @@ set(TETHER_SOURCES
     src/core/tether_events.c
     src/utils/tether_hashmap.c
     src/backends/chitra_backend.c
+    src/platform/tether_platform.c
     src/engine/parser/tether_yaml.c
     src/engine/parser/tether_yaml_ast.c
     src/engine/parser/tether_yaml_widgets.c
@@ -63,9 +65,11 @@ set(TETHER_SOURCES
 # reuse these objects; each operating-system process owns its runtime state.
 set(TETHER_PLATFORM_LIBRARIES)
 if(WIN32)
-    set(TETHER_PLATFORM_LIBRARIES dwmapi)
+    set(TETHER_PLATFORM_LIBRARIES dwmapi comdlg32)
 elseif(APPLE)
     set(TETHER_PLATFORM_LIBRARIES "-framework Cocoa" "-framework QuartzCore" "-framework Metal" "-framework MetalKit")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    set(TETHER_PLATFORM_LIBRARIES m)
 else()
     set(TETHER_PLATFORM_LIBRARIES X11 Xi Xcursor GL pthread dl m)
 endif()

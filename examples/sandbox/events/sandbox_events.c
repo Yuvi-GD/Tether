@@ -8,6 +8,7 @@
 #include "tether/engine/parser/tether_yaml.h"
 #include "tether/backends/tether_backend.h"
 #include "tool.h"
+#include "tether/platform/tether_platform.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -167,11 +168,22 @@ static bool load_preview(const char *path) {
     return true;
 }
 
-static void sync_yaml(TUID entity, const Tether_Event *event, void *data) {
-    (void)entity; (void)event; (void)data;
+static void on_playground_sync_done(void *data) {
+    (void)data;
     if (active_yaml[0]) {
         if (load_preview(active_yaml)) {
             tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"), "Preview synced.");
+        }
+    }
+}
+
+static void sync_yaml(TUID entity, const Tether_Event *event, void *data) {
+    (void)entity; (void)event; (void)data;
+    if (active_yaml[0]) {
+        if (!strncmp(active_yaml, "UI/", 3)) {
+            tether_platform_sync_file(active_yaml, on_playground_sync_done, NULL);
+        } else {
+            on_playground_sync_done(NULL);
         }
     }
 }
@@ -185,20 +197,32 @@ static void toggle_live_sync(TUID entity, const Tether_Event *event, void *data)
     }
 }
 
+static void on_yaml_chosen(const char *path, void *user_data) {
+    (void)user_data;
+    /* Ensure the showcase tab is set to YAML Playground (index 2) so user sees the preview immediately */
+    tether_ui_set_segment_selected(tether_registry_find_entity("showcase_tabs"), 2);
+    tether_ui_switcher_show_index(tether_registry_find_entity("showcase_switcher"), 2);
+
+    if (path && path[0]) {
+        bool loaded = load_preview(path);
+        if (!loaded && strcmp(path, "/tmp/chosen.yaml") != 0) {
+            loaded = load_preview("/tmp/chosen.yaml");
+        }
+        if (loaded) {
+            snprintf(chosen_yaml, sizeof chosen_yaml, "%s", path);
+            tether_widget_set_enabled(tether_registry_find_entity("showcase_selected_yaml"), true);
+            tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"),
+                               "File loaded. Use Chosen file to return to it.");
+            return;
+        }
+    }
+    tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"),
+                       "Could not load YAML file. Check console for details.");
+}
+
 static void choose_yaml(TUID entity, const Tether_Event *event, void *data) {
     (void)entity; (void)event; (void)data;
-    char path[4096];
-#ifdef _WIN32
-    if (tool_pick_yaml(path, sizeof path) && load_preview(path)) {
-        snprintf(chosen_yaml, sizeof chosen_yaml, "%s", path);
-        tether_widget_set_enabled(tether_registry_find_entity("showcase_selected_yaml"), true);
-        tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"), "File loaded. Use Chosen file to return to it.");
-    }
-#else
-    (void)path;
-    tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"),
-                       "The file picker is available on Windows; use the included sample here.");
-#endif
+    tether_platform_pick_file("yaml,yml", "YAML files (*.yaml;*.yml)", on_yaml_chosen, NULL);
 }
 
 static void load_preset(TUID entity, const Tether_Event *event, void *data) {

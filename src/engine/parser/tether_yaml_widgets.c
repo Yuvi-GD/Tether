@@ -1,6 +1,7 @@
 #include "tether/engine/parser/tether_yaml_widgets.h"
 #include "tether/core/tether_registry.h"
 #include "tether/ui/tether_ui.h"
+#include "tether/ui/tether_widgets.h"
 #include "tether/ui/tether_list.h"
 #include "tether/ui/widgets/tether_checkbox.h"
 #include "tether/ui/widgets/tether_radio.h"

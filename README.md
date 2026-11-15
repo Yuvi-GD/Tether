@@ -220,7 +220,7 @@ Tether provides modular build options:
 | `-DTETHER_BUILD_TESTS=ON` | `ON` | Build the complete CTest automated validation and behavioral test suite. |
 | `-DTETHER_BUILD_RUNNERS=ON` | `ON` | Build standalone workload and benchmark CLI harnesses (`tether_bench`, `tether_test`). |
 | `-DTETHER_BUILD_SHARED=ON` | `ON` | Build Tether as a shared library (`DLL` / `.so`). Set `OFF` for static library. |
-| `-DCHITRA_BACKEND=AUTO` | `AUTO` | Graphics backend override (`AUTO`, `D3D11`, `GLCORE`, `METAL`, `GLES3`). |
+| `-DCHITRA_BACKEND=AUTO` | `AUTO` | Graphics backend override (`AUTO`, `D3D11`, `GLCORE`, `METAL`, `GLES3`, `WGPU`). |
 
 ### 3. Running Targets
 
@@ -239,6 +239,25 @@ The sandbox launches into the interactive Widget Gallery (including enabled/disa
 
 # Open and visualize a benchmark telemetry JSON report
 .\build\Release\tether_sandbox.exe --result report.json
+```
+
+#### WebAssembly & WebGPU (In-Browser Sandbox)
+Tether compiles directly to WebAssembly with support for both WebGL2 (`GLES3`) and WebGPU (`WGPU`), rendering at native device pixel ratio (High-DPI) in a responsive browser canvas:
+
+```bash
+# Prerequisites: Emscripten SDK (emsdk) activated and Ninja installed
+
+# 1. Build WebGL2 Sandbox (GLES3)
+emcmake cmake -B build/build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=GLES3
+cmake --build build/build-wasm --target tether_sandbox
+
+# 2. Build WebGPU Sandbox (WGPU)
+emcmake cmake -B build/build-wasm-wgpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=WGPU
+cmake --build build/build-wasm-wgpu --target tether_sandbox
+
+# 3. Serve and view in browser
+python -m http.server -d build/build-wasm 8080
+# Open http://localhost:8080/tether_sandbox.html
 ```
 
 #### Running the Full Automated Test Suite (CTest)
