@@ -26,7 +26,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: correctness-${{ matrix.config }}
+          name: correctness-windows-${{ matrix.config }}
           path: |
             build/*/report/**/*.json
             build/*/report/**/*.json.txt
@@ -47,8 +47,66 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: correctness-asan
+          name: correctness-windows-asan
           path: |
             build-asan/*/report/**/*.json
             build-asan/*/report/**/*.json.txt
             build-asan/Testing/Temporary/LastTest.log
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev ninja-build xvfb
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON
+      - name: Build
+        run: cmake --build build --target tether tether_sandbox tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
+      - name: Correctness tests
+        run: ctest --test-dir build -L correctness --output-on-failure --no-tests=error
+      - name: Sandbox smoke test
+        run: xvfb-run ./build/tether_sandbox --smoke
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: correctness-linux-${{ matrix.config }}
+          path: |
+            build/**/report/**/*.json
+            build/**/report/**/*.json.txt
+            build/Testing/Temporary/LastTest.log
+  macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install dependencies
+        run: which ninja || brew install ninja
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON
+      - name: Build
+        run: cmake --build build --target tether tether_sandbox tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
+      - name: Correctness tests
+        run: ctest --test-dir build -L correctness --output-on-failure --no-tests=error
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: correctness-macos-${{ matrix.config }}
+          path: |
+            build/**/report/**/*.json
+            build/**/report/**/*.json.txt
+            build/Testing/Temporary/LastTest.log

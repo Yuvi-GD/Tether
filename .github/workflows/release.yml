@@ -1,0 +1,260 @@
+name: Package & Publish Release SDK
+# This workflow runs when a release tag is pushed (e.g. v0.0.4)
+# or when triggered manually via workflow_dispatch (1-click, no manual typing needed).
+# It does NOT run on ordinary commits or pull requests.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  init:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract version tag
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          else
+            VER=$(grep -E 'project\(.*VERSION' CMakeLists.txt | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
+            echo "tag=v${VER}" >> $GITHUB_OUTPUT
+          fi
+
+  package-linux:
+    name: Package Linux SDK (x86_64)
+    needs: init
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.init.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev ninja-build zip
+
+      - name: Build and Install Linux SDK
+        run: |
+          PKG="tether-${RELEASE_TAG}-linux-x64"
+          cmake -S . -B build-release -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DTETHER_ENABLE_INSTALL=ON \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DTETHER_BUILD_TESTS=OFF \
+            -DTETHER_BUILD_RUNNERS=ON \
+            -DTETHER_BUILD_EXAMPLES=ON
+          cmake --build build-release --parallel 4
+          cmake --install build-release --prefix "dist/${PKG}"
+
+          mkdir -p "dist/${PKG}/bin"
+          cp build-release/tether_sandbox "dist/${PKG}/bin/"
+          cp build-release/tether_bench "dist/${PKG}/bin/" 2>/dev/null || true
+          cp build-release/tether_test "dist/${PKG}/bin/" 2>/dev/null || true
+
+          cp -r examples/sandbox/ui/scripts "dist/${PKG}/UI"
+          cp -r examples/Font "dist/${PKG}/Font"
+          cp -r examples/sandbox/ui/scripts "dist/${PKG}/bin/UI"
+          cp -r examples/Font "dist/${PKG}/bin/Font"
+          cp README.md LICENSE "dist/${PKG}/"
+
+          cd dist
+          tar -czvf "${PKG}.tar.gz" "${PKG}"
+          zip -r "${PKG}.zip" "${PKG}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-linux
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+  package-windows:
+    name: Package Windows SDK (x86_64)
+    needs: init
+    runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ needs.init.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Build and Install Windows SDK
+        shell: pwsh
+        run: |
+          $pkg = "tether-${env:RELEASE_TAG}-windows-x64"
+          cmake -S . -B build-release `
+            -DTETHER_ENABLE_INSTALL=ON `
+            -DCMAKE_INSTALL_LIBDIR=lib `
+            -DTETHER_BUILD_TESTS=OFF `
+            -DTETHER_BUILD_RUNNERS=ON `
+            -DTETHER_BUILD_EXAMPLES=ON
+          cmake --build build-release --config Release --parallel 4
+          cmake --install build-release --config Release --prefix "dist\$pkg"
+
+          New-Item -ItemType Directory -Force -Path "dist\$pkg\bin"
+          Copy-Item "build-release\Release\tether_sandbox.exe" "dist\$pkg\bin\"
+          Copy-Item "build-release\Release\tether_bench.exe" "dist\$pkg\bin\" -ErrorAction SilentlyContinue
+          Copy-Item "build-release\Release\tether_test.exe" "dist\$pkg\bin\" -ErrorAction SilentlyContinue
+
+          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg\UI"
+          Copy-Item -Recurse "examples\Font" "dist\$pkg\Font"
+          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg\bin\UI"
+          Copy-Item -Recurse "examples\Font" "dist\$pkg\bin\Font"
+          Copy-Item "README.md", "LICENSE" "dist\$pkg\"
+
+          Compress-Archive -Path "dist\$pkg" -DestinationPath "dist\$pkg.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-windows
+          path: dist/*.zip
+
+  package-macos:
+    name: Package macOS SDK (arm64)
+    needs: init
+    runs-on: macos-latest
+    env:
+      RELEASE_TAG: ${{ needs.init.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install dependencies
+        run: which ninja || brew install ninja
+
+      - name: Build and Install macOS SDK
+        run: |
+          PKG="tether-${RELEASE_TAG}-macos-arm64"
+          cmake -S . -B build-release -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DTETHER_ENABLE_INSTALL=ON \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DTETHER_BUILD_TESTS=OFF \
+            -DTETHER_BUILD_RUNNERS=ON \
+            -DTETHER_BUILD_EXAMPLES=ON
+          cmake --build build-release --parallel 4
+          cmake --install build-release --prefix "dist/${PKG}"
+
+          mkdir -p "dist/${PKG}/bin"
+          cp build-release/tether_sandbox "dist/${PKG}/bin/"
+          cp build-release/tether_bench "dist/${PKG}/bin/" 2>/dev/null || true
+          cp build-release/tether_test "dist/${PKG}/bin/" 2>/dev/null || true
+
+          cp -r examples/sandbox/ui/scripts "dist/${PKG}/UI"
+          cp -r examples/Font "dist/${PKG}/Font"
+          cp -r examples/sandbox/ui/scripts "dist/${PKG}/bin/UI"
+          cp -r examples/Font "dist/${PKG}/bin/Font"
+          cp README.md LICENSE "dist/${PKG}/"
+
+          cd dist
+          zip -r "${PKG}.zip" "${PKG}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-macos
+          path: dist/*.zip
+
+  package-web:
+    name: Package WebAssembly (WebGL2 & WebGPU)
+    needs: init
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.init.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+
+      - name: Prepare shader compiler
+        run: |
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc
+          mkdir -p third_party/chitra/src/backends/shaders/gen
+
+      - name: Build WebGL2
+        run: |
+          emcmake cmake -S . -B build-wasm-gl -G Ninja \
+            -DTETHER_BUILD_SHARED=OFF \
+            -DTETHER_BUILD_TESTS=OFF \
+            -DTETHER_BUILD_RUNNERS=OFF \
+            -DTETHER_BUILD_EXAMPLES=ON \
+            -DCHITRA_BACKEND=GLES3
+          cmake --build build-wasm-gl --target tether_sandbox --parallel 4
+
+      - name: Build WebGPU
+        run: |
+          emcmake cmake -S . -B build-wasm-wgpu -G Ninja \
+            -DTETHER_BUILD_SHARED=OFF \
+            -DTETHER_BUILD_TESTS=OFF \
+            -DTETHER_BUILD_RUNNERS=OFF \
+            -DTETHER_BUILD_EXAMPLES=ON \
+            -DCHITRA_BACKEND=WGPU
+          cmake --build build-wasm-wgpu --target tether_sandbox --parallel 4
+
+      - name: Bundle WebAssembly Artifacts
+        run: |
+          PKG="tether-${RELEASE_TAG}-web-wasm"
+          mkdir -p "dist/${PKG}/webgl2"
+          mkdir -p "dist/${PKG}/webgpu"
+          cp build-wasm-gl/tether_sandbox.* "dist/${PKG}/webgl2/"
+          cp build-wasm-wgpu/tether_sandbox.* "dist/${PKG}/webgpu/"
+          cp README.md LICENSE "dist/${PKG}/"
+          cd dist
+          zip -r "${PKG}.zip" "${PKG}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-web
+          path: dist/*.zip
+
+  publish-release:
+    name: Publish Draft GitHub Release
+    needs: [init, package-linux, package-windows, package-macos, package-web]
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.init.outputs.tag }}
+    steps:
+      - name: Download all packages
+        uses: actions/download-artifact@v4
+        with:
+          path: release-downloads
+
+      - name: Collect release assets
+        run: |
+          mkdir -p release-assets
+          find release-downloads/ -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} release-assets/ \;
+          ls -lh release-assets/
+
+      - name: Create or Update GitHub Draft Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Tether ${{ env.RELEASE_TAG }}
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+          files: release-assets/*

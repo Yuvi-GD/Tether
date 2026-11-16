@@ -6,9 +6,10 @@
 *Version 0.0.3 (Developer Preview)*
 
 [![Tether Correctness CI](https://github.com/Yuvi-GD/Tether/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuvi-GD/Tether/actions/workflows/ci.yml)
+[![Tether WebAssembly CI](https://github.com/Yuvi-GD/Tether/actions/workflows/wasm.yml/badge.svg)](https://github.com/Yuvi-GD/Tether/actions/workflows/wasm.yml)
 ![Version](https://img.shields.io/badge/version-v0.0.3--preview-0969da)
 ![Language](https://img.shields.io/badge/language-C99-orange)
-![Platforms](https://img.shields.io/badge/validated-Windows-555555)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Web-0969da)
 [![License](https://img.shields.io/badge/license-Apache%202.0-2ea44f)](LICENSE)
 
 [**Quick Start**](#9-building--running) &nbsp;|&nbsp;
@@ -20,7 +21,7 @@
 
 </div>
 
-Tether is an open-source C engine for building user interface libraries. It combines entities, components, layout, input, and reusable widgets; the sandbox uses YAML and C to build interfaces rendered through Chitra. The project is a developer preview, with portability and additional backends under development.
+Tether is an open-source C engine for building user interface libraries. It combines entities, components, layout, input, and reusable widgets; the sandbox uses YAML and C to build interfaces rendered through Chitra with native multi-platform support for Windows, Linux, macOS, and WebAssembly.
 
 ---
 

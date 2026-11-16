@@ -289,21 +289,23 @@ bool tether_platform_resolve_path(const char *in_path, char *out_path, size_t si
     return _fullpath(out_path, in_path, size) != NULL;
 }
 
-void tether_platform_sync_ui(Tether_SyncCompleteFn on_complete, void *user_data) {
-    if (on_complete) on_complete(user_data);
-}
+#elif defined(__APPLE__) || defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#include <unistd.h>
 
-void tether_platform_sync_file(const char *rel_path, Tether_SyncCompleteFn on_complete, void *user_data) {
-    (void)rel_path;
-    if (on_complete) on_complete(user_data);
-}
-
-#else
-
-void tether_platform_pick_file(const char *filter_ext, const char *title,
-                               Tether_FilePickedFn on_picked, void *user_data) {
-    (void)filter_ext; (void)title;
-    if (on_picked) on_picked(NULL, user_data);
+static bool s_run_dialog_cmd(const char *cmd, char *out_path, size_t out_size) {
+    if (!cmd || !cmd[0] || !out_path || out_size == 0) return false;
+    FILE *fp = popen(cmd, "r");
+    if (!fp) return false;
+    bool found = false;
+    if (fgets(out_path, (int)out_size, fp)) {
+        size_t len = strlen(out_path);
+        while (len > 0 && (out_path[len - 1] == '\n' || out_path[len - 1] == '\r')) {
+            out_path[--len] = '\0';
+        }
+        found = (len > 0);
+    }
+    pclose(fp);
+    return found;
 }
 
 bool tether_platform_resolve_path(const char *in_path, char *out_path, size_t size) {
@@ -311,6 +313,126 @@ bool tether_platform_resolve_path(const char *in_path, char *out_path, size_t si
     return realpath(in_path, out_path) != NULL;
 }
 
+#if defined(__APPLE__)
+
+void tether_platform_pick_file(const char *filter_ext, const char *title,
+                               Tether_FilePickedFn on_picked, void *user_data) {
+    if (!on_picked) return;
+    char path[4096] = {0};
+    char cmd[1024] = {0};
+    char apple_types[256] = {0};
+
+    if (filter_ext && filter_ext[0]) {
+        char ext_copy[256];
+        snprintf(ext_copy, sizeof(ext_copy), "%s", filter_ext);
+        char *token = strtok(ext_copy, ",");
+        int pos = snprintf(apple_types, sizeof(apple_types), "of type {");
+        bool first = true;
+        while (token && (size_t)pos < sizeof(apple_types) - 8) {
+            while (*token == ' ' || *token == '.') token++;
+            pos += snprintf(apple_types + pos, sizeof(apple_types) - (size_t)pos,
+                            "%s\"%s\"", first ? "" : ", ", token);
+            first = false;
+            token = strtok(NULL, ",");
+        }
+        snprintf(apple_types + pos, sizeof(apple_types) - (size_t)pos, "}");
+    }
+
+    snprintf(cmd, sizeof(cmd),
+             "osascript -e 'POSIX path of (choose file %s with prompt \"%s\")' 2>/dev/null",
+             apple_types, title ? title : "Choose File");
+
+    if (s_run_dialog_cmd(cmd, path, sizeof(path))) {
+        on_picked(path, user_data);
+    } else {
+        on_picked(NULL, user_data);
+    }
+}
+
+#else /* Linux and Unix BSDs */
+
+static bool s_has_command(const char *tool) {
+    char check_cmd[128];
+    snprintf(check_cmd, sizeof(check_cmd), "command -v %s >/dev/null 2>&1", tool);
+    return system(check_cmd) == 0;
+}
+
+void tether_platform_pick_file(const char *filter_ext, const char *title,
+                               Tether_FilePickedFn on_picked, void *user_data) {
+    if (!on_picked) return;
+    char path[4096] = {0};
+    char cmd[1024] = {0};
+
+    const char *desktop = getenv("XDG_CURRENT_DESKTOP");
+    bool is_kde = desktop && (strstr(desktop, "KDE") || strstr(desktop, "plasma") || strstr(desktop, "Plasma"));
+
+    char pattern_list[256] = {0};
+    char zenity_filter[512] = {0};
+    if (filter_ext && filter_ext[0]) {
+        char ext_copy[256];
+        snprintf(ext_copy, sizeof(ext_copy), "%s", filter_ext);
+        char *token = strtok(ext_copy, ",");
+        int pos = 0;
+        while (token && (size_t)pos < sizeof(pattern_list) - 8) {
+            while (*token == ' ' || *token == '.') token++;
+            pos += snprintf(pattern_list + pos, sizeof(pattern_list) - (size_t)pos,
+                            "%s*.%s", pos > 0 ? " " : "", token);
+            token = strtok(NULL, ",");
+        }
+        snprintf(zenity_filter, sizeof(zenity_filter), "--file-filter=\"%s | %s\"",
+                 title ? title : "Supported files", pattern_list);
+    }
+
+    const char *dlg_title = title ? title : "Open File";
+    if (is_kde && s_has_command("kdialog")) {
+        snprintf(cmd, sizeof(cmd),
+                 "kdialog --title \"%s\" --getopenfilename . \"%s\" 2>/dev/null",
+                 dlg_title, pattern_list[0] ? pattern_list : "*.*");
+    } else if (s_has_command("zenity")) {
+        snprintf(cmd, sizeof(cmd),
+                 "zenity --file-selection --title=\"%s\" %s 2>/dev/null",
+                 dlg_title, zenity_filter);
+    } else if (s_has_command("kdialog")) {
+        snprintf(cmd, sizeof(cmd),
+                 "kdialog --title \"%s\" --getopenfilename . \"%s\" 2>/dev/null",
+                 dlg_title, pattern_list[0] ? pattern_list : "*.*");
+    } else if (s_has_command("qarma")) {
+        snprintf(cmd, sizeof(cmd),
+                 "qarma --file-selection --title=\"%s\" %s 2>/dev/null",
+                 dlg_title, zenity_filter);
+    } else if (s_has_command("yad")) {
+        snprintf(cmd, sizeof(cmd),
+                 "yad --file --title=\"%s\" 2>/dev/null",
+                 dlg_title);
+    }
+
+    if (cmd[0] && s_run_dialog_cmd(cmd, path, sizeof(path))) {
+        on_picked(path, user_data);
+    } else {
+        on_picked(NULL, user_data);
+    }
+}
+
+#endif /* __APPLE__ vs Linux/BSD */
+
+#else /* Generic Fallback */
+
+void tether_platform_pick_file(const char *filter_ext, const char *title,
+                               Tether_FilePickedFn on_picked, void *user_data) {
+    (void)filter_ext;
+    (void)title;
+    if (on_picked) on_picked(NULL, user_data);
+}
+
+bool tether_platform_resolve_path(const char *in_path, char *out_path, size_t size) {
+    if (!in_path || !out_path || size == 0) return false;
+    snprintf(out_path, size, "%s", in_path);
+    return true;
+}
+
+#endif
+
+#if !defined(__EMSCRIPTEN__)
 void tether_platform_sync_ui(Tether_SyncCompleteFn on_complete, void *user_data) {
     if (on_complete) on_complete(user_data);
 }
@@ -319,5 +441,4 @@ void tether_platform_sync_file(const char *rel_path, Tether_SyncCompleteFn on_co
     (void)rel_path;
     if (on_complete) on_complete(user_data);
 }
-
 #endif
