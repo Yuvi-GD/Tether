@@ -22,6 +22,9 @@ if(TETHER_ENABLE_INSTALL)
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
+    install(DIRECTORY "${THIRD_PARTY_DIR}/chitra/include/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
 
     install(EXPORT TetherTargets
         FILE TetherTargets.cmake

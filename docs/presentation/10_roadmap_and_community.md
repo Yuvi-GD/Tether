@@ -21,7 +21,7 @@ flowchart TD
         OverflowSystem["Scroll Viewports & Kinetic Scrolling\n(Extending Clip & Wrap Overflow Policies)"]
     end
 
-    subgraph MidTerm["Phase 2: Modern Aesthetics and Ecosystem Expansion (v0.0.4 - v0.0.5 Preview)"]
+    subgraph MidTerm["Phase 2: Modern Aesthetics and Ecosystem Expansion"]
         Aesthetics["Modern UI Rendering Aesthetics\n(Per-Corner Radii, Shadows, Blur, Gradients, Lottie)"]
         Prefabs["Extended Controls & Composite Views\n(Tables, Text Input, Virtualized Lists)"]
         OptInDrivers["Opt-in RHI & Pure CPU Software Rendering\n(TETHER_RENDER_SOFTWARE Blitter)"]
@@ -29,7 +29,7 @@ flowchart TD
         Typography["HarfBuzz Unicode Typography\n(Complex Script Shaping & Bidirectional Text)"]
     end
 
-    subgraph LongTerm["Phase 3: The Universal UI Runtime (v0.1.0 and v1.0 Stable)"]
+    subgraph LongTerm["Phase 3: The Universal UI Runtime"]
         LLVMModel["The LLVM of UI Fully Realized\n(Universal N Frontends Lowering to M Hardware Backends)"]
         Spatial["Spatial Computing Runtimes\n(VR / AR 3D Offscreen Texture Projection)"]
         HotPlugins["Dynamic Component Plugins (.dll / .so)\n(Runtime Primitives & Dynamic Host Extensions)"]
@@ -63,7 +63,7 @@ Other possible future work includes automatic watched-file reload, diagnostic in
 
 ## 3. Phased Architectural Roadmap
 
-### Phase 1: Core Systems & Pipeline Maturity (v0.0.4 Preview - Next)
+### Phase 1: Core Systems & Pipeline Maturity
 
 #### 1. Full Vinyasa Layout Solver Integration
 - **Context**: Tether currently integrates a built-in two-pass layout solver supporting flexbox and canvas anchor modes. The standalone Vinyasa layout engine expands on this with advanced multi-reference constraint solving and dynamic flex wrapping.
@@ -107,7 +107,7 @@ Other possible future work includes automatic watched-file reload, diagnostic in
 
 ---
 
-### Phase 2: Modern Aesthetics and Ecosystem Expansion (v0.0.4 - v0.0.5 Preview)
+### Phase 2: Modern Aesthetics and Ecosystem Expansion
 
 #### 1. Modern UI Rendering Aesthetics
 - **Context**: Bringing Tether to full aesthetic parity with high-end modern design tools (Figma, CSS).
@@ -152,7 +152,7 @@ Other possible future work includes automatic watched-file reload, diagnostic in
 
 ---
 
-### Phase 3: The Universal UI Runtime (v0.1.0 Preview and v1.0 Stable)
+### Phase 3: The Universal UI Runtime
 
 #### 1. The LLVM of UI Fully Realized
 - **Universal IR Ecosystem**: An open ecosystem where any frontend authoring tool (visual drag-and-drop IDEs, Figma design exporters, markdown documentation engines) targets Tether's format-neutral scene AST.

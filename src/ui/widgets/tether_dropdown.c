@@ -12,6 +12,7 @@
 #define DROPDOWN_CHILD_MENU   1
 
 /* Forward declarations */
+static void dropdown_handle_header_press(TUID entity, const Tether_Event *event_info, void *user_data);
 static void dropdown_handle_header_click(TUID entity, const Tether_Event *event_info, void *user_data);
 static void dropdown_handle_menu_change(TUID entity, const Tether_Event *event_info, void *user_data);
 
@@ -125,7 +126,8 @@ TUID tether_ui_dropdown(TUID parent) {
     TUID menu = tether_ui_menu(outer);
     tether_ui_menu_position_relative(menu, header, 2.0f);
 
-    tether_bind_event(header, TETHER_EVENT_PRESS, dropdown_handle_header_click, (void*)(uintptr_t)outer);
+    tether_bind_event(header, TETHER_EVENT_PRESS, dropdown_handle_header_press, (void*)(uintptr_t)outer);
+    tether_bind_event(header, TETHER_EVENT_CLICK, dropdown_handle_header_click, (void*)(uintptr_t)outer);
     tether_bind_event(menu, TETHER_EVENT_CHANGE, dropdown_handle_menu_change, (void*)(uintptr_t)outer);
 
     dropdown_sync_visuals(outer);
@@ -136,10 +138,29 @@ TUID tether_ui_dropdown(TUID parent) {
 /* 4. Event Handlers                                                          */
 /* ========================================================================== */
 
+static TUID s_opened_on_press = TETHER_INVALID_TUID;
+
+static void dropdown_handle_header_press(TUID entity, const Tether_Event *event_info, void *user_data) {
+    (void)event_info;
+    (void)entity;
+    TUID outer = (TUID)(uintptr_t)user_data;
+    if (!tether_ui_is_dropdown_open(outer)) {
+        tether_ui_set_dropdown_open(outer, true);
+        s_opened_on_press = outer;
+    } else {
+        tether_ui_set_dropdown_open(outer, false);
+        s_opened_on_press = TETHER_INVALID_TUID;
+    }
+}
+
 static void dropdown_handle_header_click(TUID entity, const Tether_Event *event_info, void *user_data) {
     (void)event_info;
     (void)entity;
     TUID outer = (TUID)(uintptr_t)user_data;
+    if (s_opened_on_press == outer) {
+        s_opened_on_press = TETHER_INVALID_TUID;
+        return;
+    }
     tether_ui_set_dropdown_open(outer, !tether_ui_is_dropdown_open(outer));
 }
 

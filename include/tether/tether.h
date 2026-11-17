@@ -5,11 +5,11 @@
 #include <stdbool.h>
 #include "tether/core/tether_input.h"
 
-/* Tether Version Information (Developer Preview) */
+/* Tether Version Information */
 #define TETHER_VERSION_MAJOR 0
 #define TETHER_VERSION_MINOR 0
-#define TETHER_VERSION_PATCH 3
-#define TETHER_VERSION_STRING "0.0.3-preview"
+#define TETHER_VERSION_PATCH 4
+#define TETHER_VERSION_STRING "0.0.4"
 
 typedef struct Tether_Config {
     int width;

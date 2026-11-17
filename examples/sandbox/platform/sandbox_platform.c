@@ -298,7 +298,15 @@ static bool s_run_dialog_cmd(const char *cmd, char *out_path, size_t out_size) {
 }
 
 #if defined(__APPLE__)
-
+#include <TargetConditionals.h>
+#if TARGET_OS_IPHONE
+void sandbox_platform_pick_file(const char *filter_ext, const char *title,
+                                Sandbox_FilePickedFn on_picked, void *user_data) {
+    (void)filter_ext;
+    (void)title;
+    if (on_picked) on_picked(NULL, user_data);
+}
+#else
 void sandbox_platform_pick_file(const char *filter_ext, const char *title,
                                 Sandbox_FilePickedFn on_picked, void *user_data) {
     if (!on_picked) return;
@@ -331,6 +339,16 @@ void sandbox_platform_pick_file(const char *filter_ext, const char *title,
     } else {
         on_picked(NULL, user_data);
     }
+}
+#endif
+
+#elif defined(__ANDROID__)
+
+void sandbox_platform_pick_file(const char *filter_ext, const char *title,
+                                Sandbox_FilePickedFn on_picked, void *user_data) {
+    (void)filter_ext;
+    (void)title;
+    if (on_picked) on_picked(NULL, user_data);
 }
 
 #else /* Linux / BSD */

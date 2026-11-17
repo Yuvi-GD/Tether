@@ -91,19 +91,9 @@ set(TETHER_SOURCES
 )
 # Compile the engine once. The DLL and isolated runner/application binaries
 # reuse these objects; each operating-system process owns its runtime state.
-set(TETHER_PLATFORM_LIBRARIES)
-if(WIN32)
-    set(TETHER_PLATFORM_LIBRARIES dwmapi)
-elseif(APPLE)
-    set(TETHER_PLATFORM_LIBRARIES "-framework Cocoa" "-framework QuartzCore" "-framework Metal" "-framework MetalKit")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-    set(TETHER_PLATFORM_LIBRARIES m)
-else()
-    set(TETHER_PLATFORM_LIBRARIES X11 Xi Xcursor GL pthread dl m)
-endif()
 add_library(tether_build_dependencies INTERFACE)
 target_include_directories(tether_build_dependencies INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(tether_build_dependencies INTERFACE yaml chitra ${TETHER_PLATFORM_LIBRARIES})
+target_link_libraries(tether_build_dependencies INTERFACE yaml chitra)
 add_library(tether_objects OBJECT ${TETHER_SOURCES})
 target_link_libraries(tether_objects PRIVATE tether_build_dependencies)
 if(TETHER_BUILD_SHARED)
@@ -119,7 +109,7 @@ target_include_directories(tether PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:include>)
 target_link_libraries(tether PRIVATE $<BUILD_INTERFACE:tether_build_dependencies>
-    $<INSTALL_INTERFACE:yaml> $<INSTALL_INTERFACE:Tether::chitra> ${TETHER_PLATFORM_LIBRARIES})
+    $<INSTALL_INTERFACE:yaml> $<INSTALL_INTERFACE:Tether::chitra>)
 
 if(TETHER_BUILD_EXAMPLES OR TETHER_BUILD_TESTS OR TETHER_BUILD_RUNNERS)
     add_library(tether_runtime STATIC $<TARGET_OBJECTS:tether_objects>)
