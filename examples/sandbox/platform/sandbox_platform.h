@@ -24,6 +24,12 @@ void sandbox_platform_sync_ui(Sandbox_SyncCompleteFn on_complete, void *user_dat
 /* On web, re-fetches a single file from web server into virtual MEMFS. Desktop: no-op. */
 void sandbox_platform_sync_file(const char *rel_path, Sandbox_SyncCompleteFn on_complete, void *user_data);
 
+#if defined(__ANDROID__)
+/* On Android, unpacks APK assets to internal storage and prepares sandbox directories. */
+void sandbox_platform_android_init(void);
+void sandbox_platform_android_poll(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

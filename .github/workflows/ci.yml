@@ -156,15 +156,16 @@ jobs:
             -DTETHER_BUILD_SHARED=OFF \
             -DTETHER_BUILD_TESTS=OFF \
             -DTETHER_BUILD_RUNNERS=OFF \
-            -DTETHER_BUILD_EXAMPLES=OFF
+            -DTETHER_BUILD_EXAMPLES=ON
       - name: Build
-        run: cmake --build build-android --target tether --parallel 4
+        run: cmake --build build-android --target tether tether_sandbox --parallel 4
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: correctness-android-arm64
           path: |
             build-android/**/libtether.a
+            build-android/**/libtether_sandbox.so
 
   ios:
     name: iOS (arm64)
@@ -187,12 +188,15 @@ jobs:
             -DTETHER_BUILD_SHARED=OFF \
             -DTETHER_BUILD_TESTS=OFF \
             -DTETHER_BUILD_RUNNERS=OFF \
-            -DTETHER_BUILD_EXAMPLES=OFF
+            -DTETHER_BUILD_EXAMPLES=ON
       - name: Build
-        run: cmake --build build-ios --config Release --target tether --parallel 4
+        run: |
+          cmake --build build-ios --config Release --target tether --parallel 4
+          cmake --build build-ios --config Release --target tether_sandbox --parallel 4
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: correctness-ios-arm64
           path: |
             build-ios/**/libtether.a
+            build-ios/**/*.app

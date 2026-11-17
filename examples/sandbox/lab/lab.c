@@ -168,9 +168,11 @@ static void launch_workload(TUID entity, const Tether_Event *event_info, void *d
         return;
     }
 #if !SANDBOX_HAS_RUNNERS
-    tether_ui_set_text(status_label, "Build with TETHER_BUILD_RUNNERS=ON to launch workloads.");
+    tether_ui_set_text(status_label, "Workloads are unavailable in this build. Use a desktop release with runners.");
+    tether_ui_set_text_color(status_label, (Tether_Color){240, 100, 100, 255});
     return;
 #endif
+    tether_ui_set_text_color(status_label, (Tether_Color){167, 210, 185, 255});
     if (!tool_make_results_directory("report") ||
         !tool_make_results_directory(SANDBOX_REPORT_DIR)) {
         tether_ui_set_text(status_label, "Cannot create report/workbench beside the app.");

@@ -25,6 +25,7 @@ function(tether_configure_wasm_target TARGET_NAME)
         "--shell-file=${ARG_SHELL}"
         "-sALLOW_MEMORY_GROWTH=1"
         "-sWASM=1"
+        "-sSINGLE_FILE=1"
     )
 
     # Standard runtime methods needed by Tether platform and virtual filesystem

@@ -1,11 +1,22 @@
-add_executable(tether_sandbox
-    sandbox/app/app.c
-    sandbox/ui/widgets/sandbox_widgets_zoo.c
-    sandbox/lab/lab.c
-    sandbox/results/results.c
-    sandbox/events/sandbox_events.c
-    sandbox/platform/sandbox_platform.c
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    add_library(tether_sandbox SHARED
+        sandbox/app/app.c
+        sandbox/ui/widgets/sandbox_widgets_zoo.c
+        sandbox/lab/lab.c
+        sandbox/results/results.c
+        sandbox/events/sandbox_events.c
+        sandbox/platform/sandbox_platform.c
+    )
+else()
+    add_executable(tether_sandbox
+        sandbox/app/app.c
+        sandbox/ui/widgets/sandbox_widgets_zoo.c
+        sandbox/lab/lab.c
+        sandbox/results/results.c
+        sandbox/events/sandbox_events.c
+        sandbox/platform/sandbox_platform.c
+    )
+endif()
 target_include_directories(tether_sandbox PRIVATE
     sandbox/platform
     sandbox/events
@@ -14,9 +25,17 @@ target_include_directories(tether_sandbox PRIVATE
     sandbox/lab
     sandbox/results
 )
-target_link_libraries(tether_sandbox PRIVATE tether_runtime tether_run_support)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_link_libraries(tether_sandbox PRIVATE tether tether_run_support chitra)
+    add_dependencies(tether_sandbox tether)
+else()
+    target_link_libraries(tether_sandbox PRIVATE tether_runtime tether_run_support)
+endif()
 if(WIN32)
     target_link_libraries(tether_sandbox PRIVATE comdlg32)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    target_link_libraries(tether_sandbox PRIVATE android log)
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     tether_configure_wasm_target(tether_sandbox

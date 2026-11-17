@@ -13,6 +13,9 @@
 #include "chitra.h"
 #include <stdlib.h>
 #include <string.h>
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
 
 static TUID views[4];
 static SandboxView wanted = SANDBOX_WIDGETS;
@@ -24,6 +27,20 @@ static bool smoke_report;
 static char smoke_expected_badge[32];
 static double deadline;
 static char initial_result[4096];
+
+static void sandbox_update_mobile_inset(void) {
+#if defined(__ANDROID__) || (defined(__APPLE__) && TARGET_OS_IPHONE)
+    static TUID previous_root;
+    static int previous_height;
+    TUID root = tether_registry_find_entity("sandbox_root");
+    int height = chitra_height();
+    if (root && height > 0 && (root != previous_root || height != previous_height)) {
+        tether_ui_set_padding(root, height * 0.05f, 0.0f, 0.0f, 0.0f);
+        previous_root = root;
+        previous_height = height;
+    }
+#endif
+}
 
 static void sandbox_refresh(void) {
     refresh_requested = true;
@@ -122,12 +139,16 @@ static bool create_views(void) {
 }
 
 static void init(void) {
+#if defined(__ANDROID__)
+    sandbox_platform_android_init();
+#endif
     tether_font_register("Roboto-Regular", "Font/Roboto-Regular.ttf");
     if (!create_views()) {
         exit_code = 1;
         chitra_quit();
         return;
     }
+    sandbox_update_mobile_inset();
     if (initial_result[0]) {
         results_load(initial_result);
         wanted = SANDBOX_RESULTS;
@@ -146,6 +167,9 @@ static void init(void) {
 }
 
 static void update(void) {
+#if defined(__ANDROID__)
+    sandbox_platform_android_poll();
+#endif
     if (refresh_requested) {
         refresh_requested = false;
         sandbox_showcase_cleanup();
@@ -160,6 +184,7 @@ static void update(void) {
             return;
         }
     }
+    sandbox_update_mobile_inset();
     sandbox_showcase_update();
     lab_update();
     switch_view();

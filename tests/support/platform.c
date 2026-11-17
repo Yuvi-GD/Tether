@@ -180,7 +180,7 @@ bool tool_executable_directory(char *out, size_t size) {
     if (_NSGetExecutablePath(out, &n)) {
         return false;
     }
-#elif defined(__EMSCRIPTEN__)
+#elif defined(__EMSCRIPTEN__) || defined(__ANDROID__)
     if (size < 2) return false;
     out[0] = '/';
     out[1] = '\0';
@@ -205,7 +205,7 @@ bool tool_executable_directory(char *out, size_t size) {
 }
 
 bool tool_enter_executable_directory(void) {
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) || defined(__ANDROID__)
     return true;
 #else
     char dir[4096];

@@ -29,8 +29,8 @@ function(tether_target_assets TARGET_NAME)
 
         if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
             target_link_options(${TARGET_NAME} PRIVATE
-                "--preload-file=${SRC_DIR}@${ALIAS}"
-                "--preload-file=${SRC_DIR}@${ARG_DESTINATION}/${ALIAS}"
+                "--embed-file=${SRC_DIR}@${ALIAS}"
+                "--embed-file=${SRC_DIR}@${ARG_DESTINATION}/${ALIAS}"
             )
         else()
             add_custom_command(TARGET ${TARGET_NAME} POST_BUILD

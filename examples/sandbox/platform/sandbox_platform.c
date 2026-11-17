@@ -343,12 +343,154 @@ void sandbox_platform_pick_file(const char *filter_ext, const char *title,
 #endif
 
 #elif defined(__ANDROID__)
+#include <android/native_activity.h>
+#include <android/asset_manager.h>
+#include <android/log.h>
+#include <jni.h>
+#include <pthread.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#define LOG_TAG "TetherSandbox"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+extern const void* sapp_android_get_native_activity(void);
+
+static pthread_mutex_t s_picker_mutex = PTHREAD_MUTEX_INITIALIZER;
+static Sandbox_FilePickedFn s_picker_callback;
+static void *s_picker_user_data;
+static bool s_picker_finished;
+static char s_picker_path[4096];
+
+JNIEXPORT void JNICALL Java_com_tether_sandbox_SandboxActivity_onDocumentPicked(
+    JNIEnv *env, jobject activity, jstring path) {
+    (void)activity;
+    const char *utf8 = path ? (*env)->GetStringUTFChars(env, path, NULL) : NULL;
+    pthread_mutex_lock(&s_picker_mutex);
+    s_picker_path[0] = '\0';
+    if (utf8) snprintf(s_picker_path, sizeof s_picker_path, "%s", utf8);
+    s_picker_finished = true;
+    pthread_mutex_unlock(&s_picker_mutex);
+    if (utf8) (*env)->ReleaseStringUTFChars(env, path, utf8);
+}
+
+void sandbox_platform_android_poll(void) {
+    Sandbox_FilePickedFn callback = NULL;
+    void *user_data = NULL;
+    char path[sizeof s_picker_path];
+    pthread_mutex_lock(&s_picker_mutex);
+    if (s_picker_finished) {
+        callback = s_picker_callback;
+        user_data = s_picker_user_data;
+        memcpy(path, s_picker_path, sizeof path);
+        s_picker_callback = NULL;
+        s_picker_user_data = NULL;
+        s_picker_finished = false;
+    }
+    pthread_mutex_unlock(&s_picker_mutex);
+    if (callback) callback(path[0] ? path : NULL, user_data);
+}
+
+static void extract_asset_file(AAssetManager* mgr, const char* src, const char* dst) {
+    AAsset* asset = AAssetManager_open(mgr, src, AASSET_MODE_BUFFER);
+    if (!asset) {
+        LOGE("Failed to open asset: %s", src);
+        return;
+    }
+    size_t size = (size_t)AAsset_getLength(asset);
+    const void* buf = AAsset_getBuffer(asset);
+    FILE* out = fopen(dst, "wb");
+    if (out) {
+        fwrite(buf, 1, size, out);
+        fclose(out);
+        LOGI("Extracted asset %s (%zu bytes) to %s", src, size, dst);
+    } else {
+        LOGE("Failed to write to %s", dst);
+    }
+    AAsset_close(asset);
+}
+
+static void extract_dir(AAssetManager* mgr, const char* dir_name, const char* out_dir) {
+    mkdir(out_dir, 0777);
+    AAssetDir* dir = AAssetManager_openDir(mgr, dir_name);
+    if (!dir) return;
+    const char* filename = NULL;
+    while ((filename = AAssetDir_getNextFileName(dir)) != NULL) {
+        char src_path[512], dst_path[512];
+        snprintf(src_path, sizeof(src_path), "%s/%s", dir_name, filename);
+        snprintf(dst_path, sizeof(dst_path), "%s/%s", out_dir, filename);
+        extract_asset_file(mgr, src_path, dst_path);
+    }
+    AAssetDir_close(dir);
+}
+
+void sandbox_platform_android_init(void) {
+    const ANativeActivity* activity = (const ANativeActivity*)sapp_android_get_native_activity();
+    if (!activity || !activity->assetManager || !activity->internalDataPath) {
+        LOGE("ANativeActivity or assetManager not available");
+        return;
+    }
+    LOGI("Initializing Android Sandbox with internalDataPath: %s", activity->internalDataPath);
+    if (chdir(activity->internalDataPath) != 0) {
+        LOGE("Failed to chdir to %s", activity->internalDataPath);
+    }
+    mkdir("UI", 0777);
+    mkdir("UI/playground", 0777);
+    mkdir("Font", 0777);
+    mkdir("report", 0777);
+    mkdir("report/workbench", 0777);
+
+    extract_dir(activity->assetManager, "UI", "UI");
+    extract_dir(activity->assetManager, "UI/playground", "UI/playground");
+    extract_dir(activity->assetManager, "Font", "Font");
+    LOGI("Android Sandbox asset extraction complete");
+}
 
 void sandbox_platform_pick_file(const char *filter_ext, const char *title,
                                 Sandbox_FilePickedFn on_picked, void *user_data) {
     (void)filter_ext;
     (void)title;
-    if (on_picked) on_picked(NULL, user_data);
+    if (!on_picked) return;
+    const ANativeActivity *activity = (const ANativeActivity *)sapp_android_get_native_activity();
+    if (!activity || !activity->vm || !activity->clazz) {
+        on_picked(NULL, user_data);
+        return;
+    }
+    pthread_mutex_lock(&s_picker_mutex);
+    if (s_picker_callback) {
+        pthread_mutex_unlock(&s_picker_mutex);
+        return;
+    }
+    s_picker_callback = on_picked;
+    s_picker_user_data = user_data;
+    pthread_mutex_unlock(&s_picker_mutex);
+
+    JNIEnv *env = NULL;
+    bool attached = false;
+    jint result = (*activity->vm)->GetEnv(activity->vm, (void **)&env, JNI_VERSION_1_6);
+    if (result == JNI_EDETACHED) {
+        result = (*activity->vm)->AttachCurrentThread(activity->vm, &env, NULL);
+        attached = result == JNI_OK;
+    }
+    bool launched = false;
+    if (result == JNI_OK) {
+        jclass cls = (*env)->GetObjectClass(env, activity->clazz);
+        jmethodID method = cls ? (*env)->GetMethodID(env, cls, "pickDocument", "()V") : NULL;
+        if (method) {
+            (*env)->CallVoidMethod(env, activity->clazz, method);
+            launched = !(*env)->ExceptionCheck(env);
+        }
+        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+        if (cls) (*env)->DeleteLocalRef(env, cls);
+        if (attached) (*activity->vm)->DetachCurrentThread(activity->vm);
+    }
+    if (!launched) {
+        pthread_mutex_lock(&s_picker_mutex);
+        s_picker_path[0] = '\0';
+        s_picker_finished = true;
+        pthread_mutex_unlock(&s_picker_mutex);
+    }
 }
 
 #else /* Linux / BSD */

@@ -111,6 +111,7 @@
         },
         preRun: [
           function() {
+            if (window.location.protocol === 'file:') return;
             var files = window.TETHER_SYNC_FILES || (typeof Module !== 'undefined' && Module.tetherSyncFiles) || [
               'UI/app.yaml',
               'UI/widgets.yaml',
