@@ -42,6 +42,9 @@ jobs:
       RELEASE_TAG: ${{ needs.init.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y zip tar
 
@@ -93,6 +96,9 @@ jobs:
       RELEASE_TAG: ${{ needs.init.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -145,6 +151,9 @@ jobs:
       RELEASE_TAG: ${{ needs.init.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -197,6 +206,9 @@ jobs:
       RELEASE_TAG: ${{ needs.init.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
       - name: Build and Install Windows x86_64 SDK & Demo
         shell: pwsh
         run: |
@@ -253,6 +265,9 @@ jobs:
       RELEASE_TAG: ${{ needs.init.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
       - name: Build and Install Windows ARM64 SDK & Demo
         shell: pwsh
         run: |
@@ -310,6 +325,9 @@ jobs:
       RELEASE_TAG: ${{ needs.init.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
       - name: Install dependencies
         run: which ninja || brew install ninja
 
@@ -351,7 +369,7 @@ jobs:
           path: dist/*.zip
 
   package-android:
-    name: Package Android SDK & Demo (arm64-v8a)
+    name: Package Android SDK (arm64-v8a)
     needs: init
     runs-on: ubuntu-latest
     env:
@@ -367,10 +385,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build zip
 
-      - name: Build and Install Android SDK & Demo
+      - name: Build and Install Android SDK
         run: |
           PKG_SDK="tether-${RELEASE_TAG}-android-arm64-sdk"
-          PKG_DEMO="tether-${RELEASE_TAG}-android-arm64-demo"
 
           NDK_PATH="${ANDROID_NDK_LATEST_HOME:-$ANDROID_HOME/ndk-bundle}"
           if [ ! -d "$NDK_PATH" ]; then
@@ -388,26 +405,15 @@ jobs:
             -DTETHER_BUILD_SHARED=OFF \
             -DTETHER_BUILD_TESTS=OFF \
             -DTETHER_BUILD_RUNNERS=OFF \
-            -DTETHER_BUILD_EXAMPLES=ON
-          cmake --build build-android --parallel 4
+            -DTETHER_BUILD_EXAMPLES=OFF
+          cmake --build build-android --target tether --parallel 4
 
-          # 1. Clean Precompiled SDK
+          # Clean Precompiled SDK
           cmake --install build-android --prefix "dist/${PKG_SDK}"
           cp README.md LICENSE "dist/${PKG_SDK}/"
 
-          # 2. Standalone Showcase Demo
-          mkdir -p "dist/${PKG_DEMO}/bin"
-          cp build-android/bin/tether_sandbox "dist/${PKG_DEMO}/bin/" 2>/dev/null || cp build-android/tether_sandbox "dist/${PKG_DEMO}/bin/"
-          cp -r build-android/bin/assets "dist/${PKG_DEMO}/bin/" 2>/dev/null || {
-            mkdir -p "dist/${PKG_DEMO}/bin/assets"
-            cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
-            cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
-          }
-          cp README.md LICENSE "dist/${PKG_DEMO}/"
-
           cd dist
           zip -r "${PKG_SDK}.zip" "${PKG_SDK}"
-          zip -r "${PKG_DEMO}.zip" "${PKG_DEMO}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -415,7 +421,7 @@ jobs:
           path: dist/*.zip
 
   package-ios:
-    name: Package iOS SDK & Demo (arm64)
+    name: Package iOS SDK (arm64)
     needs: init
     runs-on: macos-latest
     env:
@@ -426,10 +432,9 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - name: Build and Install iOS SDK & Demo
+      - name: Build and Install iOS SDK
         run: |
           PKG_SDK="tether-${RELEASE_TAG}-ios-arm64-sdk"
-          PKG_DEMO="tether-${RELEASE_TAG}-ios-arm64-demo"
 
           cmake -S . -B build-ios -G Xcode \
             -DCMAKE_SYSTEM_NAME=iOS \
@@ -444,21 +449,15 @@ jobs:
             -DTETHER_BUILD_SHARED=OFF \
             -DTETHER_BUILD_TESTS=OFF \
             -DTETHER_BUILD_RUNNERS=OFF \
-            -DTETHER_BUILD_EXAMPLES=ON
-          cmake --build build-ios --config Release --parallel 4
+            -DTETHER_BUILD_EXAMPLES=OFF
+          cmake --build build-ios --config Release --target tether --parallel 4
 
-          # 1. Clean Precompiled SDK
+          # Clean Precompiled SDK
           cmake --install build-ios --config Release --prefix "dist/${PKG_SDK}"
           cp README.md LICENSE "dist/${PKG_SDK}/"
 
-          # 2. Standalone Showcase Demo App Bundle
-          mkdir -p "dist/${PKG_DEMO}"
-          cp -r build-ios/**/tether_sandbox.app "dist/${PKG_DEMO}/" 2>/dev/null || true
-          cp README.md LICENSE "dist/${PKG_DEMO}/"
-
           cd dist
           zip -r "${PKG_SDK}.zip" "${PKG_SDK}"
-          zip -r "${PKG_DEMO}.zip" "${PKG_DEMO}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -473,6 +472,9 @@ jobs:
       RELEASE_TAG: ${{ needs.init.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
         with:
