@@ -206,6 +206,10 @@ bool tool_executable_directory(char *out, size_t size) {
 
 bool tool_enter_executable_directory(void) {
 #if defined(__EMSCRIPTEN__)
+    struct stat st;
+    if (stat("assets", &st) == 0 && S_ISDIR(st.st_mode)) {
+        (void)chdir("assets");
+    }
     return true;
 #else
     char dir[4096];
@@ -213,9 +217,23 @@ bool tool_enter_executable_directory(void) {
         return false;
     }
 #ifdef _WIN32
-    return _chdir(dir) == 0;
+    if (_chdir(dir) != 0) {
+        return false;
+    }
+    DWORD attr = GetFileAttributesA("assets");
+    if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+        (void)_chdir("assets");
+    }
+    return true;
 #else
-    return chdir(dir) == 0;
+    if (chdir(dir) != 0) {
+        return false;
+    }
+    struct stat st;
+    if (stat("assets", &st) == 0 && S_ISDIR(st.st_mode)) {
+        (void)chdir("assets");
+    }
+    return true;
 #endif
 #endif
 }

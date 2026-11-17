@@ -48,10 +48,10 @@ jobs:
         with:
           name: tether-wasm-webgl2
           path: |
-            build/build-wasm/tether_sandbox.html
-            build/build-wasm/tether_sandbox.js
-            build/build-wasm/tether_sandbox.wasm
-            build/build-wasm/tether_sandbox.data
+            build/build-wasm/**/tether_sandbox.html
+            build/build-wasm/**/tether_sandbox.js
+            build/build-wasm/**/tether_sandbox.wasm
+            build/build-wasm/**/tether_sandbox.data
 
   wasm-webgpu:
     name: WebGPU (WGSL)
@@ -91,7 +91,7 @@ jobs:
         with:
           name: tether-wasm-webgpu
           path: |
-            build/build-wasm-wgpu/tether_sandbox.html
-            build/build-wasm-wgpu/tether_sandbox.js
-            build/build-wasm-wgpu/tether_sandbox.wasm
-            build/build-wasm-wgpu/tether_sandbox.data
+            build/build-wasm-wgpu/**/tether_sandbox.html
+            build/build-wasm-wgpu/**/tether_sandbox.js
+            build/build-wasm-wgpu/**/tether_sandbox.wasm
+            build/build-wasm-wgpu/**/tether_sandbox.data

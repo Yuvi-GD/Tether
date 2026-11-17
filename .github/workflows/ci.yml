@@ -74,7 +74,12 @@ jobs:
       - name: Correctness tests
         run: ctest --test-dir build -L correctness --output-on-failure --no-tests=error
       - name: Sandbox smoke test
-        run: xvfb-run ./build/tether_sandbox --smoke
+        run: |
+          if [ -f "./build/${{ matrix.config }}/bin/tether_sandbox" ]; then
+            xvfb-run ./build/${{ matrix.config }}/bin/tether_sandbox --smoke
+          else
+            xvfb-run ./build/bin/tether_sandbox --smoke
+          fi
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -1,33 +1,62 @@
 cmake_minimum_required(VERSION 3.20)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-project(TetherUI VERSION 0.0.3 LANGUAGES C CXX)
+project(TetherUI VERSION 0.0.4 LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+# Setup output directories per-config to avoid debug/release/platform collision
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+else()
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/Debug/bin")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Release/bin")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/RelWithDebInfo/bin")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/MinSizeRel/bin")
+
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/Debug/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Release/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/RelWithDebInfo/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/MinSizeRel/bin")
+
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/Debug/lib")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Release/lib")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/RelWithDebInfo/lib")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/MinSizeRel/lib")
+endif()
 set(TETHER_STANDALONE OFF)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set(TETHER_STANDALONE ON)
 endif()
-option(TETHER_BUILD_SHARED "Build a shared Tether library" ON)
+set(TETHER_DEFAULT_SHARED ON)
+set(TETHER_DEFAULT_TESTS ${TETHER_STANDALONE})
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    set(TETHER_DEFAULT_SHARED OFF)
+    set(TETHER_DEFAULT_TESTS OFF)
+endif()
+option(TETHER_BUILD_SHARED "Build a shared Tether library" ${TETHER_DEFAULT_SHARED})
 option(TETHER_BUILD_EXAMPLES "Build the sandbox application" ${TETHER_STANDALONE})
-option(TETHER_BUILD_TESTS "Build and register correctness tests" ${TETHER_STANDALONE})
+option(TETHER_BUILD_TESTS "Build and register correctness tests" ${TETHER_DEFAULT_TESTS})
 # Compatibility with existing build directories; new configurations use RUNNERS.
 if(DEFINED TETHER_BUILD_TOOLS AND NOT DEFINED TETHER_BUILD_RUNNERS)
     set(TETHER_BUILD_RUNNERS ${TETHER_BUILD_TOOLS} CACHE BOOL "Build standalone test and benchmark runners")
 endif()
-option(TETHER_BUILD_RUNNERS "Build standalone test and benchmark runners" ${TETHER_STANDALONE})
+option(TETHER_BUILD_RUNNERS "Build standalone test and benchmark runners" ${TETHER_DEFAULT_TESTS})
 option(TETHER_ENABLE_INSTALL "Enable installation and CMake package exports" ${TETHER_STANDALONE})
 include(cmake/TetherSanitizers.cmake)
 include(cmake/TetherWasm.cmake)
+include(cmake/TetherAssets.cmake)
 
 include(GNUInstallDirs)
 set(THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/yaml")
+set(BUILD_TESTING OFF CACHE BOOL "Disable libyaml tests" FORCE)
 add_subdirectory("${THIRD_PARTY_DIR}/libyaml")
 add_subdirectory("${THIRD_PARTY_DIR}/chitra")
 set(TETHER_SOURCES
@@ -38,7 +67,6 @@ set(TETHER_SOURCES
     src/core/tether_events.c
     src/utils/tether_hashmap.c
     src/backends/chitra_backend.c
-    src/platform/tether_platform.c
     src/engine/parser/tether_yaml.c
     src/engine/parser/tether_yaml_ast.c
     src/engine/parser/tether_yaml_widgets.c
@@ -65,7 +93,7 @@ set(TETHER_SOURCES
 # reuse these objects; each operating-system process owns its runtime state.
 set(TETHER_PLATFORM_LIBRARIES)
 if(WIN32)
-    set(TETHER_PLATFORM_LIBRARIES dwmapi comdlg32)
+    set(TETHER_PLATFORM_LIBRARIES dwmapi)
 elseif(APPLE)
     set(TETHER_PLATFORM_LIBRARIES "-framework Cocoa" "-framework QuartzCore" "-framework Metal" "-framework MetalKit")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")

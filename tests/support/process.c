@@ -57,6 +57,12 @@ bool tool_launch(ToolProcess *p, const char *name, const char *const *args) {
         sizeof executable) {
         return false;
     }
+    if (GetFileAttributesA(executable) == INVALID_FILE_ATTRIBUTES) {
+        if (snprintf(executable, sizeof executable, "%s/../test/%s.exe", directory, name) >=
+            sizeof executable) {
+            return false;
+        }
+    }
     char command[16384] = "";
     if (!append_arg(command, sizeof command, executable)) {
         return false;
@@ -69,7 +75,7 @@ bool tool_launch(ToolProcess *p, const char *name, const char *const *args) {
     STARTUPINFOA startup = {0};
     PROCESS_INFORMATION process = {0};
     startup.cb = sizeof startup;
-    if (!CreateProcessA(executable, command, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, directory,
+    if (!CreateProcessA(executable, command, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL,
                         &startup, &process)) {
         return false;
     }
@@ -79,6 +85,11 @@ bool tool_launch(ToolProcess *p, const char *name, const char *const *args) {
 #else
     if (snprintf(executable, sizeof executable, "%s/%s", directory, name) >= sizeof executable) {
         return false;
+    }
+    if (access(executable, X_OK) != 0) {
+        if (snprintf(executable, sizeof executable, "%s/../test/%s", directory, name) >= sizeof executable) {
+            return false;
+        }
     }
     char *arguments[64];
     size_t count = 0;
@@ -95,9 +106,6 @@ bool tool_launch(ToolProcess *p, const char *name, const char *const *args) {
         return false;
     }
     if (pid == 0) {
-        if (chdir(directory)) {
-            _exit(126);
-        }
         execv(executable, arguments);
         _exit(127);
     }

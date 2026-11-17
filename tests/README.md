@@ -50,7 +50,7 @@ compiler settings still require reconfiguration.
 ## Run a controlled workload
 
 ```powershell
-./build/Release/tether_bench.exe --scenario render --mode retained --count 10000 --spawn 32 --delete 32 --mutate 100 --frames 120 --warmup 30 --fps 60 --seed 1 --memory-mib 1024
+./build/Release/test/tether_bench.exe --scenario render --mode retained --count 10000 --spawn 32 --delete 32 --mutate 100 --frames 120 --warmup 30 --fps 60 --seed 1 --memory-mib 1024
 ```
 
 Use `tether_test.exe --help` or `tether_bench.exe --help` for all inputs. Frame count

@@ -61,14 +61,15 @@ jobs:
           cmake --install build-release --prefix "dist/${PKG}"
 
           mkdir -p "dist/${PKG}/bin"
-          cp build-release/tether_sandbox "dist/${PKG}/bin/"
-          cp build-release/tether_bench "dist/${PKG}/bin/" 2>/dev/null || true
-          cp build-release/tether_test "dist/${PKG}/bin/" 2>/dev/null || true
+          cp build-release/Release/bin/tether_sandbox "dist/${PKG}/bin/" 2>/dev/null || cp build-release/bin/tether_sandbox "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tether_sandbox "dist/${PKG}/bin/"
+          cp build-release/Release/test/tether_bench "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tests/tether_bench "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tether_bench "dist/${PKG}/bin/" 2>/dev/null || true
+          cp build-release/Release/test/tether_test "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tests/tether_test "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tether_test "dist/${PKG}/bin/" 2>/dev/null || true
 
-          cp -r examples/sandbox/ui/scripts "dist/${PKG}/UI"
-          cp -r examples/Font "dist/${PKG}/Font"
-          cp -r examples/sandbox/ui/scripts "dist/${PKG}/bin/UI"
-          cp -r examples/Font "dist/${PKG}/bin/Font"
+          cp -r build-release/Release/bin/assets "dist/${PKG}/bin/" 2>/dev/null || cp -r build-release/bin/assets "dist/${PKG}/bin/" 2>/dev/null || {
+            mkdir -p "dist/${PKG}/bin/assets"
+            cp -r examples/sandbox/ui/scripts "dist/${PKG}/bin/assets/UI"
+            cp -r examples/Font "dist/${PKG}/bin/assets/Font"
+          }
           cp README.md LICENSE "dist/${PKG}/"
 
           cd dist
@@ -108,14 +109,33 @@ jobs:
           cmake --install build-release --config Release --prefix "dist\$pkg"
 
           New-Item -ItemType Directory -Force -Path "dist\$pkg\bin"
-          Copy-Item "build-release\Release\tether_sandbox.exe" "dist\$pkg\bin\"
-          Copy-Item "build-release\Release\tether_bench.exe" "dist\$pkg\bin\" -ErrorAction SilentlyContinue
-          Copy-Item "build-release\Release\tether_test.exe" "dist\$pkg\bin\" -ErrorAction SilentlyContinue
+          if (Test-Path "build-release\Release\bin\tether_sandbox.exe") {
+            Copy-Item "build-release\Release\bin\tether_sandbox.exe" "dist\$pkg\bin\"
+          } elseif (Test-Path "build-release\bin\Release\tether_sandbox.exe") {
+            Copy-Item "build-release\bin\Release\tether_sandbox.exe" "dist\$pkg\bin\"
+          } elseif (Test-Path "build-release\Release\tether_sandbox.exe") {
+            Copy-Item "build-release\Release\tether_sandbox.exe" "dist\$pkg\bin\"
+          }
+          if (Test-Path "build-release\Release\test\tether_bench.exe") {
+            Copy-Item "build-release\Release\test\tether_bench.exe" "dist\$pkg\bin\"
+          } else {
+            Copy-Item "build-release\tests\Release\tether_bench.exe" "dist\$pkg\bin\" -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "build-release\Release\test\tether_test.exe") {
+            Copy-Item "build-release\Release\test\tether_test.exe" "dist\$pkg\bin\"
+          } else {
+            Copy-Item "build-release\tests\Release\tether_test.exe" "dist\$pkg\bin\" -ErrorAction SilentlyContinue
+          }
 
-          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg\UI"
-          Copy-Item -Recurse "examples\Font" "dist\$pkg\Font"
-          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg\bin\UI"
-          Copy-Item -Recurse "examples\Font" "dist\$pkg\bin\Font"
+          if (Test-Path "build-release\Release\bin\assets") {
+            Copy-Item -Recurse "build-release\Release\bin\assets" "dist\$pkg\bin\"
+          } elseif (Test-Path "build-release\bin\Release\assets") {
+            Copy-Item -Recurse "build-release\bin\Release\assets" "dist\$pkg\bin\"
+          } else {
+            New-Item -ItemType Directory -Force -Path "dist\$pkg\bin\assets"
+            Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg\bin\assets\UI"
+            Copy-Item -Recurse "examples\Font" "dist\$pkg\bin\assets\Font"
+          }
           Copy-Item "README.md", "LICENSE" "dist\$pkg\"
 
           Compress-Archive -Path "dist\$pkg" -DestinationPath "dist\$pkg.zip"
@@ -154,14 +174,15 @@ jobs:
           cmake --install build-release --prefix "dist/${PKG}"
 
           mkdir -p "dist/${PKG}/bin"
-          cp build-release/tether_sandbox "dist/${PKG}/bin/"
-          cp build-release/tether_bench "dist/${PKG}/bin/" 2>/dev/null || true
-          cp build-release/tether_test "dist/${PKG}/bin/" 2>/dev/null || true
+          cp build-release/Release/bin/tether_sandbox "dist/${PKG}/bin/" 2>/dev/null || cp build-release/bin/tether_sandbox "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tether_sandbox "dist/${PKG}/bin/"
+          cp build-release/Release/test/tether_bench "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tests/tether_bench "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tether_bench "dist/${PKG}/bin/" 2>/dev/null || true
+          cp build-release/Release/test/tether_test "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tests/tether_test "dist/${PKG}/bin/" 2>/dev/null || cp build-release/tether_test "dist/${PKG}/bin/" 2>/dev/null || true
 
-          cp -r examples/sandbox/ui/scripts "dist/${PKG}/UI"
-          cp -r examples/Font "dist/${PKG}/Font"
-          cp -r examples/sandbox/ui/scripts "dist/${PKG}/bin/UI"
-          cp -r examples/Font "dist/${PKG}/bin/Font"
+          cp -r build-release/Release/bin/assets "dist/${PKG}/bin/" 2>/dev/null || cp -r build-release/bin/assets "dist/${PKG}/bin/" 2>/dev/null || {
+            mkdir -p "dist/${PKG}/bin/assets"
+            cp -r examples/sandbox/ui/scripts "dist/${PKG}/bin/assets/UI"
+            cp -r examples/Font "dist/${PKG}/bin/assets/Font"
+          }
           cp README.md LICENSE "dist/${PKG}/"
 
           cd dist
@@ -220,8 +241,8 @@ jobs:
           PKG="tether-${RELEASE_TAG}-web-wasm"
           mkdir -p "dist/${PKG}/webgl2"
           mkdir -p "dist/${PKG}/webgpu"
-          cp build-wasm-gl/tether_sandbox.* "dist/${PKG}/webgl2/"
-          cp build-wasm-wgpu/tether_sandbox.* "dist/${PKG}/webgpu/"
+          cp build-wasm-gl/bin/tether_sandbox.* "dist/${PKG}/webgl2/" 2>/dev/null || cp build-wasm-gl/tether_sandbox.* "dist/${PKG}/webgl2/"
+          cp build-wasm-wgpu/bin/tether_sandbox.* "dist/${PKG}/webgpu/" 2>/dev/null || cp build-wasm-wgpu/tether_sandbox.* "dist/${PKG}/webgpu/"
           cp README.md LICENSE "dist/${PKG}/"
           cd dist
           zip -r "${PKG}.zip" "${PKG}"
