@@ -50,14 +50,24 @@ cmake --build build --config Release --target tether_sandbox --parallel 4
 ```
 
 ### Step 3: Run the Executable
+Binaries are placed into configuration-isolated subdirectories (`build/<Config>/bin`):
 ```powershell
-.\build\Release\tether_sandbox.exe
+# Windows (Release or Debug)
+.\build\Release\bin\tether_sandbox.exe
+# Or Debug:
+.\build\Debug\bin\tether_sandbox.exe
+
+# Linux / macOS (or Ninja single-config)
+./build/Release/bin/tether_sandbox
 ```
 
 To jump directly into the YAML and C component showcase:
 ```powershell
-.\build\Release\tether_sandbox.exe --showcase
+.\build\Release\bin\tether_sandbox.exe --showcase
 ```
+
+> [!TIP]
+> **Asset Root Path Rule**: In C code and declarative YAML files, asset references are specified relative to the asset root without prefixing `assets/` (e.g. `"UI/app.yaml"`, `"Font/Roboto-Regular.ttf"`). The engine resolves relative assets automatically.
 
 ### Step 4: Verify the Build (Automated Test Suite)
 Run all unit correctness and integration tests using CTest:
@@ -69,11 +79,12 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## 4. Building for WebAssembly (WebGL2 and WebGPU)
 
-Tether natively supports WebAssembly compilation via Emscripten, enabling browser execution with zero garbage collection overhead and high-DPI canvas scaling. Both WebGL2 and modern WebGPU backends are fully supported.
+Tether natively supports WebAssembly compilation via Emscripten, enabling browser execution with zero garbage collection overhead, High-DPI canvas scaling, and mobile touch gesture support. Both WebGL2 and modern WebGPU backends are fully supported.
 
 ### Prerequisites for Web
 - **Emscripten SDK (emsdk)**: Version 3.1.x or 4.0+.
-- **Python 3.x**: For running a local HTTP test server.
+- **Ninja**: Fast build system for Emscripten toolchains.
+- **Python 3.x**: For running a local HTTP test server (optional if using `emrun`).
 
 Install and activate Emscripten in your terminal:
 ```powershell
@@ -86,19 +97,32 @@ cd emsdk
 
 ### Option A: WebGL2 Backend (Default Web Target)
 ```powershell
-emcmake cmake -B build/build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build/build-wasm
-python -m http.server -d build/build-wasm 8080
+emcmake cmake -B build/wasm-webgl -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=GLES3
+cmake --build build/wasm-webgl
+
+# Quick test with emrun (auto-launches default browser):
+emrun build/wasm-webgl/tether_sandbox.html
+
+# Or serve via local HTTP server:
+python -m http.server -d build/wasm-webgl 8080
 ```
 Open `http://localhost:8080/tether_sandbox.html` in your browser.
 
 ### Option B: WebGPU Backend (Next-Gen GPU Target)
 ```powershell
-emcmake cmake -B build/build-wasm-wgpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=WGPU
-cmake --build build/build-wasm-wgpu
-python -m http.server -d build/build-wasm-wgpu 8081
+emcmake cmake -B build/wasm-webgpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=WGPU
+cmake --build build/wasm-webgpu
+
+# Quick test with emrun:
+emrun build/wasm-webgpu/tether_sandbox.html
+
+# Or serve via local HTTP server:
+python -m http.server -d build/wasm-webgpu 8081
 ```
 Open `http://localhost:8081/tether_sandbox.html` in a WebGPU-supported browser (Chrome 113+, Edge 113+, Firefox Nightly, Safari 18+).
+
+> [!NOTE]
+> **Mobile Touch Navigation**: Touch inputs are normalized to pointer events (`POINTER_DOWN`, `POINTER_MOVE`, `POINTER_UP`) with CSS `touch-action: none` suppressing browser scrolling and zoom gestures.
 
 ### Using Tether Web in Host CMake Projects
 Tether provides `cmake/TetherWasm.cmake` with the `tether_configure_wasm_target()` helper. In your host `CMakeLists.txt`:

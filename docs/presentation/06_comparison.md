@@ -12,7 +12,7 @@ The modern software landscape offers dozens of graphical user interface solution
 
 Tether occupies a distinct, deliberate architectural position: **The Missing Middle**. It delivers the clean developer ergonomics and declarative authoring of modern retained UI frameworks while matching the zero-allocation steady-state performance, kilobyte-scale memory efficiency, and rock-solid determinism of low-level systems programming.
 
-This chapter compares Tether's architectural model (combining active `v0.0.3-preview` foundations with target design goals on the [roadmap](10_roadmap_and_community.md)) against prominent GUI technologies in industry use today: **Dear ImGui**, **Qt / QML**, **Flutter**, **Slint**, **Clay UI**, **Yoga (Meta)**, and **Web DOM / Electron**.
+This chapter compares Tether's architectural model (combining active preview foundations with target design goals on the [roadmap](10_roadmap_and_community.md)) against prominent GUI technologies in industry use today: **Dear ImGui**, **Qt / QML**, **Flutter**, **Slint**, **Clay UI**, **Yoga (Meta)**, and **Web DOM / Electron**.
 
 ---
 
@@ -146,7 +146,7 @@ flowchart TD
 
 #### 2. Implementation Language & Overhead
 - **Yoga**: Written in C++ with dynamic memory allocations across node trees.
-- **Tether UI**: Written in ISO C99. Current `v0.0.3-preview` runs a two-pass stack/tree solver in `tether_layout.c`, with stateless Vinyasa scratch-arena solving on the roadmap.
+- **Tether UI**: Written in ISO C99. The current engine runs a two-pass stack/tree solver in `tether_layout.c`, with stateless Vinyasa scratch-arena solving on the roadmap.
 
 ---
 

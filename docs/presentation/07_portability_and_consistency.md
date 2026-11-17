@@ -67,29 +67,34 @@ flowchart TD
 
 Tether's minimal requirements allow it to deploy across a wide spectrum of hardware:
 
-### Tier 1: Desktop Operating Systems (`v0.0.3-preview` Focus)
-- **Target Environments**: Microsoft Windows 10/11 (validated in CI with MSVC and Clang ASan); Linux (X11/OpenGL) and macOS (Cocoa/Metal) configurations exist in `CMakeLists.txt` via Chitra/Sokol and await CI validation.
+### Tier 1: Desktop Operating Systems (Supported & CI Verified)
+- **Target Environments**: Microsoft Windows 10/11 (Direct3D 11, validated in CI with MSVC and Clang ASan), Linux (X11/OpenGL Core, validated in CI with GCC and smoke testing), and macOS 13+ (Metal, validated in CI with Apple Clang).
 - **Default Backend**: **Chitra GPU Engine** (`src/backends/chitra_backend.c`).
 - **Display Pipeline**: SDF rounded-rectangle/border shaders, dynamic Fontstash glyph caching, and 64-bit radix-sorted draw batching.
 - **Windowing & Events**: Integrated via Sokol (`sokol_app` / `sokol_gfx`) in the bundled Chitra backend.
 - **Resource Profile**: Flat C ECS arrays; hardware acceleration memory (swapchains, device contexts, and font atlas textures) is managed directly by the OS windowing system and GPU driver.
 
-### Tier 2: Embedded Systems and Real-Time Operating Systems (Roadmap Target)
+### Tier 2: Mobile Operating Systems (Supported via Default Backend)
+- **Target Environments**: Android (ARM64 / ARMv7 / x86_64 via Android NDK) and Apple iOS / iPadOS (ARM64 via Metal and UIKit).
+- **Default Backend**: **Chitra GPU Engine** via Sokol (`sokol_app` / `sokol_gfx` targeting OpenGL ES 3.0 on Android and Metal on iOS).
+- **Touch & Gesture Pipeline**: Native touch events mapped directly to primary pointer interactions with multi-touch contact tracking.
+- **Resource Profile**: Pure C99 execution with zero garbage collection pauses.
+
+### Tier 3: WebAssembly (WASM - Supported & CI Verified)
+- **Target Environments**: Modern desktop and mobile web browsers (Chrome, Firefox, Safari, Edge).
+- **Backend Strategy**: Emscripten builds targeting WebGL2 (`SOKOL_GLES3`) and WebGPU (`SOKOL_WGPU` via Dawn port) with native high-DPI scaling, touch input event mapping for mobile browsers, and declarative CMake integration via `cmake/TetherWasm.cmake`.
+
+### Tier 4: Embedded Systems and Real-Time Operating Systems [Roadmap]
 - **Target Environments**: Embedded Linux (Raspberry Pi, Toradex, Yocto), FreeRTOS, Zephyr RTOS, NuttX.
 - **Use Cases**: Industrial automation HMIs, medical monitoring devices, automotive dashboard instrumentation.
 - **Backend Strategy**: Custom `Tether_Backend` adapters targeting OpenGL ES 2.0/3.0, ThorVG vector graphics, or Linux Direct Rendering Manager (DRM/KMS).
-- **Resource Goal**: Sub-megabyte binary, steady-state zero-alloc tuning, and deterministic frame pacing (unvalidated in preview).
+- **Resource Goal**: Sub-megabyte binary, steady-state zero-alloc tuning, and deterministic frame pacing.
 
-### Tier 3: Bare-Metal Microcontrollers (Roadmap Target)
+### Tier 5: Bare-Metal Microcontrollers [Roadmap]
 - **Target Environments**: ARM Cortex-M (Cortex-M4, Cortex-M7), ESP32-S3, RISC-V microcontrollers.
 - **Use Cases**: Smart home control panels, handheld testing equipment, hardware synthesizers, low-power appliances.
 - **Backend Strategy**: **Pipeline 1 (Pure C Imperative)** paired with a software framebuffer driver for SPI, I8080, or parallel LCD displays.
-- **Resource Goal**: Sub-64 KB static SRAM operation without AST/YAML parser overhead (roadmap target, not yet measured).
-
-### Tier 4: WebAssembly (WASM - Supported & Verified)
-- **Target Environments**: Modern web browsers (Chrome, Firefox, Safari, Edge).
-- **Backend Strategy**: Emscripten builds targeting WebGL2 (`SOKOL_GLES3`) and WebGPU (`SOKOL_WGPU` via Dawn port) with native high-DPI scaling, virtual MEMFS live asset synchronization, and declarative CMake integration via `cmake/TetherWasm.cmake`.
-- **Use Cases**: High-performance interactive web tools, CAD viewers, embedded playground sandboxes, and zero-install web applications.
+- **Resource Goal**: Sub-64 KB static SRAM operation using pure C imperative mode with banded line-buffer or dirty-tile display streaming.
 
 ---
 
@@ -110,7 +115,7 @@ Instead of pursuing rigid pixel dogma, Tether designs for **structural, mathemat
 A given Tether scene runs the same layout algorithm across builds for consistent relative geometry, subject to per-platform font metrics and floating-point behavior.
 
 #### 2. Normalized Interaction Routing
-The input subsystem normalizes pointer events and resolves widget states (normal, hover, pressed, disabled) consistently inside core ECS (`v0.0.3-preview` exercises mouse/pointer input; full keyboard focus navigation, gamepad, and spatial pointers await expansion).
+The input subsystem normalizes pointer events and resolves widget states (normal, hover, pressed, disabled) consistently inside core ECS (current preview exercises mouse and touch pointer input; full keyboard focus navigation, gamepad, and spatial pointers await expansion).
 
 #### 3. Resolution-Independent SDF Shapes
 Chitra uses Signed Distance Field (SDF) shaders for rounded rectangles and borders so card primitives scale cleanly with display density (arbitrary vector icon pipelines and multi-backend parity remain roadmap items).
@@ -162,7 +167,7 @@ To keep Tether portable across desktop hosts and future embedded targets, the ar
 Dense arrays store flat C99 structs contiguously by component type. As embedded microcontroller targets come online, enforcing strict 8-byte pool alignment avoids unaligned-access traps on RISC cores while improving cache utilization on x86-64 and ARM.
 
 ### 2. Endian-Neutral Binary Specification (`.tbc` Roadmap)
-Tether's planned AOT bytecode format (`.tbc`) specifies little-endian integer encoding with load-time normalization for big-endian hosts (in `v0.0.3-preview`, scenes parse from text YAML at runtime).
+Tether's planned AOT bytecode format (`.tbc`) specifies little-endian integer encoding with load-time normalization for big-endian hosts (in the current preview, scenes parse from text YAML at runtime).
 
 ### 3. Clear Memory Separation: Core Data vs. Host Graphics Memory
 - **Core ECS Memory**: Entity tables, sparse maps, and component arrays keep internal data compact (`TextDynamic` and expanding capacity pools use standard heap allocation today; sub-64 KB bare-metal static sizing is roadmap work).

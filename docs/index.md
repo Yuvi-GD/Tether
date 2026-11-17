@@ -1,5 +1,4 @@
 # Tether Documentation
-*Version 0.0.3 (Developer Preview)*
 
 Tether is a high-performance, modular 2D UI engine written in C. It provides the foundational runtime infrastructure needed to build modern user interface frameworks, interactive applications, and portable UI systems with zero garbage collection overhead, cache-friendly data access, and predictable frame times.
 
@@ -44,7 +43,7 @@ flowchart TD
     end
 
     subgraph Adapters["Platform & Engine Adapters"]
-        Chitra["Chitra Backend (Hardware-Accelerated 2D: D3D11, Metal, GL Core, WebGL2, WebGPU)"]
+        Chitra["Chitra Default Backend (Hardware-Accelerated 2D: D3D11, Metal, GL Core, GLES3, WebGL2, WebGPU)"]
         Vinyasa["Vinyasa Engine (Advanced Flexbox/Constraint Solver - Planned)"]
         OtherBackends["Alternative Backends (ThorVG, raylib, SDL, Headless)"]
     end

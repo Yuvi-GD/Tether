@@ -14,7 +14,7 @@ This chapter outlines the phased architectural roadmap for Tether's future devel
 
 ```mermaid
 flowchart TD
-    subgraph NearTerm["Phase 1: Core Systems and Pipeline Maturity (v0.0.3 Preview - Next)"]
+    subgraph NearTerm["Phase 1: Core Systems and Pipeline Maturity"]
         Vinyasa["Vinyasa Layout Solver Integration\n(Stateless Scratch-Arena Constraint Engine)"]
         AOTCooker["Production Bytecode Pipeline (.tbc)\n(tether_cooker & Zero-Parse Interpreter)"]
         StrategyReg["Layout Strategy Registry\n(Container-Agnostic Extensibility: Grid/Wrap)"]
@@ -63,7 +63,7 @@ Other possible future work includes automatic watched-file reload, diagnostic in
 
 ## 3. Phased Architectural Roadmap
 
-### Phase 1: Core Systems & Pipeline Maturity (v0.0.3 Preview - Next)
+### Phase 1: Core Systems & Pipeline Maturity (v0.0.4 Preview - Next)
 
 #### 1. Full Vinyasa Layout Solver Integration
 - **Context**: Tether currently integrates a built-in two-pass layout solver supporting flexbox and canvas anchor modes. The standalone Vinyasa layout engine expands on this with advanced multi-reference constraint solving and dynamic flex wrapping.
@@ -119,7 +119,7 @@ Other possible future work includes automatic watched-file reload, diagnostic in
   - **Images & Vector Media**: Native decoding and rendering of PNG, JPG, vector SVG, and Lottie animations.
 
 #### 2. Extended Controls and Composite Views
-- **Context**: Building on the built-in `v0.0.3-preview` widget suite (`Button`, `Slider`, `Toggle`, `Checkbox`, `Radio`, `SegmentedBar`, `Dropdown`, `Menu`, `ContextMenu`, `Collapsible`, `Switcher`) with data-heavy controls.
+- **Context**: Building on the built-in widget suite (`Button`, `Slider`, `Toggle`, `Checkbox`, `Radio`, `SegmentedBar`, `Dropdown`, `Menu`, `ContextMenu`, `Collapsible`, `Switcher`) with data-heavy controls.
 - **Milestone Goals**:
   - Multi-column data tables, virtualized scrollable lists, and interactive single/multi-line text input controls.
   - Richer reusable template and styling composition across YAML scenes and C factories.
