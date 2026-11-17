@@ -4,8 +4,10 @@ add_executable(tether_sandbox
     sandbox/lab/lab.c
     sandbox/results/results.c
     sandbox/events/sandbox_events.c
+    sandbox/platform/sandbox_platform.c
 )
 target_include_directories(tether_sandbox PRIVATE
+    sandbox/platform
     sandbox/events
     sandbox/app sandbox/ui
     sandbox/ui/widgets
@@ -13,13 +15,22 @@ target_include_directories(tether_sandbox PRIVATE
     sandbox/results
 )
 target_link_libraries(tether_sandbox PRIVATE tether_runtime tether_run_support)
+if(WIN32)
+    target_link_libraries(tether_sandbox PRIVATE comdlg32)
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     tether_configure_wasm_target(tether_sandbox
-        PRELOAD_DIRS
-            "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/ui/scripts@UI"
-            "${CMAKE_CURRENT_SOURCE_DIR}/Font@Font"
+        EXPORTED_FUNCTIONS
+            _sandbox_platform_on_file_loaded
+            _sandbox_platform_get_path_buf
+            _sandbox_platform_on_sync_done
     )
 endif()
+tether_target_assets(tether_sandbox
+    DIRECTORIES
+        "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/ui/scripts@UI"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Font@Font"
+)
 target_compile_definitions(tether_sandbox PRIVATE SANDBOX_REPORT_DIR="report/workbench")
 if(TARGET tether_bench AND TARGET tether_test)
     add_dependencies(tether_sandbox tether_test tether_bench)
@@ -27,9 +38,6 @@ if(TARGET tether_bench AND TARGET tether_test)
 else()
     target_compile_definitions(tether_sandbox PRIVATE SANDBOX_HAS_RUNNERS=0)
 endif()
-add_custom_command(TARGET tether_sandbox POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/ui/scripts" "$<TARGET_FILE_DIR:tether_sandbox>/UI"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/Font" "$<TARGET_FILE_DIR:tether_sandbox>/Font")
 if(TETHER_BUILD_TESTS AND TETHER_REGISTER_RENDER_TESTS AND TARGET tether_bench)
     # This deterministic failed result exercises Workbench failure presentation.
     # Generate it in the build tree; it is not a captured benchmark output.

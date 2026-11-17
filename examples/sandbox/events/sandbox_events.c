@@ -8,7 +8,7 @@
 #include "tether/engine/parser/tether_yaml.h"
 #include "tether/backends/tether_backend.h"
 #include "tool.h"
-#include "tether/platform/tether_platform.h"
+#include "sandbox_platform.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -181,7 +181,7 @@ static void sync_yaml(TUID entity, const Tether_Event *event, void *data) {
     (void)entity; (void)event; (void)data;
     if (active_yaml[0]) {
         if (!strncmp(active_yaml, "UI/", 3)) {
-            tether_platform_sync_file(active_yaml, on_playground_sync_done, NULL);
+            sandbox_platform_sync_file(active_yaml, on_playground_sync_done, NULL);
         } else {
             on_playground_sync_done(NULL);
         }
@@ -222,7 +222,7 @@ static void on_yaml_chosen(const char *path, void *user_data) {
 
 static void choose_yaml(TUID entity, const Tether_Event *event, void *data) {
     (void)entity; (void)event; (void)data;
-    tether_platform_pick_file("yaml,yml", "YAML files (*.yaml;*.yml)", on_yaml_chosen, NULL);
+    sandbox_platform_pick_file("yaml,yml", "YAML files (*.yaml;*.yml)", on_yaml_chosen, NULL);
 }
 
 static void load_preset(TUID entity, const Tether_Event *event, void *data) {
