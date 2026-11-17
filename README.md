@@ -3,25 +3,35 @@
 # Tether UI Engine
 ### **TETHER** : TETHER - ECS Toolkit for High-Efficiency Runtime
 
-*Version 0.0.3 (Developer Preview)*
-
 [![Tether Correctness CI](https://github.com/Yuvi-GD/Tether/actions/workflows/ci.yml/badge.svg)](https://github.com/Yuvi-GD/Tether/actions/workflows/ci.yml)
 [![Tether WebAssembly CI](https://github.com/Yuvi-GD/Tether/actions/workflows/wasm.yml/badge.svg)](https://github.com/Yuvi-GD/Tether/actions/workflows/wasm.yml)
-![Version](https://img.shields.io/badge/version-v0.0.3--preview-0969da)
-![Language](https://img.shields.io/badge/language-C99-orange)
-![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Web-0969da)
+[![Documentation](https://img.shields.io/badge/docs-reference-blue.svg)](docs/index.md)
 [![License](https://img.shields.io/badge/license-Apache%202.0-2ea44f)](LICENSE)
+![Language](https://img.shields.io/badge/language-C99-orange)
 
-[**Quick Start**](#9-building--running) &nbsp;|&nbsp;
+**Major Platforms:**
+![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)
+![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white)
+![Android](https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white)
+![iOS](https://img.shields.io/badge/iOS-000000?logo=apple&logoColor=white)
+![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)
+
+*Source SDK supports any platform with a standard C99 compiler (Embedded Linux, RTOS, Bare-Metal, and Game Engines).*
+
+[**Quick Start**](#10-building--running) &nbsp;|&nbsp;
 [**Architecture**](#3-cell-block-subsystem-architecture) &nbsp;|&nbsp;
-[**Widget Suite**](#5-built-in-widget-suite) &nbsp;|&nbsp;
+[**Platform Matrix**](#5-platform-support--sdk-distribution) &nbsp;|&nbsp;
+[**Widget Suite**](#6-built-in-widget-suite) &nbsp;|&nbsp;
 [**Docs Hub**](docs/index.md) &nbsp;|&nbsp;
 [**Contributing**](CONTRIBUTING.md) &nbsp;|&nbsp;
 [**Releases**](https://github.com/Yuvi-GD/Tether/releases)
 
 </div>
 
-Tether is an open-source C engine for building user interface libraries. It combines entities, components, layout, input, and reusable widgets; the sandbox uses YAML and C to build interfaces rendered through Chitra with native multi-platform support for Windows, Linux, macOS, and WebAssembly.
+Tether is a high-performance, modular user interface engine written in pure ISO C99. Engineered for predictable latency, cache locality, and zero garbage collection overhead, Tether replaces heavy DOM trees and deeply nested object-oriented inheritance hierarchies with a data-oriented Entity Component System (UI-ECS) and a reactive two-pass layout solver. By separating persistent UI layout space from presentation transforms, Tether ensures that animations, state changes, and styling updates execute with minimal CPU reflow and deterministic frame times.
+
+Designed to run anywhere C runs, Tether is distributed both as a standalone **Source SDK** that drops directly into any build system or embedded environment, and as **Precompiled SDK packages** with interactive demo showcases for major desktop, mobile, and web environments. Out of the box, Tether pairs with **Chitra** as its default hardware-accelerated 2D GPU rendering engine (powered by Sokol), providing native rendering across Windows (Direct3D 11), Linux (OpenGL Core), macOS and iOS (Metal), Android (OpenGL ES 3.0), and modern browsers via WebAssembly (WebGL2 and WebGPU), while a clean 3-table C backend interface allows seamless integration into game engines, RTOS monitors, or custom software framebuffers.
 
 ---
 
@@ -39,7 +49,7 @@ Digital computing solved media portability decades ago by establishing open, ven
 
 For decades, graphical interfaces have remained trapped inside vendor-locked compilers (Win32, Cocoa, Qt), proprietary game engine codebases, or bloated multi-hundred-megabyte browser engines (Chromium/Electron).
 
-Tether's long-term vision is a portable, open way to describe interactive interfaces. A future bytecode format (`.tbc`) and support for the following environments are roadmap ideas, not capabilities established by this preview:
+Tether's long-term vision is a portable, open way to describe interactive interfaces. A future bytecode format (`.tbc`) and support for the following environments are upcoming roadmap targets:
 - An automotive touchscreen or medical monitor running an RTOS,
 - A bare-metal microcontroller driving an SPI or parallel LCD,
 - A modern web browser executing WebAssembly via WebGPU or Canvas,
@@ -128,7 +138,42 @@ Tether isolates all hardware rasterization behind an abstract Render Hardware In
 
 ---
 
-## 5. Built-in Widget Suite
+## 5. Platform Support & SDK Distribution
+
+Tether Core is pure standard C99 with zero operating-system or GPU dependencies, allowing it to run anywhere C can run. Tether's architecture cleanly separates the core UI engine from platform windowing and hardware rendering via the `Tether_Backend` interface table (`system`, `shape`, `text`).
+
+### Platform Deployment Matrix
+
+| Platform / Target | Default Setup (Chitra + Sokol) | Custom Backend (`Tether_Backend`) | Implementation / Driver Details |
+| :--- | :---: | :---: | :--- |
+| **Windows 10 / 11** | Supported | Supported | Direct3D 11 / OpenGL Core via Sokol (CI validated) |
+| **Linux (X11 / Wayland)** | Supported | Supported | OpenGL Core 3.3 via Sokol (CI validated), custom DRM/KMS or SDL3 |
+| **macOS (10.13+)** | Supported | Supported | Apple Metal via Sokol (CI validated) |
+| **Web (Browsers)** | Supported | Supported | WebAssembly via Emscripten: WebGL2 & WebGPU with High-DPI & mobile touch (CI validated) |
+| **Android** | Supported | Supported | OpenGL ES 3.0 via Sokol / Android NDK |
+| **iOS / iPadOS** | Supported | Supported | Apple Metal via Sokol / UIKit |
+| **Embedded Linux / SBC** | Supported | Supported | OpenGL ES 2.0/3.0 via Sokol, or direct DRM/KMS framebuffer |
+| **Game Engines (Unreal, Unity, Godot)** | Supported | Supported | Offscreen GPU texture rendering or engine RHI; driven via `tether_on_*` frame hooks |
+| **RTOS (FreeRTOS, Zephyr, NuttX)** | [Roadmap] | Supported | Pure C99 core links directly to RTOS tasks; draws to LCD display controller |
+| **Microcontrollers (Cortex-M, ESP32, RISC-V)** | [Roadmap] | Supported | Sub-64 KB static SRAM target using pure C mode with line-buffer / dirty-tile blitting |
+
+> [!NOTE]
+> **Tether is Decoupled from Chitra**: Chitra is Tether's default, reference 2D GPU backend. Developers can replace Chitra at link time with any custom backend (e.g. ThorVG, Skia, Raylib, SDL3, or a raw CPU software blitter) via the `Tether_Backend` contract table (`.system`, `.shape`, `.text`) without modifying a single line of Tether Core.
+
+### SDK & Distribution Model
+
+* **Source SDK (Universal)**: Standalone C99 source distribution containing Tether Core, public headers (`include/`), the default Chitra backend, and CMake targets. Free of test suites and demo applications, it drops into any build system and compiles for any platform with a standard C99 compiler.
+* **Precompiled SDKs (Major Platforms)**: Ready-to-link static (`.lib` / `.a`) and shared (`.dll` / `.so`) binaries, public headers, and CMake package exports for major desktop and mobile environments.
+* **Showcase Demos**: Standalone interactive showcase binaries (`tether_sandbox`) distributed separately for evaluating UI widgets, live YAML authoring, and benchmark telemetry without compiling source code.
+
+### Game Engine & Embedded Integration Models
+
+* **Game Engine Viewports**: Game engines do not yield their window loops to external libraries. Tether integrates into custom loops via lifecycle hooks (`tether_on_init`, `tether_on_input`, `tether_on_frame`, `tether_on_cleanup`). The engine renders into an offscreen GPU texture target that the game composites into HUD overlays or in-game 3D world-space surfaces (diegetic computer terminals, vehicle dashboards).
+* **Microcontroller SRAM Footprint**: Tether Core requires under 15 KB of static RAM for scenes with 50-80 UI entities. For displays on microcontrollers with 64 KB total SRAM, the software backend uses banded line-buffering (e.g. 16-32 scanline strips) or dirty-rectangle blitting directly to display controller GRAM (e.g. ST7789, ILI9341 via SPI DMA), eliminating the need for a full uncompressed framebuffer in internal RAM.
+
+---
+
+## 6. Built-in Widget Suite
 
 Tether ships with built-in widgets and semantic state components (`Tether_ValueRange`, `Tether_BoolState`, `Tether_SelectionState`). YAML exposes a subset of their C API properties:
 
@@ -143,12 +188,9 @@ Overlays (`Dropdown`, `Menu`, `ContextMenu`) use CSS-like `TETHER_POSITION_ABSOL
 
 ---
 
-## 6. Documentation Hub
+## 7. Documentation Hub
 
-Comprehensive, production-grade documentation is available in the [`docs/`](docs/) directory:
-
-> [!WARNING]
-> **Developer Preview**: Tether is currently under active development (`v0.0.3-preview`). Architectural specifications, API signatures, and roadmap features reflect preview builds.
+Comprehensive engineering and architectural documentation is available in the [`docs/`](docs/) directory:
 
 * **[Master Documentation Index](docs/index.md)**: Master navigation hub and ecosystem architecture overview.
 * **[Category A: Project Presentation (10 Chapters)](docs/index.md#category-a-project-presentation)**: Vision, design philosophy, ecosystem architecture, technology comparisons, benchmark methodology, and phased roadmap.
@@ -156,7 +198,7 @@ Comprehensive, production-grade documentation is available in the [`docs/`](docs
 
 ---
 
-## 7. Dependencies
+## 8. Dependencies
 
 Tether core requires zero dynamic external runtime libraries beyond the standard C library. The build vendors two submodule dependencies:
 
@@ -167,7 +209,7 @@ Tether core requires zero dynamic external runtime libraries beyond the standard
 
 ---
 
-## 8. Prerequisites
+## 9. Prerequisites
 
 * **CMake:** Version 3.20 or newer across all platforms.
 * **Windows:** Visual Studio 2022 (MSVC with "Desktop development with C++") or LLVM Clang.
@@ -179,7 +221,7 @@ Tether core requires zero dynamic external runtime libraries beyond the standard
 
 ---
 
-## 9. Building & Running
+## 10. Building & Running
 
 ### 1. Clone with Submodules
 ```bash
@@ -230,36 +272,49 @@ The sandbox launches into the interactive Widget Gallery (including enabled/disa
 
 ```bash
 # Launch interactive sandbox (Widget Gallery, Lab & Showcase)
-# Windows (MSVC)
-.\build\Release\tether_sandbox.exe
+# Windows (MSVC Release or Debug)
+.\build\Release\bin\tether_sandbox.exe
+# Or Debug:
+.\build\Debug\bin\tether_sandbox.exe
+
 # Linux / macOS (or Ninja)
-./build/tether_sandbox
+./build/Release/bin/tether_sandbox
 
 # Launch directly into the UI Showcase view
-.\build\Release\tether_sandbox.exe --showcase
+.\build\Release\bin\tether_sandbox.exe --showcase
 
 # Open and visualize a benchmark telemetry JSON report
-.\build\Release\tether_sandbox.exe --result report.json
+.\build\Release\bin\tether_sandbox.exe --result report.json
 ```
 
+> [!TIP]
+> **Asset Path Resolution**: In C code and declarative YAML scenes, specify asset paths cleanly relative to the asset root (e.g. `"UI/app.yaml"`, `"Font/Roboto-Regular.ttf"`). Do not prefix paths with `"assets/"`; the engine and platform layer resolve paths against the bundled asset root automatically across desktop and web environments.
+
 #### WebAssembly & WebGPU (In-Browser Sandbox)
-Tether compiles directly to WebAssembly with support for both WebGL2 (`GLES3`) and WebGPU (`WGPU`), rendering at native device pixel ratio (High-DPI) in a responsive browser canvas:
+Tether compiles directly to WebAssembly with native support for both WebGL2 (`GLES3`) and WebGPU (`WGPU`), rendering at full device pixel ratio (High-DPI) in a responsive browser canvas with built-in touch input support for mobile devices:
 
 ```bash
 # Prerequisites: Emscripten SDK (emsdk) activated and Ninja installed
 
 # 1. Build WebGL2 Sandbox (GLES3)
-emcmake cmake -B build/build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=GLES3
-cmake --build build/build-wasm --target tether_sandbox
+emcmake cmake -B build/wasm-webgl -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=GLES3
+cmake --build build/wasm-webgl --target tether_sandbox
 
 # 2. Build WebGPU Sandbox (WGPU)
-emcmake cmake -B build/build-wasm-wgpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=WGPU
-cmake --build build/build-wasm-wgpu --target tether_sandbox
+emcmake cmake -B build/wasm-webgpu -G Ninja -DCMAKE_BUILD_TYPE=Release -DCHITRA_BACKEND=WGPU
+cmake --build build/wasm-webgpu --target tether_sandbox
 
-# 3. Serve and view in browser
-python -m http.server -d build/build-wasm 8080
+# 3. Test or Serve
+# Quick launch using emrun (auto-opens default browser):
+emrun build/wasm-webgl/tether_sandbox.html
+
+# Or serve via local HTTP server:
+python -m http.server -d build/wasm-webgl 8080
 # Open http://localhost:8080/tether_sandbox.html
 ```
+
+> [!NOTE]
+> **Mobile Touch Support**: WebAssembly builds automatically map touch contact events to primary pointer interactions (`POINTER_DOWN`, `POINTER_MOVE`, `POINTER_UP`), while browser viewport panning and pinch-to-zoom gestures are suppressed via `touch-action: none` on the canvas element.
 
 #### Running the Full Automated Test Suite (CTest)
 Tether validates engine behavior through automated regression and behavior tests covering memory pools, generational handles, layout solvers, widget interactions, spatial hit-testing, and YAML AST parsing & rollback:
@@ -275,20 +330,20 @@ ctest --test-dir build -C Release -L correctness --output-on-failure
 #### Standalone Benchmarking Harness
 ```bash
 # Run ECS workloads (10,000 entities across 120 measured frames)
-.\build\Release\tether_bench.exe --scenario ecs --count 10000 --frames 120
+.\build\Release\test\tether_bench.exe --scenario ecs --count 10000 --frames 120
 
 # Run layout reflow stress testing
-.\build\Release\tether_bench.exe --scenario layout --count 5000
+.\build\Release\test\tether_bench.exe --scenario layout --count 5000
 
 # Execute the complete automated benchmark matrix across scale boundaries
-powershell -ExecutionPolicy Bypass -File tests/benchmarks/run_standard.ps1
+powershell -ExecutionPolicy Bypass -File tests/benchmarks/run_standard.ps1 -BinaryDirectory build/Release/test
 ```
 
 ---
 
-## 10. Phased Roadmap & Priority Areas
+## 11. Phased Roadmap & Priority Areas
 
-Tether is actively progressing toward subsequent developer preview milestones:
+Tether is actively progressing toward subsequent engineering milestones:
 
 * **Vinyasa Layout Integration**: Integrating the standalone Vinyasa constraint engine into core Tether layout pipelines for multi-reference anchoring, flex wrapping, and scratch-arena memory reuse.
 * **Ahead-of-Time (AOT) Bytecode Pipeline (`.tbc`)**: A standalone compiler tool (`tether_cooker`) producing flat binary bytecode assets for instant, sub-millisecond cold boot on microcontrollers without runtime text parsers.
@@ -299,13 +354,13 @@ Tether is actively progressing toward subsequent developer preview milestones:
 
 ---
 
-## 11. Contributing
+## 12. Contributing
 
 Contributions are welcome. Before opening a Pull Request, please read the [Contributing Guide](CONTRIBUTING.md) for Tether's layer boundaries, engineering rules, local build/test instructions (including AddressSanitizer verification), and PR workflow.
 
 ---
 
-## 12. License
+## 13. License
 
 Tether is licensed under the [Apache License 2.0](LICENSE).
 
