@@ -131,20 +131,19 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: r26b
-      - name: Ensure sokol-shdc is executable
+      - name: Install dependencies
         run: |
-          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc
-          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc
-          mkdir -p third_party/chitra/src/backends/shaders/gen
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
       - name: Configure
         run: |
+          NDK_PATH="${ANDROID_NDK_LATEST_HOME:-$ANDROID_HOME/ndk-bundle}"
+          if [ ! -d "$NDK_PATH" ]; then
+            NDK_PATH=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
+          fi
+          echo "Using Android NDK: $NDK_PATH"
           cmake -S . -B build-android -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK_PATH/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
@@ -159,8 +158,8 @@ jobs:
         with:
           name: correctness-android-arm64
           path: |
-            build-android/bin/tether_sandbox
-            build-android/lib/libtether.a
+            build-android/**/tether_sandbox
+            build-android/**/libtether.a
 
   ios:
     name: iOS (arm64)
@@ -170,17 +169,14 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-      - name: Ensure sokol-shdc is executable
-        run: |
-          chmod +x third_party/chitra/third_party/sokol-tools/bin/osx/sokol-shdc
-          chmod +x third_party/chitra/third_party/sokol-tools/bin/osx_arm64/sokol-shdc
-          mkdir -p third_party/chitra/src/backends/shaders/gen
       - name: Configure
         run: |
           cmake -S . -B build-ios -G Xcode \
             -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="" \
             -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="" \
             -DTETHER_BUILD_SHARED=OFF \
@@ -194,5 +190,5 @@ jobs:
         with:
           name: correctness-ios-arm64
           path: |
-            build-ios/Release-iphoneos/**/tether_sandbox.app
-            build-ios/Release-iphoneos/**/libtether.a
+            build-ios/**/tether_sandbox.app
+            build-ios/**/libtether.a

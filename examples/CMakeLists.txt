@@ -26,6 +26,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
             _sandbox_platform_on_sync_done
     )
 endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set_target_properties(tether_sandbox PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.tether.sandbox"
+        MACOSX_BUNDLE_BUNDLE_NAME "TetherSandbox"
+    )
+endif()
 tether_target_assets(tether_sandbox
     DIRECTORIES
         "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/ui/scripts@UI"

@@ -1,4 +1,4 @@
-name: Tether WebAssembly & WebGPU
+name: Tether WebAssembly (WASM)
 on:
   push:
     branches: [main, "feat/*", "refactor/*"]
