@@ -16,6 +16,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   init:
     name: Resolve Version
@@ -127,12 +130,10 @@ jobs:
 
           # 2. Standalone Showcase Demo
           mkdir -p "dist/${PKG_DEMO}/bin"
-          cp build-release/bin/tether_sandbox "dist/${PKG_DEMO}/bin/" 2>/dev/null || cp build-release/tether_sandbox "dist/${PKG_DEMO}/bin/"
-          cp -r build-release/bin/assets "dist/${PKG_DEMO}/bin/" 2>/dev/null || {
-            mkdir -p "dist/${PKG_DEMO}/bin/assets"
-            cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
-            cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
-          }
+          find build-release -type f -name "tether_sandbox" -exec cp {} "dist/${PKG_DEMO}/bin/" \;
+          mkdir -p "dist/${PKG_DEMO}/bin/assets"
+          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
+          cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
           cp README.md LICENSE "dist/${PKG_DEMO}/"
 
           cd dist
@@ -185,12 +186,10 @@ jobs:
 
           # 2. Standalone Showcase Demo
           mkdir -p "dist/${PKG_DEMO}/bin"
-          cp build-release/bin/tether_sandbox "dist/${PKG_DEMO}/bin/" 2>/dev/null || cp build-release/tether_sandbox "dist/${PKG_DEMO}/bin/"
-          cp -r build-release/bin/assets "dist/${PKG_DEMO}/bin/" 2>/dev/null || {
-            mkdir -p "dist/${PKG_DEMO}/bin/assets"
-            cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
-            cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
-          }
+          find build-release -type f -name "tether_sandbox" -exec cp {} "dist/${PKG_DEMO}/bin/" \;
+          mkdir -p "dist/${PKG_DEMO}/bin/assets"
+          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
+          cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
           cp README.md LICENSE "dist/${PKG_DEMO}/"
 
           cd dist
@@ -236,23 +235,14 @@ jobs:
 
           # 2. Standalone Showcase Demo
           New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin"
-          if (Test-Path "build-release\Release\bin\tether_sandbox.exe") {
-            Copy-Item "build-release\Release\bin\tether_sandbox.exe" "dist\$pkg_demo\bin\"
-          } elseif (Test-Path "build-release\bin\Release\tether_sandbox.exe") {
-            Copy-Item "build-release\bin\Release\tether_sandbox.exe" "dist\$pkg_demo\bin\"
-          } elseif (Test-Path "build-release\Release\tether_sandbox.exe") {
-            Copy-Item "build-release\Release\tether_sandbox.exe" "dist\$pkg_demo\bin\"
+          $bin = Get-ChildItem -Path "build-release" -Filter "tether_sandbox.exe" -Recurse | Select-Object -First 1
+          if ($bin) {
+            Copy-Item $bin.FullName "dist\$pkg_demo\bin\"
           }
 
-          if (Test-Path "build-release\Release\bin\assets") {
-            Copy-Item -Recurse "build-release\Release\bin\assets" "dist\$pkg_demo\bin\"
-          } elseif (Test-Path "build-release\bin\Release\assets") {
-            Copy-Item -Recurse "build-release\bin\Release\assets" "dist\$pkg_demo\bin\"
-          } else {
-            New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin\assets"
-            Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg_demo\bin\assets\UI"
-            Copy-Item -Recurse "examples\Font" "dist\$pkg_demo\bin\assets\Font"
-          }
+          New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin\assets"
+          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg_demo\bin\assets\UI"
+          Copy-Item -Recurse "examples\Font" "dist\$pkg_demo\bin\assets\Font"
           Copy-Item "README.md", "LICENSE" "dist\$pkg_demo\"
 
           Compress-Archive -Path "dist\$pkg_sdk" -DestinationPath "dist\$pkg_sdk.zip"
@@ -296,23 +286,14 @@ jobs:
 
           # 2. Standalone Showcase Demo
           New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin"
-          if (Test-Path "build-release-arm64\Release\bin\tether_sandbox.exe") {
-            Copy-Item "build-release-arm64\Release\bin\tether_sandbox.exe" "dist\$pkg_demo\bin\"
-          } elseif (Test-Path "build-release-arm64\bin\Release\tether_sandbox.exe") {
-            Copy-Item "build-release-arm64\bin\Release\tether_sandbox.exe" "dist\$pkg_demo\bin\"
-          } elseif (Test-Path "build-release-arm64\Release\tether_sandbox.exe") {
-            Copy-Item "build-release-arm64\Release\tether_sandbox.exe" "dist\$pkg_demo\bin\"
+          $bin = Get-ChildItem -Path "build-release-arm64" -Filter "tether_sandbox.exe" -Recurse | Select-Object -First 1
+          if ($bin) {
+            Copy-Item $bin.FullName "dist\$pkg_demo\bin\"
           }
 
-          if (Test-Path "build-release-arm64\Release\bin\assets") {
-            Copy-Item -Recurse "build-release-arm64\Release\bin\assets" "dist\$pkg_demo\bin\"
-          } elseif (Test-Path "build-release-arm64\bin\Release\assets") {
-            Copy-Item -Recurse "build-release-arm64\bin\Release\assets" "dist\$pkg_demo\bin\"
-          } else {
-            New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin\assets"
-            Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg_demo\bin\assets\UI"
-            Copy-Item -Recurse "examples\Font" "dist\$pkg_demo\bin\assets\Font"
-          }
+          New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin\assets"
+          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg_demo\bin\assets\UI"
+          Copy-Item -Recurse "examples\Font" "dist\$pkg_demo\bin\assets\Font"
           Copy-Item "README.md", "LICENSE" "dist\$pkg_demo\"
 
           Compress-Archive -Path "dist\$pkg_sdk" -DestinationPath "dist\$pkg_sdk.zip"
@@ -360,12 +341,10 @@ jobs:
 
           # 2. Standalone Showcase Demo
           mkdir -p "dist/${PKG_DEMO}/bin"
-          cp build-release/bin/tether_sandbox "dist/${PKG_DEMO}/bin/" 2>/dev/null || cp build-release/tether_sandbox "dist/${PKG_DEMO}/bin/"
-          cp -r build-release/bin/assets "dist/${PKG_DEMO}/bin/" 2>/dev/null || {
-            mkdir -p "dist/${PKG_DEMO}/bin/assets"
-            cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
-            cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
-          }
+          find build-release -type f -name "tether_sandbox" -exec cp {} "dist/${PKG_DEMO}/bin/" \;
+          mkdir -p "dist/${PKG_DEMO}/bin/assets"
+          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
+          cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
           cp README.md LICENSE "dist/${PKG_DEMO}/"
 
           cd dist
@@ -418,7 +397,13 @@ jobs:
           cmake --build build-android --target tether --parallel 4
 
           # Clean Precompiled SDK
-          cmake --install build-android --prefix "dist/${PKG_SDK}"
+          mkdir -p "dist/${PKG_SDK}/include" "dist/${PKG_SDK}/lib"
+          cp -r include/* "dist/${PKG_SDK}/include/"
+          cp -r third_party/chitra/include/* "dist/${PKG_SDK}/include/"
+          cp third_party/libyaml/include/* "dist/${PKG_SDK}/include/"
+          find build-android -name "libtether.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
+          find build-android -name "libchitra.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
+          find build-android -name "libyaml.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
           cp README.md LICENSE "dist/${PKG_SDK}/"
 
           cd dist
@@ -462,7 +447,13 @@ jobs:
           cmake --build build-ios --config Release --target tether --parallel 4
 
           # Clean Precompiled SDK
-          cmake --install build-ios --config Release --prefix "dist/${PKG_SDK}"
+          mkdir -p "dist/${PKG_SDK}/include" "dist/${PKG_SDK}/lib"
+          cp -r include/* "dist/${PKG_SDK}/include/"
+          cp -r third_party/chitra/include/* "dist/${PKG_SDK}/include/"
+          cp third_party/libyaml/include/* "dist/${PKG_SDK}/include/"
+          find build-ios -name "libtether.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
+          find build-ios -name "libchitra.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
+          find build-ios -name "libyaml.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
           cp README.md LICENSE "dist/${PKG_SDK}/"
 
           cd dist
@@ -530,8 +521,8 @@ jobs:
 
           mkdir -p "dist/${PKG_DEMO}/webgl2"
           mkdir -p "dist/${PKG_DEMO}/webgpu"
-          cp build-wasm-gl/tether_sandbox.* "dist/${PKG_DEMO}/webgl2/" 2>/dev/null || cp build-wasm-gl/bin/tether_sandbox.* "dist/${PKG_DEMO}/webgl2/"
-          cp build-wasm-wgpu/tether_sandbox.* "dist/${PKG_DEMO}/webgpu/" 2>/dev/null || cp build-wasm-wgpu/bin/tether_sandbox.* "dist/${PKG_DEMO}/webgpu/"
+          find build-wasm-gl -name "tether_sandbox.*" -exec cp {} "dist/${PKG_DEMO}/webgl2/" \;
+          find build-wasm-wgpu -name "tether_sandbox.*" -exec cp {} "dist/${PKG_DEMO}/webgpu/" \;
           cp README.md LICENSE "dist/${PKG_DEMO}/"
 
           cd dist

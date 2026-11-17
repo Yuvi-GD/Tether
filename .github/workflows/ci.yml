@@ -5,6 +5,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   windows:
     name: Windows
@@ -30,7 +32,6 @@ jobs:
           name: correctness-windows-${{ matrix.config }}
           path: |
             build/*/report/**/*.json
-            build/*/report/**/*.json.txt
             build/Testing/Temporary/LastTest.log
 
   windows-asan:
@@ -46,14 +47,16 @@ jobs:
       - name: Build
         run: cmake --build build-asan --config Debug --target tether_test tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
       - name: Correctness tests under AddressSanitizer
-        run: ctest --test-dir build-asan -C Debug -L correctness --output-on-failure --no-tests=error
+        shell: pwsh
+        run: |
+          $env:PATH = "$((Get-Item .).FullName)\build-asan\Debug\test;$((Get-Item .).FullName)\build-asan\Debug\bin;$((Get-Item .).FullName)\build-asan\Debug;$env:PATH"
+          ctest --test-dir build-asan -C Debug -L correctness --output-on-failure --no-tests=error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: correctness-windows-asan
           path: |
             build-asan/*/report/**/*.json
-            build-asan/*/report/**/*.json.txt
             build-asan/Testing/Temporary/LastTest.log
 
   linux:
@@ -82,8 +85,13 @@ jobs:
         run: |
           if [ -f "./build/${{ matrix.config }}/bin/tether_sandbox" ]; then
             xvfb-run ./build/${{ matrix.config }}/bin/tether_sandbox --smoke
-          else
+          elif [ -f "./build/bin/tether_sandbox" ]; then
             xvfb-run ./build/bin/tether_sandbox --smoke
+          elif [ -f "./build/tether_sandbox" ]; then
+            xvfb-run ./build/tether_sandbox --smoke
+          else
+            SANDBOX_BIN=$(find build -type f -name "tether_sandbox" | head -n 1)
+            xvfb-run "$SANDBOX_BIN" --smoke
           fi
       - uses: actions/upload-artifact@v4
         if: always()
@@ -91,7 +99,6 @@ jobs:
           name: correctness-linux-${{ matrix.config }}
           path: |
             build/**/report/**/*.json
-            build/**/report/**/*.json.txt
             build/Testing/Temporary/LastTest.log
 
   macos:
@@ -120,7 +127,6 @@ jobs:
           name: correctness-macos-${{ matrix.config }}
           path: |
             build/**/report/**/*.json
-            build/**/report/**/*.json.txt
             build/Testing/Temporary/LastTest.log
 
   android:

@@ -1,4 +1,4 @@
-name: Tether WebAssembly (WASM)
+name: Tether WebAssembly WASM
 on:
   push:
     branches: [main, "feat/*", "refactor/*"]
@@ -8,6 +8,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   wasm-webgl2:
