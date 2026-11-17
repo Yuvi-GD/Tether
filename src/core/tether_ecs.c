@@ -34,7 +34,11 @@ static void ensure_sparse_capacity(int component_id, uint32_t required_capacity)
   Tether_SparseMap *sparse = &g_registry.sparse_maps[component_id];
   if (required_capacity > sparse->capacity) {
     uint32_t old_cap = sparse->capacity;
-    sparse->capacity = required_capacity;
+    uint32_t new_cap = sparse->capacity ? sparse->capacity * 2 : INITIAL_ENTITY_CAPACITY;
+    while (new_cap < required_capacity) {
+      new_cap *= 2;
+    }
+    sparse->capacity = new_cap;
     sparse->dense_indices = (uint32_t *)realloc(
         sparse->dense_indices, sparse->capacity * sizeof(uint32_t));
     for (uint32_t i = old_cap; i < sparse->capacity; ++i) {

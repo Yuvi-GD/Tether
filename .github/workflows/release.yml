@@ -106,6 +106,8 @@ jobs:
 
       - name: Build and Install Linux x86_64 SDK & Demo
         run: |
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc 2>/dev/null || true
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc 2>/dev/null || true
           PKG_SDK="tether-${RELEASE_TAG}-linux-x64-sdk"
           PKG_DEMO="tether-${RELEASE_TAG}-linux-x64-demo"
 
@@ -113,6 +115,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DTETHER_ENABLE_INSTALL=ON \
             -DCMAKE_INSTALL_LIBDIR=lib \
+            -DTETHER_BUILD_SHARED=OFF \
             -DTETHER_BUILD_TESTS=OFF \
             -DTETHER_BUILD_RUNNERS=OFF \
             -DTETHER_BUILD_EXAMPLES=ON
@@ -161,6 +164,8 @@ jobs:
 
       - name: Build and Install Linux ARM64 SDK & Demo
         run: |
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc 2>/dev/null || true
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc 2>/dev/null || true
           PKG_SDK="tether-${RELEASE_TAG}-linux-arm64-sdk"
           PKG_DEMO="tether-${RELEASE_TAG}-linux-arm64-demo"
 
@@ -168,6 +173,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DTETHER_ENABLE_INSTALL=ON \
             -DCMAKE_INSTALL_LIBDIR=lib \
+            -DTETHER_BUILD_SHARED=OFF \
             -DTETHER_BUILD_TESTS=OFF \
             -DTETHER_BUILD_RUNNERS=OFF \
             -DTETHER_BUILD_EXAMPLES=ON
@@ -333,6 +339,8 @@ jobs:
 
       - name: Build and Install macOS SDK & Demo
         run: |
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/osx/sokol-shdc 2>/dev/null || true
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/osx_arm64/sokol-shdc 2>/dev/null || true
           PKG_SDK="tether-${RELEASE_TAG}-macos-arm64-sdk"
           PKG_DEMO="tether-${RELEASE_TAG}-macos-arm64-demo"
 
@@ -340,6 +348,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DTETHER_ENABLE_INSTALL=ON \
             -DCMAKE_INSTALL_LIBDIR=lib \
+            -DTETHER_BUILD_SHARED=OFF \
             -DTETHER_BUILD_TESTS=OFF \
             -DTETHER_BUILD_RUNNERS=OFF \
             -DTETHER_BUILD_EXAMPLES=ON
@@ -438,7 +447,7 @@ jobs:
 
           cmake -S . -B build-ios -G Xcode \
             -DCMAKE_SYSTEM_NAME=iOS \
-            -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO \
