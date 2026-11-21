@@ -108,6 +108,10 @@ static bool invalid_case(void) {
     CHECK(rejected("- Button: {id: discarded}\n- Dropdown: {selected: 5}\n"));
     CHECK(tether_registry_find_entity("discarded") == TETHER_INVALID_TUID);
     CHECK(rejected("Container: {children: [{Button: {}}, {UnknownWidget: {}}]}\n"));
+    CHECK(rejected("{[a]: b}\n"));
+    CHECK(rejected("{\"schema_version\": 1, \"status\": \"passed\"}\n"));
+    CHECK(rejected("---\nPanel: {}\n---\nPanel: {}\n"));
+    CHECK(tether_ecs_is_valid(load("Panel: {fill_ratio: [{}], color: [{}], opacity: {}, size_box: [{}]}\n")));
     CHECK(tether_ecs_is_valid(load("Dropdown: {options: [Recovered], selected: 0}\n")));
     return true;
 }

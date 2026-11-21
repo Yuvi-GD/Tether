@@ -8,23 +8,32 @@
 
 static Tether_ASTNode* create_node(Tether_ASTNodeType type) {
     Tether_ASTNode* node = (Tether_ASTNode*)calloc(1, sizeof(Tether_ASTNode));
+    if (!node) return NULL;
     node->type = type;
     return node;
 }
 
-static void add_child(Tether_ASTNode* parent, Tether_ASTNode* child, Tether_ASTNode* key) {
+static bool add_child(Tether_ASTNode* parent, Tether_ASTNode* child, Tether_ASTNode* key) {
     if (parent->child_count >= parent->child_capacity) {
-        parent->child_capacity = parent->child_capacity == 0 ? 4 : parent->child_capacity * 2;
-        parent->children = (Tether_ASTNode**)realloc(parent->children, parent->child_capacity * sizeof(Tether_ASTNode*));
+        uint32_t new_capacity = parent->child_capacity == 0 ? 4 : parent->child_capacity * 2;
+        Tether_ASTNode** new_children = (Tether_ASTNode**)realloc(
+            parent->children, new_capacity * sizeof(Tether_ASTNode*));
+        if (!new_children) return false;
+        parent->children = new_children;
         if (parent->type == TETHER_AST_MAPPING) {
-            parent->keys = (Tether_ASTNode**)realloc(parent->keys, parent->child_capacity * sizeof(Tether_ASTNode*));
+            Tether_ASTNode** new_keys = (Tether_ASTNode**)realloc(
+                parent->keys, new_capacity * sizeof(Tether_ASTNode*));
+            if (!new_keys) return false;
+            parent->keys = new_keys;
         }
+        parent->child_capacity = new_capacity;
     }
     parent->children[parent->child_count] = child;
     if (parent->type == TETHER_AST_MAPPING) {
         parent->keys[parent->child_count] = key;
     }
     parent->child_count++;
+    return true;
 }
 
 void tether_ast_free(Tether_ASTNode* node) {
@@ -80,7 +89,7 @@ Tether_ASTNode* tether_ast_parse_file(const char* filepath) {
     if (!filepath) {
         return NULL;
     }
-    FILE* file = fopen(filepath, "r");
+    FILE* file = fopen(filepath, "rb");
     if (!file) return NULL;
 
     yaml_parser_t parser;
@@ -105,23 +114,49 @@ Tether_ASTNode* tether_ast_parse_file(const char* filepath) {
         }
 
         switch (event.type) {
+            case YAML_ALIAS_EVENT: {
+                yaml_event_delete(&event);
+                goto cleanup;
+            }
             case YAML_SCALAR_EVENT: {
                 Tether_ASTNode* node = create_node(TETHER_AST_SCALAR);
-                node->scalar_value = strdup((const char*)event.data.scalar.value);
-                
+                if (!node) {
+                    yaml_event_delete(&event);
+                    goto cleanup;
+                }
+                node->scalar_value = strdup(event.data.scalar.value ? (const char*)event.data.scalar.value : "");
+                if (!node->scalar_value) {
+                    tether_ast_free(node);
+                    yaml_event_delete(&event);
+                    goto cleanup;
+                }
+
                 if (stack_idx >= 0) {
                     Tether_ASTNode* parent = stack[stack_idx];
                     if (parent->type == TETHER_AST_MAPPING) {
                         if (!current_key) {
                             current_key = node;
                         } else {
-                            add_child(parent, node, current_key);
+                            if (!add_child(parent, node, current_key)) {
+                                tether_ast_free(node);
+                                yaml_event_delete(&event);
+                                goto cleanup;
+                            }
                             current_key = NULL;
                         }
                     } else if (parent->type == TETHER_AST_SEQUENCE) {
-                        add_child(parent, node, NULL);
+                        if (!add_child(parent, node, NULL)) {
+                            tether_ast_free(node);
+                            yaml_event_delete(&event);
+                            goto cleanup;
+                        }
                     }
                 } else {
+                    if (root) {
+                        tether_ast_free(node);
+                        yaml_event_delete(&event);
+                        goto cleanup;
+                    }
                     root = node;
                 }
                 break;
@@ -134,16 +169,33 @@ Tether_ASTNode* tether_ast_parse_file(const char* filepath) {
                 }
                 Tether_ASTNodeType type = (event.type == YAML_SEQUENCE_START_EVENT) ? TETHER_AST_SEQUENCE : TETHER_AST_MAPPING;
                 Tether_ASTNode* node = create_node(type);
-                
+                if (!node) {
+                    yaml_event_delete(&event);
+                    goto cleanup;
+                }
+
                 if (stack_idx >= 0) {
                     Tether_ASTNode* parent = stack[stack_idx];
                     if (parent->type == TETHER_AST_MAPPING) {
-                        add_child(parent, node, current_key);
+                        if (!current_key || !add_child(parent, node, current_key)) {
+                            tether_ast_free(node);
+                            yaml_event_delete(&event);
+                            goto cleanup;
+                        }
                         current_key = NULL;
                     } else if (parent->type == TETHER_AST_SEQUENCE) {
-                        add_child(parent, node, NULL);
+                        if (!add_child(parent, node, NULL)) {
+                            tether_ast_free(node);
+                            yaml_event_delete(&event);
+                            goto cleanup;
+                        }
                     }
                 } else {
+                    if (root) {
+                        tether_ast_free(node);
+                        yaml_event_delete(&event);
+                        goto cleanup;
+                    }
                     root = node;
                 }
                 stack[++stack_idx] = node;

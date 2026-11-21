@@ -133,11 +133,8 @@ static void clear_preview(TUID entity, const Tether_Event *event, void *data) {
 
 static bool load_preview(const char *path) {
     if (!path || !path[0]) return false;
-    if (active_yaml != path) {
-        snprintf(active_yaml, sizeof active_yaml, "%s", path);
-    }
-    active_yaml_mtime = tool_file_mtime(path);
-    tether_widget_set_enabled(tether_registry_find_entity("showcase_sync_yaml"), true);
+    char requested[sizeof active_yaml];
+    snprintf(requested, sizeof requested, "%s", path);
     if (tether_ecs_is_valid(preview_content)) {
         tether_widget_destroy(preview_content);
         preview_content = TETHER_INVALID_TUID;
@@ -146,13 +143,19 @@ static bool load_preview(const char *path) {
     preview_content = tether_widget_create_container(host);
     tether_ui_set_container(preview_content, TETHER_FLOW_COLUMN);
     tether_ui_set_flex(preview_content, 1.0f);
-    if (tether_yaml_load(path, preview_content) == TETHER_INVALID_TUID) {
+    if (tether_yaml_load(requested, preview_content) == TETHER_INVALID_TUID) {
         tether_widget_destroy(preview_content);
         preview_content = TETHER_INVALID_TUID;
+        active_yaml[0] = '\0';
+        active_yaml_mtime = 0;
+        tether_widget_set_enabled(tether_registry_find_entity("showcase_sync_yaml"), false);
         tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"),
                            "Could not load YAML. Check the file and console for details.");
         return false;
     }
+    snprintf(active_yaml, sizeof active_yaml, "%s", requested);
+    active_yaml_mtime = tool_file_mtime(active_yaml);
+    tether_widget_set_enabled(tether_registry_find_entity("showcase_sync_yaml"), true);
     /* Each top-level entity shares the preview; its descendants keep their own layout. */
     int count = tether_widget_get_child_count(preview_content);
     for (int i = 0; i < count; ++i) {
@@ -205,9 +208,11 @@ static void on_yaml_chosen(const char *path, void *user_data) {
 
     if (path && path[0]) {
         bool loaded = load_preview(path);
+#if defined(__EMSCRIPTEN__)
         if (!loaded && strcmp(path, "/tmp/chosen.yaml") != 0) {
             loaded = load_preview("/tmp/chosen.yaml");
         }
+#endif
         if (loaded) {
             snprintf(chosen_yaml, sizeof chosen_yaml, "%s", path);
             tether_widget_set_enabled(tether_registry_find_entity("showcase_selected_yaml"), true);
@@ -217,7 +222,7 @@ static void on_yaml_chosen(const char *path, void *user_data) {
         }
     }
     tether_ui_set_text(tether_registry_find_entity("showcase_preview_status"),
-                       "Could not load YAML file. Check console for details.");
+                       "Invalid or unsupported YAML file.");
 }
 
 static void choose_yaml(TUID entity, const Tether_Event *event, void *data) {
