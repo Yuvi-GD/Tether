@@ -95,7 +95,13 @@ int tool_run_layout(const ToolOptions *o, ToolResult *r) {
             }
         }
     }
-    r->cpu_ms = tool_cpu_ms() - cpu_start;
+    double cpu_now = tool_cpu_ms();
+    if (isfinite(cpu_now) && isfinite(cpu_start)) {
+        double delta = cpu_now - cpu_start;
+        r->cpu_ms = delta < 0.0 ? NAN : delta;
+    } else {
+        r->cpu_ms = NAN;
+    }
     r->rss_end = tool_rss();
     if (r->rss_end != UINT64_MAX && (r->rss_peak == UINT64_MAX || r->rss_end > r->rss_peak)) {
         r->rss_peak = r->rss_end;

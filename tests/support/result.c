@@ -124,6 +124,8 @@ static void write_methodology(FILE *f, const ToolOptions *o, const ToolResult *r
 }
 
 static void write_metrics(FILE *f, const ToolResult *r) {
+    double cpu_ms = r->cpu_ms;
+    if (isfinite(cpu_ms) && cpu_ms < 0.0) cpu_ms = NAN;
     fprintf(f,
             "\"phases\":{\"setup_ms\":%.6f,\"warmup_ms\":%.6f,"
             "\"validation_ms\":%.6f,\"shutdown_ms\":%.6f,\"total_run_ms\":%.6f},\n",
@@ -131,9 +133,9 @@ static void write_metrics(FILE *f, const ToolResult *r) {
     fprintf(f,
             "\"measurement_state\":{\"process_cpu\":\"%s\",\"resident_memory\":\"%s\","
             "\"gpu_time\":\"not_measured\",\"layout_time\":\"%s\"},\n",
-            !r->sample_count      ? "not_measured"
-            : isfinite(r->cpu_ms) ? "measured"
-                                  : "query_failed",
+            !r->sample_count                      ? "not_measured"
+            : (isfinite(cpu_ms) && cpu_ms >= 0.0) ? "measured"
+                                                  : "query_failed",
             !r->sample_count            ? "not_measured"
             : r->rss_peak == UINT64_MAX ? "query_failed"
                                         : "measured",
@@ -145,7 +147,7 @@ static void write_metrics(FILE *f, const ToolResult *r) {
             "\"process_cpu_ms\":",
             (unsigned long long)r->checks, (unsigned long long)r->failures, r->sample_count,
             r->create_ms, r->teardown_ms, r->elapsed_ms);
-    write_optional_cpu(f, r->cpu_ms);
+    write_optional_cpu(f, cpu_ms);
     fputs(",\"rss_start_bytes\":", f);
     write_optional_rss(f, r->rss_start);
     fputs(",\"rss_end_bytes\":", f);

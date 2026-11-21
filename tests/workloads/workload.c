@@ -310,7 +310,13 @@ static void after_frame(void) {
         run.r->rss_peak = run.r->rss_end;
     }
     run.r->elapsed_ms = tool_now_ms() - run.started;
-    run.r->cpu_ms = tool_cpu_ms() - run.cpu_start;
+    double cpu_now = tool_cpu_ms();
+    if (isfinite(cpu_now) && isfinite(run.cpu_start)) {
+        double delta = cpu_now - run.cpu_start;
+        run.r->cpu_ms = delta < 0.0 ? NAN : delta;
+    } else {
+        run.r->cpu_ms = NAN;
+    }
     if (run.r->sample_count >= run.o->frames || run.r->failures ||
         (run.o->seconds > 0 && run.r->elapsed_ms >= run.o->seconds * 1000.0)) {
         if (!run.o->test) {
@@ -392,7 +398,13 @@ static void hierarchy_test(void) {
         run.r->peak_active = run.o->count + 1;
         run.r->sample_count++;
         run.r->elapsed_ms = tool_now_ms() - run.started;
-        run.r->cpu_ms = tool_cpu_ms() - run.cpu_start;
+        double cpu_hierarchy_now = tool_cpu_ms();
+        if (isfinite(cpu_hierarchy_now) && isfinite(run.cpu_start)) {
+            double delta = cpu_hierarchy_now - run.cpu_start;
+            run.r->cpu_ms = delta < 0.0 ? NAN : delta;
+        } else {
+            run.r->cpu_ms = NAN;
+        }
         run.r->rss_end = tool_rss();
         run.r->samples[round].rss_bytes = run.r->rss_end;
         if (run.r->rss_end != UINT64_MAX &&
