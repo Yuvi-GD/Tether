@@ -449,7 +449,6 @@ void sandbox_platform_android_init(void) {
 
 void sandbox_platform_pick_file(const char *filter_ext, const char *title,
                                 Sandbox_FilePickedFn on_picked, void *user_data) {
-    (void)filter_ext;
     (void)title;
     if (!on_picked) return;
     const ANativeActivity *activity = (const ANativeActivity *)sapp_android_get_native_activity();
@@ -476,12 +475,14 @@ void sandbox_platform_pick_file(const char *filter_ext, const char *title,
     bool launched = false;
     if (result == JNI_OK) {
         jclass cls = (*env)->GetObjectClass(env, activity->clazz);
-        jmethodID method = cls ? (*env)->GetMethodID(env, cls, "pickDocument", "()V") : NULL;
-        if (method) {
-            (*env)->CallVoidMethod(env, activity->clazz, method);
+        jmethodID method = cls ? (*env)->GetMethodID(env, cls, "pickDocument", "(Ljava/lang/String;)V") : NULL;
+        jstring jfilter = (*env)->NewStringUTF(env, filter_ext ? filter_ext : "");
+        if (method && jfilter) {
+            (*env)->CallVoidMethod(env, activity->clazz, method, jfilter);
             launched = !(*env)->ExceptionCheck(env);
         }
         if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+        if (jfilter) (*env)->DeleteLocalRef(env, jfilter);
         if (cls) (*env)->DeleteLocalRef(env, cls);
         if (attached) (*activity->vm)->DetachCurrentThread(activity->vm);
     }
