@@ -24,11 +24,10 @@ TUID tether_ui_collapsible(TUID parent) {
     TUID header = tether_ui_panel(outer);
     tether_ui_set_container(header, TETHER_FLOW_ROW);
     tether_ui_set_gap(header, 8.0f, 0.0f);
-    tether_ui_set_size(header, 0.0f, 36.0f);
-    tether_ui_set_padding(header, 6.0f, 12.0f, 6.0f, 12.0f);
+    tether_ui_set_size(header, 0.0f, 30.0f);
+    tether_ui_set_padding(header, 4.0f, 8.0f, 4.0f, 8.0f);
     tether_ui_set_content_align(header, TETHER_ALIGN_START, TETHER_ALIGN_CENTER);
-    tether_ui_set_color(header, (Tether_Color){43, 43, 46, 255});
-    tether_ui_set_border(header, 1.0f, (Tether_Color){75, 75, 81, 255}, 6.0f);
+    tether_ui_set_color(header, (Tether_Color){53, 53, 58, 255});
     tether_widget_add_interaction(header, TETHER_HIT_BLOCK);
 
     TUID arrow = tether_ui_text(header);
