@@ -301,7 +301,7 @@
                             id: "res_scenario_label"
                   - Container:
                       flow: "ROW"
-                      gap: [12, 0]
+                      gap: [8, 0]
                       children:
                         - ResultCard:
                             card_id: "res_card_count"
@@ -324,7 +324,7 @@
                       size_box: [0, 76]
                   - Container:
                       flow: "ROW"
-                      gap: [12, 0]
+                      gap: [8, 0]
                       children:
                         - ResultCard:
                             card_id: "res_card_failures"
@@ -347,7 +347,7 @@
                       size_box: [0, 76]
                   - Container:
                       flow: "ROW"
-                      gap: [12, 0]
+                      gap: [8, 0]
                       children:
                         - ResultCard:
                             card_id: "res_card_frame_mean"
@@ -370,7 +370,7 @@
                       size_box: [0, 76]
                   - Container:
                       flow: "ROW"
-                      gap: [12, 0]
+                      gap: [8, 0]
                       children:
                         - ResultCard:
                             card_id: "res_card_cpu"
@@ -393,7 +393,7 @@
                       size_box: [0, 76]
                   - Container:
                       flow: "ROW"
-                      gap: [12, 0]
+                      gap: [8, 0]
                       children:
                         - ResultCard:
                             card_id: "res_card_uploads"

@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     }
     result.status = "failed";
     int code = tool_run(&options, &result);
-    if (!tool_write_result(&options, &result)) {
+    if (!result.report_written && !tool_write_result(&options, &result)) {
         code = 2;
     }
     printf("%s\nResult: %s\n", result.message, options.output);

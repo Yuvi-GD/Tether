@@ -49,7 +49,7 @@ static const char *control_ids[] = {
 };
 static const unsigned lengths[] = {5, 6, 5, 5, 5, 4, 4, 2, 3, 4, 4};
 static ToolProcess process;
-static char result_path[256];
+static char result_path[4096];
 static unsigned run_number;
 static bool smoke, smoke_done;
 static int smoke_exit;
@@ -328,8 +328,9 @@ void lab_update(void) {
         }
         refresh_fields();
         sandbox_navigate(SANDBOX_RESULTS);
-        tether_ui_set_text(status_label, "Finished. The cards show the completed run. Change "
-                                         "parameters to run again, or load a saved report.");
+        tether_ui_set_text(status_label, loaded
+            ? "Finished. The cards show the run. Change parameters to run again, or load a saved report."
+            : "The workload ended without a valid report. Check the result details.");
         if (smoke) {
             smoke_exit = code;
             smoke_done = true;

@@ -21,6 +21,7 @@ typedef struct {
 
 typedef struct {
     const char *status, *backend;
+    bool report_written;
     char message[512];
     ToolSample *samples;
     uint32_t sample_count;

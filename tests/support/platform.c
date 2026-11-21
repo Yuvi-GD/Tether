@@ -176,10 +176,20 @@ bool tool_executable_directory(char *out, size_t size) {
         return false;
     }
 #elif defined(__APPLE__)
-    uint32_t n = (uint32_t)size;
-    if (_NSGetExecutablePath(out, &n)) {
+    char raw[4096];
+    uint32_t n = sizeof raw;
+    if (_NSGetExecutablePath(raw, &n) != 0) {
         return false;
     }
+    char *resolved = realpath(raw, NULL);
+    const char *path = resolved ? resolved : raw;
+    size_t length = strlen(path);
+    if (length >= size) {
+        free(resolved);
+        return false;
+    }
+    memcpy(out, path, length + 1);
+    free(resolved);
 #elif defined(__EMSCRIPTEN__) || defined(__ANDROID__)
     if (size < 2) return false;
     out[0] = '/';
