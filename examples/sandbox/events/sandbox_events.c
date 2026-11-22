@@ -183,7 +183,7 @@ static void on_playground_sync_done(void *data) {
 static void sync_yaml(TUID entity, const Tether_Event *event, void *data) {
     (void)entity; (void)event; (void)data;
     if (active_yaml[0]) {
-        if (!strncmp(active_yaml, "UI/", 3)) {
+        if (!strncmp(active_yaml, "assets/UI/", 10)) {
             sandbox_platform_sync_file(active_yaml, on_playground_sync_done, NULL);
         } else {
             on_playground_sync_done(NULL);
@@ -445,7 +445,7 @@ bool sandbox_showcase_check(void) {
     if (!badge || badge->rotation_deg != 45.0f || badge->scale_x != 0.7f || badge->scale_y != 0.7f) return false;
 
     tether_ui_set_segment_selected(tabs, 2);
-    if (tether_ui_switcher_get_active(switcher) != 2 || !load_preview("UI/playground.yaml")) return false;
+    if (tether_ui_switcher_get_active(switcher) != 2 || !load_preview("assets/UI/playground.yaml")) return false;
     if (!tether_ecs_is_valid(preview_content) || tether_widget_get_child_count(preview_content) == 0) return false;
     TUID sync_button = tether_registry_find_entity("showcase_sync_yaml");
     TUID live_sync_toggle = tether_registry_find_entity("showcase_live_sync");
@@ -457,10 +457,10 @@ bool sandbox_showcase_check(void) {
     if (live_sync_active) return false;
     tether_ui_set_toggle(live_sync_toggle, true);
     if (!live_sync_active) return false;
-    if (!load_preview("UI/playground/layout.yaml")) return false;
+    if (!load_preview("assets/UI/playground/layout.yaml")) return false;
     char previous_yaml[sizeof chosen_yaml];
     memcpy(previous_yaml, chosen_yaml, sizeof previous_yaml);
-    snprintf(chosen_yaml, sizeof chosen_yaml, "%s", "UI/playground.yaml");
+    snprintf(chosen_yaml, sizeof chosen_yaml, "%s", "assets/UI/playground.yaml");
     TUID chosen_button = tether_registry_find_entity("showcase_selected_yaml");
     tether_widget_set_enabled(chosen_button, true);
     tether_dispatch_event(chosen_button, TETHER_EVENT_CLICK);
@@ -468,7 +468,7 @@ bool sandbox_showcase_check(void) {
     memcpy(chosen_yaml, previous_yaml, sizeof chosen_yaml);
     tether_widget_set_enabled(chosen_button, chosen_yaml[0] != '\0');
     if (!chosen_loaded) return false;
-    if (load_preview("UI/nonexistent-showcase-smoke.yaml") || tether_ecs_is_valid(preview_content)) return false;
+    if (load_preview("assets/UI/nonexistent-showcase-smoke.yaml") || tether_ecs_is_valid(preview_content)) return false;
     const char *status = tether_ui_get_text(tether_registry_find_entity("showcase_preview_status"));
     if (!status || !strstr(status, "Could not load")) return false;
     clear_preview(0, NULL, NULL);
@@ -498,8 +498,8 @@ void sandbox_bind_events(void) {
     example_scale_index = 0;
     example_vertical = false;
     example_alternate_text = false;
-    dialog_overlay = tether_yaml_load("UI/showcase_dialog.yaml", tether_ecs_get_overlay_root());
-    toast_overlay = tether_yaml_load("UI/showcase_toast.yaml", tether_ecs_get_overlay_root());
+    dialog_overlay = tether_yaml_load("assets/UI/showcase_dialog.yaml", tether_ecs_get_overlay_root());
+    toast_overlay = tether_yaml_load("assets/UI/showcase_toast.yaml", tether_ecs_get_overlay_root());
     sandbox_showcase_close_overlays();
     tether_bind_event(tether_registry_find_entity("showcase_tabs"), TETHER_EVENT_CHANGE, select_showcase_view, NULL);
     tether_bind_event(tether_registry_find_entity("showcase_open_dialog"), TETHER_EVENT_CLICK, show_dialog, NULL);
@@ -508,9 +508,9 @@ void sandbox_bind_events(void) {
     tether_bind_event(tether_registry_find_entity("showcase_toast_close"), TETHER_EVENT_CLICK, close_toast, NULL);
     tether_bind_event(tether_registry_find_entity("showcase_load_yaml"), TETHER_EVENT_CLICK, choose_yaml, NULL);
     tether_bind_event(tether_registry_find_entity("showcase_preset_controls"), TETHER_EVENT_CLICK,
-                      load_preset, "UI/playground.yaml");
+                      load_preset, "assets/UI/playground.yaml");
     tether_bind_event(tether_registry_find_entity("showcase_preset_layout"), TETHER_EVENT_CLICK,
-                      load_preset, "UI/playground/layout.yaml");
+                      load_preset, "assets/UI/playground/layout.yaml");
     tether_bind_event(tether_registry_find_entity("showcase_selected_yaml"), TETHER_EVENT_CLICK, load_chosen_yaml, NULL);
     tether_widget_set_enabled(tether_registry_find_entity("showcase_selected_yaml"), chosen_yaml[0] != '\0');
     tether_bind_event(tether_registry_find_entity("showcase_clear_preview"), TETHER_EVENT_CLICK, clear_preview, NULL);

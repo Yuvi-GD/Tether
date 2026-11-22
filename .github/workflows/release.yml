@@ -1,8 +1,7 @@
 name: Package & Publish Release SDK
 # This workflow runs when a release tag is pushed (e.g. v0.0.0)
 # or when triggered manually via workflow_dispatch.
-# It produces clean Source SDK, platform-specific Precompiled SDKs,
-# and standalone Sandbox Demos.
+# It produces a source SDK and standalone sandbox demos.
 
 on:
   push:
@@ -54,31 +53,8 @@ jobs:
       - name: Bundle Source SDK
         run: |
           PKG="tether-${RELEASE_TAG}-source-sdk"
-          mkdir -p "dist/${PKG}"
-
-          # Core engine source and public headers
-          cp -r include src cmake "dist/${PKG}/"
-          cp CMakeLists.txt README.md LICENSE "dist/${PKG}/"
-
-          # Lean libyaml (excluding tests and docs)
-          mkdir -p "dist/${PKG}/third_party/libyaml"
-          cp -r third_party/libyaml/include third_party/libyaml/src "dist/${PKG}/third_party/libyaml/"
-          cp third_party/libyaml/CMakeLists.txt "dist/${PKG}/third_party/libyaml/"
-          cp third_party/libyaml/License "dist/${PKG}/third_party/libyaml/" 2>/dev/null || cp third_party/libyaml/LICENSE "dist/${PKG}/third_party/libyaml/" 2>/dev/null || true
-          cp third_party/libyaml/yamlConfigVersion.cmake.in "dist/${PKG}/third_party/libyaml/" 2>/dev/null || true
-
-          # Lean Chitra (headers, sources, pre-generated shaders, fontstash, stb, and sokol headers)
-          # Excludes: 55MB sokol-tools binaries and unused sokol/bindgen/tests/assets
-          mkdir -p "dist/${PKG}/third_party/chitra"
-          cp -r third_party/chitra/include third_party/chitra/src "dist/${PKG}/third_party/chitra/"
-          cp third_party/chitra/CMakeLists.txt "dist/${PKG}/third_party/chitra/"
-          cp third_party/chitra/LICENSE "dist/${PKG}/third_party/chitra/" 2>/dev/null || true
-
-          mkdir -p "dist/${PKG}/third_party/chitra/third_party/sokol"
-          cp third_party/chitra/third_party/sokol/*.h "dist/${PKG}/third_party/chitra/third_party/sokol/"
-          cp third_party/chitra/third_party/sokol/LICENSE "dist/${PKG}/third_party/chitra/third_party/sokol/" 2>/dev/null || true
-          cp -r third_party/chitra/third_party/fontstash "dist/${PKG}/third_party/chitra/third_party/"
-          cp -r third_party/chitra/third_party/stb "dist/${PKG}/third_party/chitra/third_party/"
+          chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc
+          python3 .github/scripts/package_source.py "dist/${PKG}"
 
           cd dist
           tar -czvf "${PKG}.tar.gz" "${PKG}"
@@ -91,8 +67,50 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
 
+  verify-source-sdk:
+    name: Verify source SDK (${{ matrix.os }})
+    needs: [init, package-source-sdk]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-source-sdk
+          path: source-archive
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev
+      - name: Extract and build source archive
+        shell: bash
+        run: |
+          python -m zipfile -e "source-archive/tether-${{ needs.init.outputs.tag }}-source-sdk.zip" source-extracted
+          cmake -S "source-extracted/tether-${{ needs.init.outputs.tag }}-source-sdk" -B source-build -DCMAKE_BUILD_TYPE=Release -DTETHER_BUILD_SHARED=OFF
+          cmake --build source-build --config Release --parallel 4
+          cmake --install source-build --config Release --prefix source-install
+          mkdir source-consumer
+          printf '%s\n' \
+            'cmake_minimum_required(VERSION 3.20)' \
+            'project(consumer C)' \
+            'find_package(Tether CONFIG REQUIRED)' \
+            'add_executable(consumer main.c)' \
+            'target_link_libraries(consumer PRIVATE Tether::tether)' > source-consumer/CMakeLists.txt
+          printf '%s\n' \
+            '#include <tether/core/tether_ecs.h>' \
+            'int main(void) { tether_ecs_init(); tether_ecs_term(); return 0; }' > source-consumer/main.c
+          INSTALL_PREFIX=$(python -c 'from pathlib import Path; print(Path("source-install").resolve().as_posix())')
+          cmake -S source-consumer -B consumer-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX"
+          cmake --build consumer-build --config Release --parallel 4
+
   package-linux-x64:
-    name: Package Linux SDK & Demo (x86_64)
+    name: Package Linux Demo (x86_64)
     needs: init
     runs-on: ubuntu-latest
     env:
@@ -107,11 +125,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev ninja-build zip
 
-      - name: Build and Install Linux x86_64 SDK & Demo
+      - name: Build Linux x86_64 Demo
         run: |
           chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc 2>/dev/null || true
           chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc 2>/dev/null || true
-          PKG_SDK="tether-${RELEASE_TAG}-linux-x64-sdk"
           PKG_DEMO="tether-${RELEASE_TAG}-linux-x64-demo"
 
           cmake -S . -B build-release -G Ninja \
@@ -124,21 +141,15 @@ jobs:
             -DTETHER_BUILD_EXAMPLES=ON
           cmake --build build-release --parallel 4
 
-          # 1. Clean Precompiled SDK
-          cmake --install build-release --prefix "dist/${PKG_SDK}"
-          cp README.md LICENSE "dist/${PKG_SDK}/"
-
           # 2. Standalone Showcase Demo
           mkdir -p "dist/${PKG_DEMO}/bin"
           find build-release -type f \( -name "tether_sandbox" -o -name "tether_test" -o -name "tether_bench" \) -exec cp {} "dist/${PKG_DEMO}/bin/" \;
-          mkdir -p "dist/${PKG_DEMO}/bin"
-          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/UI"
-          cp -r examples/Font "dist/${PKG_DEMO}/bin/Font"
+          mkdir -p "dist/${PKG_DEMO}/bin/assets"
+          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
+          cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
           cp README.md LICENSE "dist/${PKG_DEMO}/"
 
           cd dist
-          tar -czvf "${PKG_SDK}.tar.gz" "${PKG_SDK}"
-          zip -r "${PKG_SDK}.zip" "${PKG_SDK}"
           tar -czvf "${PKG_DEMO}.tar.gz" "${PKG_DEMO}"
           zip -r "${PKG_DEMO}.zip" "${PKG_DEMO}"
 
@@ -148,7 +159,7 @@ jobs:
           path: dist/*.zip
 
   package-linux-arm64:
-    name: Package Linux SDK & Demo (arm64)
+    name: Package Linux Demo (arm64)
     needs: init
     runs-on: ubuntu-24.04-arm
     env:
@@ -163,11 +174,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev ninja-build zip
 
-      - name: Build and Install Linux ARM64 SDK & Demo
+      - name: Build Linux ARM64 Demo
         run: |
           chmod +x third_party/chitra/third_party/sokol-tools/bin/linux/sokol-shdc 2>/dev/null || true
           chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc 2>/dev/null || true
-          PKG_SDK="tether-${RELEASE_TAG}-linux-arm64-sdk"
           PKG_DEMO="tether-${RELEASE_TAG}-linux-arm64-demo"
 
           cmake -S . -B build-release -G Ninja \
@@ -180,21 +190,15 @@ jobs:
             -DTETHER_BUILD_EXAMPLES=ON
           cmake --build build-release --parallel 4
 
-          # 1. Clean Precompiled SDK
-          cmake --install build-release --prefix "dist/${PKG_SDK}"
-          cp README.md LICENSE "dist/${PKG_SDK}/"
-
           # 2. Standalone Showcase Demo
           mkdir -p "dist/${PKG_DEMO}/bin"
           find build-release -type f \( -name "tether_sandbox" -o -name "tether_test" -o -name "tether_bench" \) -exec cp {} "dist/${PKG_DEMO}/bin/" \;
-          mkdir -p "dist/${PKG_DEMO}/bin"
-          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/UI"
-          cp -r examples/Font "dist/${PKG_DEMO}/bin/Font"
+          mkdir -p "dist/${PKG_DEMO}/bin/assets"
+          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
+          cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
           cp README.md LICENSE "dist/${PKG_DEMO}/"
 
           cd dist
-          tar -czvf "${PKG_SDK}.tar.gz" "${PKG_SDK}"
-          zip -r "${PKG_SDK}.zip" "${PKG_SDK}"
           tar -czvf "${PKG_DEMO}.tar.gz" "${PKG_DEMO}"
           zip -r "${PKG_DEMO}.zip" "${PKG_DEMO}"
 
@@ -204,7 +208,7 @@ jobs:
           path: dist/*.zip
 
   package-windows-x64:
-    name: Package Windows SDK & Demo (x86_64)
+    name: Package Windows Demo (x86_64)
     needs: init
     runs-on: windows-latest
     env:
@@ -214,10 +218,9 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-      - name: Build and Install Windows x86_64 SDK & Demo
+      - name: Build Windows x86_64 Demo
         shell: pwsh
         run: |
-          $pkg_sdk = "tether-${env:RELEASE_TAG}-windows-x64-sdk"
           $pkg_demo = "tether-${env:RELEASE_TAG}-windows-x64-demo"
 
           cmake -S . -B build-release `
@@ -229,10 +232,6 @@ jobs:
             -DTETHER_BUILD_EXAMPLES=ON
           cmake --build build-release --config Release --parallel 4
 
-          # 1. Clean Precompiled SDK
-          cmake --install build-release --config Release --prefix "dist\$pkg_sdk"
-          Copy-Item "README.md", "LICENSE" "dist\$pkg_sdk\"
-
           # 2. Standalone Showcase Demo
           New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin"
           $bin = Get-ChildItem -Path "build-release" -Filter "tether_sandbox.exe" -Recurse | Select-Object -First 1
@@ -242,12 +241,11 @@ jobs:
 
           Get-ChildItem -Path "build-release*" -Include "tether_test.exe", "tether_bench.exe" -Recurse | Copy-Item -Destination "dist\$pkg_demo\bin\"
 
-          New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin"
-          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg_demo\bin\UI"
-          Copy-Item -Recurse "examples\Font" "dist\$pkg_demo\bin\Font"
+          New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin\assets"
+          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg_demo\bin\assets\UI"
+          Copy-Item -Recurse "examples\Font" "dist\$pkg_demo\bin\assets\Font"
           Copy-Item "README.md", "LICENSE" "dist\$pkg_demo\"
 
-          Compress-Archive -Path "dist\$pkg_sdk" -DestinationPath "dist\$pkg_sdk.zip"
           Compress-Archive -Path "dist\$pkg_demo" -DestinationPath "dist\$pkg_demo.zip"
 
       - uses: actions/upload-artifact@v4
@@ -256,7 +254,7 @@ jobs:
           path: dist/*.zip
 
   package-windows-arm64:
-    name: Package Windows SDK & Demo (arm64)
+    name: Package Windows Demo (arm64)
     needs: init
     runs-on: windows-latest
     env:
@@ -266,10 +264,9 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-      - name: Build and Install Windows ARM64 SDK & Demo
+      - name: Build Windows ARM64 Demo
         shell: pwsh
         run: |
-          $pkg_sdk = "tether-${env:RELEASE_TAG}-windows-arm64-sdk"
           $pkg_demo = "tether-${env:RELEASE_TAG}-windows-arm64-demo"
 
           cmake -S . -B build-release-arm64 `
@@ -282,10 +279,6 @@ jobs:
             -DTETHER_BUILD_EXAMPLES=ON
           cmake --build build-release-arm64 --config Release --parallel 4
 
-          # 1. Clean Precompiled SDK
-          cmake --install build-release-arm64 --config Release --prefix "dist\$pkg_sdk"
-          Copy-Item "README.md", "LICENSE" "dist\$pkg_sdk\"
-
           # 2. Standalone Showcase Demo
           New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin"
           $bin = Get-ChildItem -Path "build-release-arm64" -Filter "tether_sandbox.exe" -Recurse | Select-Object -First 1
@@ -295,12 +288,11 @@ jobs:
 
           Get-ChildItem -Path "build-release*" -Include "tether_test.exe", "tether_bench.exe" -Recurse | Copy-Item -Destination "dist\$pkg_demo\bin\"
 
-          New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin"
-          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg_demo\bin\UI"
-          Copy-Item -Recurse "examples\Font" "dist\$pkg_demo\bin\Font"
+          New-Item -ItemType Directory -Force -Path "dist\$pkg_demo\bin\assets"
+          Copy-Item -Recurse "examples\sandbox\ui\scripts" "dist\$pkg_demo\bin\assets\UI"
+          Copy-Item -Recurse "examples\Font" "dist\$pkg_demo\bin\assets\Font"
           Copy-Item "README.md", "LICENSE" "dist\$pkg_demo\"
 
-          Compress-Archive -Path "dist\$pkg_sdk" -DestinationPath "dist\$pkg_sdk.zip"
           Compress-Archive -Path "dist\$pkg_demo" -DestinationPath "dist\$pkg_demo.zip"
 
       - uses: actions/upload-artifact@v4
@@ -309,7 +301,7 @@ jobs:
           path: dist/*.zip
 
   package-macos:
-    name: Package macOS SDK & Demo (arm64)
+    name: Package macOS Demo (arm64)
     needs: init
     runs-on: macos-latest
     env:
@@ -322,11 +314,10 @@ jobs:
       - name: Install dependencies
         run: which ninja || brew install ninja
 
-      - name: Build and Install macOS SDK & Demo
+      - name: Build macOS Demo
         run: |
           chmod +x third_party/chitra/third_party/sokol-tools/bin/osx/sokol-shdc 2>/dev/null || true
           chmod +x third_party/chitra/third_party/sokol-tools/bin/osx_arm64/sokol-shdc 2>/dev/null || true
-          PKG_SDK="tether-${RELEASE_TAG}-macos-arm64-sdk"
           PKG_DEMO="tether-${RELEASE_TAG}-macos-arm64-demo"
 
           cmake -S . -B build-release -G Ninja \
@@ -339,20 +330,15 @@ jobs:
             -DTETHER_BUILD_EXAMPLES=ON
           cmake --build build-release --parallel 4
 
-          # 1. Clean Precompiled SDK
-          cmake --install build-release --prefix "dist/${PKG_SDK}"
-          cp README.md LICENSE "dist/${PKG_SDK}/"
-
           # 2. Standalone Showcase Demo
           mkdir -p "dist/${PKG_DEMO}/bin"
           find build-release -type f \( -name "tether_sandbox" -o -name "tether_test" -o -name "tether_bench" \) -exec cp {} "dist/${PKG_DEMO}/bin/" \;
-          mkdir -p "dist/${PKG_DEMO}/bin"
-          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/UI"
-          cp -r examples/Font "dist/${PKG_DEMO}/bin/Font"
+          mkdir -p "dist/${PKG_DEMO}/bin/assets"
+          cp -r examples/sandbox/ui/scripts "dist/${PKG_DEMO}/bin/assets/UI"
+          cp -r examples/Font "dist/${PKG_DEMO}/bin/assets/Font"
           cp README.md LICENSE "dist/${PKG_DEMO}/"
 
           cd dist
-          zip -r "${PKG_SDK}.zip" "${PKG_SDK}"
           zip -r "${PKG_DEMO}.zip" "${PKG_DEMO}"
 
       - uses: actions/upload-artifact@v4
@@ -361,7 +347,7 @@ jobs:
           path: dist/*.zip
 
   package-android:
-    name: Package Android SDK (arm64-v8a)
+    name: Package Android Demo (arm64-v8a)
     needs: init
     runs-on: ubuntu-latest
     env:
@@ -377,9 +363,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build zip
 
-      - name: Build and Install Android SDK
+      - name: Build Android SDK
         run: |
-          PKG_SDK="tether-${RELEASE_TAG}-android-arm64-sdk"
 
           NDK_PATH="${ANDROID_NDK_LATEST_HOME:-$ANDROID_HOME/ndk-bundle}"
           if [ ! -d "$NDK_PATH" ]; then
@@ -399,20 +384,6 @@ jobs:
             -DTETHER_BUILD_RUNNERS=OFF \
             -DTETHER_BUILD_EXAMPLES=ON
           cmake --build build-android --target tether tether_sandbox --parallel 4
-
-          # Clean Precompiled SDK
-          mkdir -p "dist/${PKG_SDK}/include" "dist/${PKG_SDK}/lib"
-          cp -r include/* "dist/${PKG_SDK}/include/"
-          cp -r third_party/chitra/include/* "dist/${PKG_SDK}/include/"
-          cp third_party/libyaml/include/* "dist/${PKG_SDK}/include/"
-          find build-android -name "libtether.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
-          find build-android -name "libchitra.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
-          find build-android -name "libyaml.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
-          cp README.md LICENSE "dist/${PKG_SDK}/"
-
-          cd dist
-          zip -r "${PKG_SDK}.zip" "${PKG_SDK}"
-          cd ..
 
           # Package Android Demo (.apk)
           PKG_DEMO="tether-${RELEASE_TAG}-android-arm64-demo"
@@ -483,7 +454,7 @@ jobs:
           path: dist/*.zip
 
   package-ios:
-    name: Package iOS SDK (arm64)
+    name: Package iOS Simulator Demo (arm64)
     needs: init
     runs-on: macos-latest
     env:
@@ -494,9 +465,8 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - name: Build and Install iOS SDK
+      - name: Build iOS SDK
         run: |
-          PKG_SDK="tether-${RELEASE_TAG}-ios-arm64-sdk"
 
           cmake -S . -B build-ios -G Xcode \
             -DCMAKE_SYSTEM_NAME=iOS \
@@ -515,22 +485,8 @@ jobs:
           cmake --build build-ios --config Release --target tether --parallel 4
           cmake --build build-ios --config Release --target tether_sandbox --parallel 4
 
-          # Clean Precompiled SDK
-          mkdir -p "dist/${PKG_SDK}/include" "dist/${PKG_SDK}/lib"
-          cp -r include/* "dist/${PKG_SDK}/include/"
-          cp -r third_party/chitra/include/* "dist/${PKG_SDK}/include/"
-          cp third_party/libyaml/include/* "dist/${PKG_SDK}/include/"
-          find build-ios -name "libtether.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
-          find build-ios -name "libchitra.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
-          find build-ios -name "libyaml.a" -type f -exec cp {} "dist/${PKG_SDK}/lib/" \;
-          cp README.md LICENSE "dist/${PKG_SDK}/"
-
-          cd dist
-          zip -r "${PKG_SDK}.zip" "${PKG_SDK}"
-          cd ..
-
           # Package iOS Demo (.app)
-          PKG_DEMO="tether-${RELEASE_TAG}-ios-arm64-demo"
+          PKG_DEMO="tether-${RELEASE_TAG}-ios-simulator-arm64-demo"
           mkdir -p "dist/${PKG_DEMO}"
           find build-ios -name "*.app" -type d -exec cp -r {} "dist/${PKG_DEMO}/" \;
           cp README.md LICENSE "dist/${PKG_DEMO}/"
@@ -544,7 +500,7 @@ jobs:
           path: dist/*.zip
 
   package-web:
-    name: Package WebAssembly (SDK & Showcase Demo)
+    name: Package WebAssembly (Showcase Demo)
     needs: init
     runs-on: ubuntu-latest
     env:
@@ -565,9 +521,8 @@ jobs:
           chmod +x third_party/chitra/third_party/sokol-tools/bin/linux_arm64/sokol-shdc
           mkdir -p third_party/chitra/src/backends/shaders/gen
 
-      - name: Build WebGL2 Precompiled SDK & Demo
+      - name: Build WebGL2 Demo
         run: |
-          PKG_SDK="tether-${RELEASE_TAG}-web-wasm-sdk"
 
           emcmake cmake -S . -B build-wasm-gl -G Ninja \
             -DTETHER_ENABLE_INSTALL=ON \
@@ -579,9 +534,6 @@ jobs:
             -DCHITRA_BACKEND=GLES3
           cmake --build build-wasm-gl --target tether tether_sandbox --parallel 4
 
-          # 1. Clean Precompiled WebAssembly SDK
-          cmake --install build-wasm-gl --prefix "dist/${PKG_SDK}"
-          cp README.md LICENSE "dist/${PKG_SDK}/"
 
       - name: Build WebGPU Demo
         run: |
@@ -595,7 +547,6 @@ jobs:
 
       - name: Bundle Web Showcase Demos
         run: |
-          PKG_SDK="tether-${RELEASE_TAG}-web-wasm-sdk"
           PKG_DEMO="tether-${RELEASE_TAG}-web-demo"
 
           mkdir -p "dist/${PKG_DEMO}/webgl2"
@@ -605,7 +556,6 @@ jobs:
           cp README.md LICENSE "dist/${PKG_DEMO}/"
 
           cd dist
-          zip -r "${PKG_SDK}.zip" "${PKG_SDK}"
           zip -r "${PKG_DEMO}.zip" "${PKG_DEMO}"
 
       - uses: actions/upload-artifact@v4
@@ -618,6 +568,7 @@ jobs:
     needs:
       - init
       - package-source-sdk
+      - verify-source-sdk
       - package-linux-x64
       - package-linux-arm64
       - package-windows-x64

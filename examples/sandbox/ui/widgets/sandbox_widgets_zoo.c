@@ -150,7 +150,7 @@ void sandbox_widgets_zoo_cleanup(void) {
 
 TUID sandbox_widgets_zoo_create(TUID parent) {
     /* Declarative YAML scene loading */
-    TUID root = tether_yaml_load("UI/widgets.yaml", parent);
+    TUID root = tether_yaml_load("assets/UI/widgets.yaml", parent);
     if (root == TETHER_INVALID_TUID) {
         /* Fallback if YAML is not present */
         return TETHER_INVALID_TUID;

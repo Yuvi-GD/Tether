@@ -43,7 +43,7 @@
                 flow: COLUMN
                 fill_ratio: 1
                 children:
-                  - Scene: "UI/dashboard.yaml"
+                  - Scene: "assets/UI/dashboard.yaml"
             - Panel:
                 flow: COLUMN
                 fill_ratio: 1

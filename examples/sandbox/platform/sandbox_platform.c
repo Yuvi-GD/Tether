@@ -129,15 +129,15 @@ void sandbox_platform_pick_file(const char *filter_ext, const char *title,
 
 EM_JS(void, _sandbox_platform_js_sync_all_ui, (), {
     var files = window.TETHER_SYNC_FILES || (typeof Module !== "undefined" && Module.tetherSyncFiles) || [
-        "UI/app.yaml",
-        "UI/widgets.yaml",
-        "UI/dashboard.yaml",
-        "UI/index.yaml",
-        "UI/lab.yaml",
-        "UI/playground.yaml",
-        "UI/playground/layout.yaml",
-        "UI/showcase_dialog.yaml",
-        "UI/showcase_toast.yaml"
+        "assets/UI/app.yaml",
+        "assets/UI/widgets.yaml",
+        "assets/UI/dashboard.yaml",
+        "assets/UI/index.yaml",
+        "assets/UI/lab.yaml",
+        "assets/UI/playground.yaml",
+        "assets/UI/playground/layout.yaml",
+        "assets/UI/showcase_dialog.yaml",
+        "assets/UI/showcase_toast.yaml"
     ];
     var fs = (typeof FS !== "undefined") ? FS :
              (typeof Module !== "undefined" && Module.FS) ? Module.FS : null;
@@ -435,15 +435,16 @@ void sandbox_platform_android_init(void) {
     if (chdir(activity->internalDataPath) != 0) {
         LOGE("Failed to chdir to %s", activity->internalDataPath);
     }
-    mkdir("UI", 0777);
-    mkdir("UI/playground", 0777);
-    mkdir("Font", 0777);
+    mkdir("assets", 0777);
+    mkdir("assets/UI", 0777);
+    mkdir("assets/UI/playground", 0777);
+    mkdir("assets/Font", 0777);
     mkdir("report", 0777);
     mkdir("report/workbench", 0777);
 
-    extract_dir(activity->assetManager, "UI", "UI");
-    extract_dir(activity->assetManager, "UI/playground", "UI/playground");
-    extract_dir(activity->assetManager, "Font", "Font");
+    extract_dir(activity->assetManager, "UI", "assets/UI");
+    extract_dir(activity->assetManager, "UI/playground", "assets/UI/playground");
+    extract_dir(activity->assetManager, "Font", "assets/Font");
     LOGI("Android Sandbox asset extraction complete");
 }
 

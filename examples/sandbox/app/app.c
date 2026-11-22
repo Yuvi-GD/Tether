@@ -82,9 +82,9 @@ static void switch_view(void) {
         sandbox_showcase_close_overlays();
     }
     if (wanted == SANDBOX_SHOWCASE && !showcase_loaded) {
-        TUID root = tether_yaml_load("UI/index.yaml", views[SANDBOX_SHOWCASE]);
+        TUID root = tether_yaml_load("assets/UI/index.yaml", views[SANDBOX_SHOWCASE]);
         if (root == TETHER_INVALID_TUID) {
-            results_message("Cannot load showcase UI/index.yaml.");
+            results_message("Cannot load showcase assets/UI/index.yaml.");
             wanted = SANDBOX_RESULTS;
         } else {
             sandbox_mount_scene(root);
@@ -107,7 +107,7 @@ static void switch_view(void) {
 }
 
 static bool create_views(void) {
-    TUID app_root = tether_yaml_load("UI/app.yaml", tether_ecs_get_main_root());
+    TUID app_root = tether_yaml_load("assets/UI/app.yaml", tether_ecs_get_main_root());
     views[SANDBOX_WIDGETS] = tether_registry_find_entity("view_widgets");
     views[SANDBOX_LAB] = tether_registry_find_entity("view_lab");
     views[SANDBOX_SHOWCASE] = tether_registry_find_entity("view_showcase");
@@ -124,7 +124,7 @@ static bool create_views(void) {
         return false;
     }
 
-    TUID lab = tether_yaml_load("UI/lab.yaml", views[SANDBOX_LAB]);
+    TUID lab = tether_yaml_load("assets/UI/lab.yaml", views[SANDBOX_LAB]);
     if (lab == TETHER_INVALID_TUID || !lab_bind()) {
         exit_code = 1;
         return false;
@@ -142,7 +142,7 @@ static void init(void) {
 #if defined(__ANDROID__)
     sandbox_platform_android_init();
 #endif
-    tether_font_register("Roboto-Regular", "Font/Roboto-Regular.ttf");
+    tether_font_register("Roboto-Regular", "assets/Font/Roboto-Regular.ttf");
     if (!create_views()) {
         exit_code = 1;
         chitra_quit();

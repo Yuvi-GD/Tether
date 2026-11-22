@@ -29,13 +29,10 @@ function(tether_target_assets TARGET_NAME)
 
         if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
             target_link_options(${TARGET_NAME} PRIVATE
-                "--embed-file=${SRC_DIR}@${ALIAS}"
                 "--embed-file=${SRC_DIR}@${ARG_DESTINATION}/${ALIAS}"
             )
         else()
             add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET_NAME}>/${ALIAS}"
-                COMMAND ${CMAKE_COMMAND} -E copy_directory "${SRC_DIR}" "$<TARGET_FILE_DIR:${TARGET_NAME}>/${ALIAS}"
                 COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET_NAME}>/${ARG_DESTINATION}/${ALIAS}"
                 COMMAND ${CMAKE_COMMAND} -E copy_directory "${SRC_DIR}" "$<TARGET_FILE_DIR:${TARGET_NAME}>/${ARG_DESTINATION}/${ALIAS}"
             )

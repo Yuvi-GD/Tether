@@ -17,7 +17,7 @@
 ![iOS](https://img.shields.io/badge/iOS-000000?logo=apple&logoColor=white)
 ![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)
 
-*Source SDK supports any platform with a standard C99 compiler (Embedded Linux, RTOS, Bare-Metal, and Game Engines).*
+*Tether is designed for portable C environments. Other targets may require a custom backend, platform integration, or additional work.*
 
 [**Quick Start**](#10-building--running) &nbsp;|&nbsp;
 [**Architecture**](#3-cell-block-subsystem-architecture) &nbsp;|&nbsp;
@@ -31,11 +31,11 @@
 
 Tether is a high-performance, modular user interface engine written in pure ISO C99. Engineered for predictable latency, cache locality, and zero garbage collection overhead, Tether replaces heavy DOM trees and deeply nested object-oriented inheritance hierarchies with a data-oriented Entity Component System (UI-ECS) and a reactive two-pass layout solver. By separating persistent UI layout space from presentation transforms, Tether ensures that animations, state changes, and styling updates execute with minimal CPU reflow and deterministic frame times.
 
-Designed to run anywhere C runs, Tether is distributed both as a standalone **Source SDK** that drops directly into any build system or embedded environment, and as **Precompiled SDK packages** with interactive demo showcases for major desktop, mobile, and web environments. Out of the box, Tether pairs with **Chitra** as its default hardware-accelerated 2D GPU rendering engine (powered by Sokol), providing native rendering across Windows (Direct3D 11), Linux (OpenGL Core), macOS and iOS (Metal), Android (OpenGL ES 3.0), and modern browsers via WebAssembly (WebGL2 and WebGPU), while a clean 3-table C backend interface allows seamless integration into game engines, RTOS monitors, or custom software framebuffers.
+Tether is distributed as a **source SDK** and separate interactive demo packages. Tether's C API is intended for use beyond the platforms listed here, including with custom backends. The supplied build pairs it with **Chitra**, whose Sokol backends target Windows, Linux, macOS, iOS, Android, and WebAssembly. Other environments require suitable platform integration and validation; a C compiler alone does not guarantee the default build will run.
 
 ---
 
-<img width="2556" height="1117" alt="image" src="https://github.com/user-attachments/assets/3f442144-2c24-4982-9859-c00c07ae9607" />
+<img alt="Tether showcase" src="https://github.com/user-attachments/assets/3f442144-2c24-4982-9859-c00c07ae9607" width="100%" />
 
 ---
 ## 1. Architectural Vision: The "PDF of Interactive User Interfaces"
@@ -162,8 +162,7 @@ Tether Core is pure standard C99 with zero operating-system or GPU dependencies,
 
 ### SDK & Distribution Model
 
-* **Source SDK (Universal)**: Standalone C99 source distribution containing Tether Core, public headers (`include/`), the default Chitra backend, and CMake targets. Free of test suites and demo applications, it drops into any build system and compiles for any platform with a standard C99 compiler.
-* **Precompiled SDKs (Major Platforms)**: Ready-to-link static (`.lib` / `.a`) and shared (`.dll` / `.so`) binaries, public headers, and CMake package exports for major desktop and mobile environments.
+* **Source SDK**: Tether source and public headers, the default Chitra backend, libyaml, generated shader headers, licenses, and CMake build files. Platform toolchains and graphics dependencies are required.
 * **Showcase Demos**: Standalone interactive showcase binaries (`tether_sandbox`) distributed separately for evaluating UI widgets, live YAML authoring, and benchmark telemetry without compiling source code.
 
 ### Game Engine & Embedded Integration Models
@@ -288,7 +287,7 @@ The sandbox launches into the interactive Widget Gallery (including enabled/disa
 ```
 
 > [!TIP]
-> **Asset Path Resolution**: In C code and declarative YAML scenes, specify asset paths cleanly relative to the asset root (e.g. `"UI/app.yaml"`, `"Font/Roboto-Regular.ttf"`). Do not prefix paths with `"assets/"`; the engine and platform layer resolve paths against the bundled asset root automatically across desktop and web environments.
+> **Sandbox assets**: The sandbox loads its UI scripts and font from `assets/UI/` and `assets/Font/` beside the executable. Tether does not automatically prepend an asset directory to application paths.
 
 #### WebAssembly & WebGPU (In-Browser Sandbox)
 Tether compiles directly to WebAssembly with native support for both WebGL2 (`GLES3`) and WebGPU (`WGPU`), rendering at full device pixel ratio (High-DPI) in a responsive browser canvas with built-in touch input support for mobile devices:
