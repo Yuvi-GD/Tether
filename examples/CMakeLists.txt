@@ -39,6 +39,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     tether_configure_wasm_target(tether_sandbox
+        SHELL "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/platform/sandbox_shell.html"
         EXPORTED_FUNCTIONS
             _sandbox_platform_on_file_loaded
             _sandbox_platform_get_path_buf

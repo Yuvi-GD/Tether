@@ -109,6 +109,45 @@ jobs:
           cmake -S source-consumer -B consumer-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$INSTALL_PREFIX"
           cmake --build consumer-build --config Release --parallel 4
 
+  verify-source-sdk-web:
+    name: Verify source SDK (WebGL2)
+    needs: [init, package-source-sdk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-source-sdk
+          path: source-archive
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+      - name: Build a web application from the source archive
+        run: |
+          python3 -m zipfile -e "source-archive/tether-${{ needs.init.outputs.tag }}-source-sdk.zip" source-extracted
+          mkdir source-web-consumer
+          cat > source-web-consumer/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.20)
+          project(tether_web_consumer C CXX)
+          add_subdirectory("${TETHER_SDK_SOURCE}" tether)
+          include("${TETHER_SDK_SOURCE}/cmake/TetherWasm.cmake")
+          add_executable(consumer main.c)
+          target_link_libraries(consumer PRIVATE Tether::tether)
+          tether_configure_wasm_target(consumer)
+          EOF
+          cat > source-web-consumer/main.c <<'EOF'
+          #include <tether/tether.h>
+          int main(void) {
+              Tether_Config config = {0};
+              tether_run(&config);
+              return 0;
+          }
+          EOF
+          emcmake cmake -S source-web-consumer -B source-web-build \
+            -DTETHER_SDK_SOURCE="$PWD/source-extracted/tether-${{ needs.init.outputs.tag }}-source-sdk" \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build source-web-build --target consumer --parallel 4
+          test -f source-web-build/consumer.html
+
   package-linux-x64:
     name: Package Linux Demo (x86_64)
     needs: init
@@ -569,6 +608,7 @@ jobs:
       - init
       - package-source-sdk
       - verify-source-sdk
+      - verify-source-sdk-web
       - package-linux-x64
       - package-linux-arm64
       - package-windows-x64

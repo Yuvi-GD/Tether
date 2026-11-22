@@ -38,7 +38,7 @@ def main():
     destination = args.destination.resolve()
     destination.mkdir(parents=True, exist_ok=False)
 
-    for directory in ("include", "src", "cmake"):
+    for directory in ("include", "src", "cmake", "web"):
         copy_tree(ROOT / directory, destination / directory)
     for filename in ("CMakeLists.txt", "LICENSE"):
         shutil.copy2(ROOT / filename, destination / filename)

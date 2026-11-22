@@ -22,6 +22,10 @@ To include Tether in a CMake project, use `add_subdirectory` on this directory
 and link your target to `Tether::tether`. The repository has more examples and
 platform build information: https://github.com/Yuvi-GD/Tether
 
+For an Emscripten application, include `cmake/TetherWasm.cmake` and call
+`tether_configure_wasm_target(your_target)` after creating the target. The SDK
+includes a minimal default HTML shell; pass `SHELL <path>` to use your own.
+
 ## Shaders
 
 The original GLSL and generated C headers are included. Normal builds do not
