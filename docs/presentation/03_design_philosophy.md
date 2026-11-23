@@ -8,7 +8,7 @@
 
 Software performance is not created by low-level micro-optimizations or compiler flags; it is the natural consequence of sound **architectural discipline**. When an architecture aligns with the physical realities of modern hardware, high performance, low latency, and deterministic memory behavior emerge effortlessly.
 
-Tether is built upon six foundational design principles (combining active `v0.0.3-preview` design with ongoing optimization targets):
+Tether is built upon six foundational design principles (combining active preview design with ongoing optimization targets):
 1. **Zero-Allocation Steady State (Target Discipline)**: Minimize and eliminate dynamic heap churn in steady-state frame, layout, and rendering paths.
 2. **Data-Oriented Architecture (DOD)**: Data is stored in contiguous memory pools optimized for CPU cache lines, completely rejecting classical OOP inheritance trees and vtable indirection.
 3. **Decoupling of Layout Space from Render Space**: Visual GPU transformations (animations, scales, rotations, fades) must never invalidate container layout bounds or trigger reflow storms.
@@ -45,7 +45,7 @@ Tether enforces a strict rule across its layout and rendering pipelines:
 
 - **High-Water Mark Strategy**: Component arrays allocate memory during startup or capacity expansion using geometric growth (`realloc`). Once the peak population is accommodated, pool capacities stabilize.
 - **In-Place Mutation & SSO**: When button hover/press state changes or animations update offsets, values mutate in-place inside contiguous dense arrays, and short strings stay inline in fixed SSO tiers.
-- **Scratch Arenas & Current Preview Note**: Future Vinyasa multi-reference resolution uses transient scratch buffers without touching the OS allocator. Note that in `v0.0.3-preview`, expanding pools and `Tether_TextDynamic` (>512B strings) still allocate on the C heap; complete zero-allocation auditing across frame paths is an active [roadmap](10_roadmap_and_community.md) goal.
+- **Scratch Arenas & Current Preview Note**: Future Vinyasa multi-reference resolution uses transient scratch buffers without touching the OS allocator. Note that in the current preview, expanding pools and `Tether_TextDynamic` (>512B strings) still allocate on the C heap; complete zero-allocation auditing across frame paths is an active [roadmap](10_roadmap_and_community.md) goal.
 
 ---
 
@@ -130,7 +130,7 @@ flowchart TD
 - **`Tether_RenderTransform` (Render Space)**:
   Represents local visual offsets (translation $x/y$, scale $x/y$, rotation in degrees, render pivot, and opacity).
   - High-frequency UI animations (hover effects, visual offsets, shape rotation/opacity) mutate **only** `RenderTransform` without marking parent or sibling `DIRTY_LAYOUT`.
-  - **Zero layout recalculation occurs** on surrounding containers (note: in `v0.0.3-preview`, transforming text elements rebuilds CPU-side glyph geometry via `DIRTY_TEXT_CONTENT`).
+  - **Zero layout recalculation occurs** on surrounding containers (note: transforming text elements currently rebuilds CPU-side glyph geometry via `DIRTY_TEXT_CONTENT`).
 
 ---
 

@@ -36,9 +36,13 @@
             "name": "linux-debug",
             "displayName": "Linux — Debug",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build",
+            "binaryDir": "${sourceDir}/build/build-debug",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
+            },
+            "environment": {
+                "CPATH": "$env{HOME}/.local/include",
+                "LIBRARY_PATH": "$env{HOME}/.local/lib"
             },
             "condition": {
                 "type": "equals",
@@ -50,9 +54,13 @@
             "name": "linux-release",
             "displayName": "Linux — Release",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build-release",
+            "binaryDir": "${sourceDir}/build/build-release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
+            },
+            "environment": {
+                "CPATH": "$env{HOME}/.local/include",
+                "LIBRARY_PATH": "$env{HOME}/.local/lib"
             },
             "condition": {
                 "type": "equals",
@@ -64,7 +72,7 @@
             "name": "macos-debug",
             "displayName": "macOS — Debug",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build",
+            "binaryDir": "${sourceDir}/build/build-debug",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
             },
@@ -78,7 +86,7 @@
             "name": "macos-release",
             "displayName": "macOS — Release",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build-release",
+            "binaryDir": "${sourceDir}/build/build-release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             },

@@ -35,30 +35,13 @@ int main(int argc, char **argv) {
     }
     result.status = "failed";
     int code = tool_run(&options, &result);
-    if (!tool_write_result(&options, &result)) {
+    if (!result.report_written && !tool_write_result(&options, &result)) {
         code = 2;
     }
     printf("%s\nResult: %s\n", result.message, options.output);
-    char report[4096], text_path[4096];
+    char report[4096];
     if (tool_read_report(options.output, report, sizeof report)) {
         printf("%s", report);
-        if (snprintf(text_path, sizeof text_path, "%s.txt", options.output) >=
-            (int)sizeof text_path) {
-            code = 2;
-        } else {
-            FILE *f = fopen(text_path, "wb");
-            if (!f) {
-                code = 2;
-            } else {
-                bool ok = fputs(report, f) >= 0;
-                if (fclose(f)) {
-                    ok = false;
-                }
-                if (!ok) {
-                    code = 2;
-                }
-            }
-        }
     } else {
         code = 2;
     }

@@ -35,6 +35,8 @@ static struct {
     uint64_t uploads;
 } run;
 
+static void finalize_result(void);
+
 int tool_run_layout(const ToolOptions *options, ToolResult *result);
 
 static void check(bool condition) {
@@ -308,7 +310,13 @@ static void after_frame(void) {
         run.r->rss_peak = run.r->rss_end;
     }
     run.r->elapsed_ms = tool_now_ms() - run.started;
-    run.r->cpu_ms = tool_cpu_ms() - run.cpu_start;
+    double cpu_now = tool_cpu_ms();
+    if (isfinite(cpu_now) && isfinite(run.cpu_start)) {
+        double delta = cpu_now - run.cpu_start;
+        run.r->cpu_ms = delta < 0.0 ? NAN : delta;
+    } else {
+        run.r->cpu_ms = NAN;
+    }
     if (run.r->sample_count >= run.o->frames || run.r->failures ||
         (run.o->seconds > 0 && run.r->elapsed_ms >= run.o->seconds * 1000.0)) {
         if (!run.o->test) {
@@ -334,6 +342,29 @@ static void teardown(void) {
         tether_widget_destroy(run.root);
     }
     run.r->teardown_ms = tool_now_ms() - start;
+#if defined(__APPLE__)
+    if (run.render) {
+        finalize_result();
+        run.r->report_written = tool_write_result(run.o, run.r);
+    }
+#endif
+}
+
+static void finalize_result(void) {
+    if (run.shutdown_started) {
+        run.r->shutdown_ms = tool_now_ms() - run.shutdown_started;
+    }
+    run.r->total_run_ms = tool_now_ms() - run.run_started;
+    run.r->status = run.r->failures ? "failed" : run.finished ? "passed" : "cancelled";
+    uint64_t draws = 0;
+    for (uint32_t i = 0; i < run.r->sample_count; i++) {
+        draws += run.r->samples[i].draws;
+    }
+    snprintf(run.r->message, sizeof run.r->message,
+             "%s: %s; %u steps, %llu checks, %llu failures, %.2f ms measured wall time, %llu draw submissions.",
+             run.o->scenario, run.r->status, run.r->sample_count,
+             (unsigned long long)run.r->checks, (unsigned long long)run.r->failures,
+             run.r->elapsed_ms, (unsigned long long)draws);
 }
 
 static void hierarchy_test(void) {
@@ -367,7 +398,13 @@ static void hierarchy_test(void) {
         run.r->peak_active = run.o->count + 1;
         run.r->sample_count++;
         run.r->elapsed_ms = tool_now_ms() - run.started;
-        run.r->cpu_ms = tool_cpu_ms() - run.cpu_start;
+        double cpu_hierarchy_now = tool_cpu_ms();
+        if (isfinite(cpu_hierarchy_now) && isfinite(run.cpu_start)) {
+            double delta = cpu_hierarchy_now - run.cpu_start;
+            run.r->cpu_ms = delta < 0.0 ? NAN : delta;
+        } else {
+            run.r->cpu_ms = NAN;
+        }
         run.r->rss_end = tool_rss();
         run.r->samples[round].rss_bytes = run.r->rss_end;
         if (run.r->rss_end != UINT64_MAX &&
@@ -458,20 +495,9 @@ int tool_run(const ToolOptions *o, ToolResult *r) {
         tether_registry_term();
         tether_ecs_term();
     }
-    if (run.shutdown_started) {
-        r->shutdown_ms = tool_now_ms() - run.shutdown_started;
+    if (!run.render || !r->report_written) {
+        finalize_result();
     }
-    r->total_run_ms = tool_now_ms() - run.run_started;
-    r->status = r->failures ? "failed" : run.finished ? "passed" : "cancelled";
-    uint64_t draws = 0;
-    for (uint32_t i = 0; i < r->sample_count; i++) {
-        draws += r->samples[i].draws;
-    }
-    snprintf(r->message, sizeof r->message,
-             "%s: %s; %u steps, %llu checks, %llu failures, %.2f ms measured wall time, %llu draw "
-             "submissions.",
-             o->scenario, r->status, r->sample_count, (unsigned long long)r->checks,
-             (unsigned long long)r->failures, r->elapsed_ms, (unsigned long long)draws);
     free(run.items);
     return r->failures ? 1 : run.finished ? 0 : 3;
 }

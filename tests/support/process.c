@@ -57,6 +57,18 @@ bool tool_launch(ToolProcess *p, const char *name, const char *const *args) {
         sizeof executable) {
         return false;
     }
+    if (GetFileAttributesA(executable) == INVALID_FILE_ATTRIBUTES) {
+        if (snprintf(executable, sizeof executable, "%s/../test/%s.exe", directory, name) >=
+            sizeof executable) {
+            return false;
+        }
+        if (GetFileAttributesA(executable) == INVALID_FILE_ATTRIBUTES) {
+            if (snprintf(executable, sizeof executable, "%s/../bin/%s.exe", directory, name) >=
+                sizeof executable) {
+                return false;
+            }
+        }
+    }
     char command[16384] = "";
     if (!append_arg(command, sizeof command, executable)) {
         return false;
@@ -79,6 +91,16 @@ bool tool_launch(ToolProcess *p, const char *name, const char *const *args) {
 #else
     if (snprintf(executable, sizeof executable, "%s/%s", directory, name) >= sizeof executable) {
         return false;
+    }
+    if (access(executable, X_OK) != 0) {
+        if (snprintf(executable, sizeof executable, "%s/../test/%s", directory, name) >= sizeof executable) {
+            return false;
+        }
+        if (access(executable, X_OK) != 0) {
+            if (snprintf(executable, sizeof executable, "%s/../bin/%s", directory, name) >= sizeof executable) {
+                return false;
+            }
+        }
     }
     char *arguments[64];
     size_t count = 0;

@@ -1,5 +1,5 @@
 #include "results.h"
-#include "tether/platform/tether_platform.h"
+#include "sandbox_platform.h"
 #include "tether/ui/tether_ui.h"
 #include "tool.h"
 #include "tether/core/tether_registry.h"
@@ -38,7 +38,7 @@ static void import_result(TUID id, const Tether_Event *event_info, void *data) {
     (void)event_info;
     (void)id;
     (void)data;
-    tether_platform_pick_file("json", "Tether results (*.json)", on_result_chosen, NULL);
+    sandbox_platform_pick_file("json", "Tether results (*.json)", on_result_chosen, NULL);
 }
 static void set_status(const char *label, Tether_Color color) {
     tether_ui_set_text(status_label, label);

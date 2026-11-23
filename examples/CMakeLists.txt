@@ -1,25 +1,63 @@
-add_executable(tether_sandbox
-    sandbox/app/app.c
-    sandbox/ui/widgets/sandbox_widgets_zoo.c
-    sandbox/lab/lab.c
-    sandbox/results/results.c
-    sandbox/events/sandbox_events.c
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    add_library(tether_sandbox SHARED
+        sandbox/app/app.c
+        sandbox/ui/widgets/sandbox_widgets_zoo.c
+        sandbox/lab/lab.c
+        sandbox/results/results.c
+        sandbox/events/sandbox_events.c
+        sandbox/platform/sandbox_platform.c
+    )
+else()
+    add_executable(tether_sandbox
+        sandbox/app/app.c
+        sandbox/ui/widgets/sandbox_widgets_zoo.c
+        sandbox/lab/lab.c
+        sandbox/results/results.c
+        sandbox/events/sandbox_events.c
+        sandbox/platform/sandbox_platform.c
+    )
+endif()
 target_include_directories(tether_sandbox PRIVATE
+    sandbox/platform
     sandbox/events
     sandbox/app sandbox/ui
     sandbox/ui/widgets
     sandbox/lab
     sandbox/results
 )
-target_link_libraries(tether_sandbox PRIVATE tether_runtime tether_run_support)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_link_libraries(tether_sandbox PRIVATE tether tether_run_support chitra)
+    add_dependencies(tether_sandbox tether)
+else()
+    target_link_libraries(tether_sandbox PRIVATE tether_runtime tether_run_support)
+endif()
+if(WIN32)
+    target_link_libraries(tether_sandbox PRIVATE comdlg32)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    target_link_libraries(tether_sandbox PRIVATE android log)
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     tether_configure_wasm_target(tether_sandbox
-        PRELOAD_DIRS
-            "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/ui/scripts@UI"
-            "${CMAKE_CURRENT_SOURCE_DIR}/Font@Font"
+        SHELL "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/platform/sandbox_shell.html"
+        EXPORTED_FUNCTIONS
+            _sandbox_platform_on_file_loaded
+            _sandbox_platform_get_path_buf
+            _sandbox_platform_on_sync_done
     )
 endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set_target_properties(tether_sandbox PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.tether.sandbox"
+        MACOSX_BUNDLE_BUNDLE_NAME "TetherSandbox"
+    )
+endif()
+tether_target_assets(tether_sandbox
+    DIRECTORIES
+        "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/ui/scripts@UI"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Font@Font"
+)
 target_compile_definitions(tether_sandbox PRIVATE SANDBOX_REPORT_DIR="report/workbench")
 if(TARGET tether_bench AND TARGET tether_test)
     add_dependencies(tether_sandbox tether_test tether_bench)
@@ -27,9 +65,6 @@ if(TARGET tether_bench AND TARGET tether_test)
 else()
     target_compile_definitions(tether_sandbox PRIVATE SANDBOX_HAS_RUNNERS=0)
 endif()
-add_custom_command(TARGET tether_sandbox POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/sandbox/ui/scripts" "$<TARGET_FILE_DIR:tether_sandbox>/UI"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/Font" "$<TARGET_FILE_DIR:tether_sandbox>/Font")
 if(TETHER_BUILD_TESTS AND TETHER_REGISTER_RENDER_TESTS AND TARGET tether_bench)
     # This deterministic failed result exercises Workbench failure presentation.
     # Generate it in the build tree; it is not a captured benchmark output.

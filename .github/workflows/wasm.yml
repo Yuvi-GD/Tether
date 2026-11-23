@@ -1,4 +1,4 @@
-name: Tether WebAssembly & WebGPU
+name: Tether WebAssembly WASM
 on:
   push:
     branches: [main, "feat/*", "refactor/*"]
@@ -8,6 +8,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   wasm-webgl2:
@@ -48,10 +51,10 @@ jobs:
         with:
           name: tether-wasm-webgl2
           path: |
-            build/build-wasm/tether_sandbox.html
-            build/build-wasm/tether_sandbox.js
-            build/build-wasm/tether_sandbox.wasm
-            build/build-wasm/tether_sandbox.data
+            build/build-wasm/**/tether_sandbox.html
+            build/build-wasm/**/tether_sandbox.js
+            build/build-wasm/**/tether_sandbox.wasm
+            build/build-wasm/**/tether_sandbox.data
 
   wasm-webgpu:
     name: WebGPU (WGSL)
@@ -91,7 +94,23 @@ jobs:
         with:
           name: tether-wasm-webgpu
           path: |
-            build/build-wasm-wgpu/tether_sandbox.html
-            build/build-wasm-wgpu/tether_sandbox.js
-            build/build-wasm-wgpu/tether_sandbox.wasm
-            build/build-wasm-wgpu/tether_sandbox.data
+            build/build-wasm-wgpu/**/tether_sandbox.html
+            build/build-wasm-wgpu/**/tether_sandbox.js
+            build/build-wasm-wgpu/**/tether_sandbox.wasm
+            build/build-wasm-wgpu/**/tether_sandbox.data
+
+  web-summary:
+    name: All web checks
+    if: ${{ always() }}
+    needs: [wasm-webgl2, wasm-webgpu]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require both web builds to pass
+        env:
+          WEBGL: ${{ needs.wasm-webgl2.result }}
+          WEBGPU: ${{ needs.wasm-webgpu.result }}
+        run: |
+          if [[ "$WEBGL" != success || "$WEBGPU" != success ]]; then
+            echo "WebGL2: $WEBGL; WebGPU: $WEBGPU"
+            exit 1
+          fi

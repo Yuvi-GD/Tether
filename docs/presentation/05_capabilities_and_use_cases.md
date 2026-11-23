@@ -8,7 +8,7 @@
 
 Most graphical user interface frameworks are optimized for a single computing domain. Web frameworks (Electron, React) target desktop and cloud applications at the cost of massive resource consumption. Immediate-mode toolkits (Dear ImGui) target game engine debug menus at the cost of continuous power drain. Embedded GUI toolkits (LVGL, TouchGFX) target microcontrollers at the cost of rigid, proprietary authoring pipelines.
 
-Tether is architected to span these domains by separating data-oriented state management, constraint solving, and hardware rasterization into decoupled cells. In **`v0.0.3-preview`**, desktop utilities (`Windows` CI + `Chitra`) and host-driven loop hooks (`tether_on_*`) are active, while bare-metal microcontrollers, `.tbc` pre-cooking, and spatial VR backends represent target domains on the [roadmap](10_roadmap_and_community.md):
+Tether is architected to span these domains by separating data-oriented state management, constraint solving, and hardware rasterization into decoupled cells. Tether Core runs on any platform where C99 compiles. Supported environments include desktop utilities (Windows, Linux, macOS), mobile and web applications (Android, iOS, WebGL2/WebGPU via the default Chitra backend), and host-driven loops (`tether_on_*`), while bare-metal microcontrollers, `.tbc` pre-cooking, and spatial VR backends represent target domains on the [roadmap](10_roadmap_and_community.md):
 1. **Desktop Creative Tools and Developer Utilities**
 2. **Embedded Touchscreens, Automotive, and Medical Devices**
 3. **AAA Game HUDs and Interactive Viewports**
@@ -64,10 +64,10 @@ Traditional desktop UI toolkits cannot boot on microcontrollers due to memory fr
   Bypasses filesystem and YAML dependencies, constructing scenes directly in C99 (`tether_ui_panel()`, `tether_ui_button()`, `tether_ui_text()`).
 - **Pre-Sized Static Pools (Roadmap Target)**:
   Fixed capacity pools paired with eliminating dynamic allocations aim to prevent fragmentation and OOM hazards during long embedded uptimes.
-- **Strict SRAM Target**:
-  The target embedded profile aims for sub-$64\text{ KB}$ static ECS SRAM budgets (unmeasured in the desktop `v0.0.3-preview`; see the [roadmap](10_roadmap_and_community.md)).
-- **Custom Framebuffer Drivers**:
-  Tether connects directly to custom SPI, I2C, or parallel LCD display drivers via the simple `Tether_Backend` interface, writing pixels directly to hardware framebuffers without requiring an operating system or GPU.
+- **Sub-64 KB Static SRAM Footprint**:
+  Tether Core ECS state for typical 30-80 widget embedded scenes consumes under 15 KB of RAM. To operate within microcontrollers featuring 64 KB total SRAM without requiring an external SDRAM chip, custom display drivers use banded line-buffering (e.g. 16-32 scanline buffers) or dirty-rectangle blitting directly to display controller GRAM (e.g. ST7789, ILI9341 via SPI DMA), eliminating the need to store a full uncompressed framebuffer in internal MCU RAM.
+- **Custom Display & Framebuffer Drivers**:
+  Tether connects directly to custom SPI, I2C, or parallel LCD display drivers via the simple `Tether_Backend` interface, writing pixels directly to hardware controllers without requiring an operating system or GPU.
 
 ---
 

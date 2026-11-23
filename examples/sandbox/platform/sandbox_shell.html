@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tether Application</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #121212;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      #canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        border: 0 none;
+        background-color: #121212;
+        display: block;
+        outline: none;
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      #loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: #121212;
+        color: #e0e0e0;
+        z-index: 100;
+        transition: opacity 0.3s ease;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #4daafc;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 16px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      #status {
+        font-size: 14px;
+        letter-spacing: 0.5px;
+        color: #9e9e9e;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <div id="status">Loading Tether Application...</div>
+    </div>
+
+    <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+
+    <script type="text/javascript">
+      var statusEl = document.getElementById('status');
+      var overlayEl = document.getElementById('loading-overlay');
+      var canvasEl = document.getElementById('canvas');
+
+      canvasEl.addEventListener('webglcontextlost', function(e) {
+        alert('WebGL/WebGPU context lost. Please reload the page.');
+        e.preventDefault();
+      }, false);
+
+      var Module = {
+        canvas: canvasEl,
+        print: function(text) {
+          console.log('[Tether] ' + text);
+        },
+        printErr: function(text) {
+          console.error('[Tether Error] ' + text);
+        },
+        setStatus: function(text) {
+          if (!text) {
+            if (overlayEl) {
+              overlayEl.style.opacity = '0';
+              setTimeout(function() {
+                if (overlayEl) overlayEl.style.display = 'none';
+              }, 300);
+            }
+            return;
+          }
+          if (statusEl) statusEl.innerText = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')...' : '');
+        },
+        preRun: [
+          function() {
+            if (window.location.protocol === 'file:') return;
+            var files = window.TETHER_SYNC_FILES || (typeof Module !== 'undefined' && Module.tetherSyncFiles) || [
+              'assets/UI/app.yaml',
+              'assets/UI/widgets.yaml',
+              'assets/UI/dashboard.yaml',
+              'assets/UI/index.yaml',
+              'assets/UI/lab.yaml',
+              'assets/UI/playground.yaml',
+              'assets/UI/playground/layout.yaml',
+              'assets/UI/showcase_dialog.yaml',
+              'assets/UI/showcase_toast.yaml'
+            ];
+            var fs = (typeof FS !== 'undefined') ? FS :
+                     (typeof Module !== 'undefined' && Module.FS) ? Module.FS : null;
+            if (!fs || !files || files.length === 0) return;
+            Module.addRunDependency('sync_ui_files');
+            var pending = files.length;
+            var timestamp = Date.now();
+            files.forEach(function(f) {
+              fetch(f + '?t=' + timestamp, { cache: 'no-store' })
+                .then(function(res) {
+                  if (res.ok) return res.arrayBuffer();
+                  return null;
+                })
+                .then(function(buf) {
+                  if (buf && fs) {
+                    try {
+                      fs.writeFile('/' + f, new Uint8Array(buf));
+                      console.log('[Tether] Boot sync: ' + f + ' updated from server (' + buf.byteLength + ' bytes)');
+                    } catch (e) {
+                      console.warn('[Tether] Boot sync write failed: ' + f, e);
+                    }
+                  }
+                })
+                .catch(function(err) {
+                  console.warn('[Tether] Boot sync fetch failed: ' + f, err);
+                })
+                .finally(function() {
+                  pending--;
+                  if (pending === 0) {
+                    Module.removeRunDependency('sync_ui_files');
+                  }
+                });
+            });
+          }
+        ]
+      };
+
+      window.onerror = function(event) {
+        if (statusEl) statusEl.innerText = 'Error loading Tether WebAssembly. Check console.';
+      };
+    </script>
+    {{{ SCRIPT }}}
+  </body>
+</html>

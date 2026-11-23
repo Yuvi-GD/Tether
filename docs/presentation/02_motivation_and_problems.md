@@ -14,7 +14,7 @@ This degradation is not the fault of developers; it is the inevitable consequenc
 - **Pure Immediate-Mode Toolkits**: Ergonomically elegant debug UI (Dear ImGui) that cannot enter low-power idle states due to 100% continuous CPU/GPU polling, struggling with complex multi-pass layouts.
 - **Proprietary Game Engine HUDs**: Highly optimized game UI toolkits (Unreal Slate, Unity UI) permanently locked behind massive proprietary commercial engines.
 
-Tether was created to resolve this impasse by establishing a data-oriented C99 UI micro-kernel that combines retained UI structure, two-pass layout, and optional declarative authoring without browser bloat or deep OOP class trees (`v0.0.3-preview` lays the desktop C99 foundation while `.tbc` bytecode, Vinyasa, and embedded tuning remain on the [roadmap](10_roadmap_and_community.md)).
+Tether was created to resolve this impasse by establishing a data-oriented C99 UI micro-kernel that combines retained UI structure, two-pass layout, and optional declarative authoring without browser bloat or deep OOP class trees (the current preview lays the multiplatform C99 foundation while `.tbc` bytecode, Vinyasa, and embedded tuning remain on the [roadmap](10_roadmap_and_community.md)).
 
 ```mermaid
 flowchart TD
@@ -128,7 +128,7 @@ Tether was engineered from first principles to occupy the critical **missing mid
 | **Layout Model** | CSS Flex / Grid / DOM Reflow | Manual Layout Classes | Single-pass procedural | **2-Pass Solver (Planned Vinyasa Integration)** |
 | **Animation Impact** | Reflows parent/sibling DOM | Reflows parent layout | Re-executes full loop | **Separated `SlotTransform` / `RenderTransform` (Text rebuilds glyphs)** |
 | **Language Interoperability** | Complex WebSockets / IPC | Complex C++ Wrappers | C-shim wrappers (cimgui) | **Native C ABI (Scalar TUIDs; Bindings on Roadmap)** |
-| **Hardware Portability** | Desktop / Mobile Browsers only | Desktop / Mobile OS only | Desktop / Console Games | **Desktop Preview (`v0.0.3-preview`) -> MCU/VR Roadmap** |
+| **Hardware Portability** | Desktop / Mobile Browsers only | Desktop / Mobile OS only | Desktop / Console Games | **Multiplatform Engine -> MCU/VR Roadmap** |
 
 ### What Tether Pursues
 1. **Declarative + Imperative Ergonomics** via optional YAML scenes and C99 widget APIs backed by shared ECS pools, without browser-engine overhead.

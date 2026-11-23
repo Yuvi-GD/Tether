@@ -95,6 +95,11 @@ int main(int argc, char **argv) {
     check(!strcmp(report.value[REPORT_CPU_STATE], "query_failed") &&
               !strcmp(report.value[REPORT_RSS_STATE], "query_failed"),
           "failed counter state is explicit");
+    result.cpu_ms = -1.0;
+    check(tool_write_result(&options, &result), "write invalid negative CPU time");
+    check(tool_read_report_data(path, &report), "read invalid negative CPU time");
+    check(!report.value[REPORT_CPU][0] && !strcmp(report.value[REPORT_CPU_STATE], "query_failed"),
+          "negative CPU time is unavailable");
     result.cpu_ms = 0;
     result.rss_start = result.rss_end = result.rss_peak = sample.rss_bytes = 0;
     check(tool_write_result(&options, &result), "write valid zero counters");

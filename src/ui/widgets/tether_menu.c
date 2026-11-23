@@ -80,7 +80,9 @@ static void menu_input_route(TUID menu, const Tether_Pointer_Event* event, TUID 
                                    .x = event->x, .y = event->y };
             tether_dispatch_event_data(item, &click);
         } else if (!menu_is_entity_in_menu_or_owner(menu, hit)) {
-            tether_ui_menu_close(menu);
+            if (!menu_is_entity_in_menu_or_owner(menu, pressed)) {
+                tether_ui_menu_close(menu);
+            }
         }
     }
 }

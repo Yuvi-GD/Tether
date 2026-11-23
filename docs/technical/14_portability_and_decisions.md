@@ -78,16 +78,16 @@ flowchart LR
 1. **Steady-State Allocation Tuning**:
    Constructing UI via C APIs (`Pipeline 1`) avoids YAML/libyaml dependencies, while reducing runtime pool/text allocations for hard embedded budgets remains future work.
 2. **Portable C Dependencies**:
-   Core ECS and layout modules rely primarily on standard C headers (`stdint.h`, `stdbool.h`, `stddef.h`, `math.h`, `stdlib.h`, `string.h`); non-Windows and bare-metal targets are not yet validated in CI.
+   Core ECS and layout modules rely primarily on standard C headers (`stdint.h`, `stdbool.h`, `stddef.h`, `math.h`, `stdlib.h`, `string.h`); desktop (Windows, Linux, macOS) and Web targets are validated in CI, while bare-metal MCU targets are roadmap.
 3. **SRAM Budget Measurement**:
-   Compact sub-$64\text{ KB}$ SRAM operation on microcontrollers is a design goal and has not yet been measured in `v0.0.3-preview`.
+   Compact sub-$64\text{ KB}$ SRAM operation on microcontrollers is an architectural target achieved in pure C mode via banded line-buffering or dirty-tile streaming to display controller GRAM.
 
 ---
 
 ## 3. Architectural Decision Records (ADRs)
 
 ### ADR-01: Data-Oriented ECS over C++ OOP Class Hierarchy
-- **Status**: Adopted in `v0.0.3-preview`.
+- **Status**: Adopted.
 - **Context**: Traditional UI frameworks (Qt, wxWidgets, DOM) model UI elements as deep inheritance trees (`Widget -> Frame -> Container -> Button`), spreading objects across the heap and coupling state to base classes.
 - **Decision**: Tether uses a data-oriented Entity Component System (ECS) where entities are 64-bit integer TUIDs and component data is stored in contiguous dense arrays indexed via sparse sets.
 - **Consequences**:
@@ -97,7 +97,7 @@ flowchart LR
 ---
 
 ### ADR-02: Retained-Mode ECS with Dirty-Flag Sync over Pure Immediate Mode
-- **Status**: Adopted in `v0.0.3-preview`.
+- **Status**: Adopted.
 - **Context**: Immediate-mode UI reconstructs UI state every frame. Retaining state allows static scenes to skip redundant engine passes while still offering `VOLATILE` mode for continuous updates.
 - **Decision**: Tether combines retained ECS state storage with dirty flags (`DIRTY_LAYOUT`, `DIRTY_VISUAL`, `DIRTY_HIERARCHY`, `VOLATILE`).
 - **Consequences**:
@@ -107,7 +107,7 @@ flowchart LR
 ---
 
 ### ADR-03: Separation of Layout Space from Render Space
-- **Status**: Adopted in `v0.0.3-preview` (GPU-only text transforms remain future work).
+- **Status**: Adopted (GPU-only text transforms remain future work).
 - **Context**: Coupling layout geometry with visual offsets can cause layout invalidation whenever visual transforms change.
 - **Decision**: Separate layout slot geometry (`Tether_SlotTransform`) from presentation offsets (`Tether_RenderTransform`).
 - **Consequences**:
@@ -121,12 +121,12 @@ flowchart LR
 - **Context**: Decoupling persistent ECS storage from transient layout calculation allows layout rules to evolve independently.
 - **Decision**: Integrate the standalone Vinyasa solver through `vin_host` and transient scratch memory (`vin_context.scratch`) in a future milestone.
 - **Consequences**:
-  - Keeps layout calculation separated from persistent ECS ownership; not yet wired into `v0.0.3-preview`.
+  - Keeps layout calculation separated from persistent ECS ownership; not yet wired into the engine.
 
 ---
 
 ### ADR-05: 64-Bit Scalar TUIDs over Raw Entity Pointers
-- **Status**: Adopted in `v0.0.3-preview`.
+- **Status**: Adopted.
 - **Context**: Storing raw entity object pointers across callbacks or external handles risks use-after-free bugs when elements are destroyed.
 - **Decision**: Represent entities as scalar 64-bit integer TUIDs composed of a 32-bit slot index and a 32-bit generational version counter.
 - **Consequences**:
@@ -136,7 +136,7 @@ flowchart LR
 ---
 
 ### ADR-06: Format-Agnostic Scene AST with Bundled YAML Frontend
-- **Status**: Adopted in `v0.0.3-preview`.
+- **Status**: Adopted.
 - **Context**: Parsing directly into widgets couples file syntax tightly to UI instantiation.
 - **Decision**: Parse YAML into `Tether_ASTNode` trees (supporting `$var`, `$slot`, template caching, recursion limit `64`, and entity cleanup on load failure) before widget instantiation (`tether_yaml_widgets.c`).
 - **Consequences**:
@@ -145,7 +145,7 @@ flowchart LR
 ---
 
 ### ADR-07: First-Class WebAssembly and Platform Abstraction
-- **Status**: Adopted in `v0.0.3-preview`.
+- **Status**: Adopted.
 - **Context**: Porting native UI engines to the web often forces host applications to write custom HTML shells, manage Emscripten virtual filesystem (MEMFS) synchronizations, and hack browser file dialogs.
 - **Decision**:
   1. Provide an engine-level platform abstraction in `include/tether/platform/tether_platform.h` and `src/platform/tether_platform.c` handling file picking dialogs, path normalization, and asset synchronization uniformly across Web, Windows, and POSIX.
@@ -170,7 +170,7 @@ flowchart LR
 
 ## 5. Architectural Comparison Summary
 
-| Architectural Property | Tether Design (`v0.0.3-preview`) | Traditional OOP (Qt / wxWidgets) | Immediate Mode (Dear ImGui) | Web DOM / Electron |
+| Architectural Property | Tether Architecture | Traditional OOP (Qt / wxWidgets) | Immediate Mode (Dear ImGui) | Web DOM / Electron |
 | :--- | :---: | :---: | :---: | :---: |
 | **Data Architecture** | Contiguous ECS Dense Arrays | Scattered Heap Node Graphs | Transient Stack Buffers | Heap Node Tree with V8 Objects |
 | **Update Model** | Retained Dirty Flags (`tether_did_draw` skips unchanged frames) | Event-driven | Continuous per-frame submission | DOM / Chromium event loops |

@@ -50,13 +50,13 @@ compiler settings still require reconfiguration.
 ## Run a controlled workload
 
 ```powershell
-./build/Release/tether_bench.exe --scenario render --mode retained --count 10000 --spawn 32 --delete 32 --mutate 100 --frames 120 --warmup 30 --fps 60 --seed 1 --memory-mib 1024
+./build/Release/test/tether_bench.exe --scenario render --mode retained --count 10000 --spawn 32 --delete 32 --mutate 100 --frames 120 --warmup 30 --fps 60 --seed 1 --memory-mib 1024
 ```
 
 Use `tether_test.exe --help` or `tether_bench.exe --help` for all inputs. Frame count
 is a hard sample limit; an optional time limit can stop earlier. CPU scenarios
-ignore rendering mode, FPS, and warm-up. Output includes JSON samples and a readable
-`.json.txt` summary. Import the JSON through Lab & Results to see the value cards.
+ignore rendering mode, FPS, and warm-up. Output includes JSON samples and prints a readable
+summary. Import the JSON through Lab & Results to see the value cards.
 Without `--output`, the runner creates `report` beside its executable and chooses
 a timestamp and process-ID filename. With `--output`, it creates any missing parent
 folders and replaces that chosen filename. Relative explicit paths are relative

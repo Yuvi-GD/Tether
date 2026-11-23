@@ -14,22 +14,22 @@ This chapter outlines the phased architectural roadmap for Tether's future devel
 
 ```mermaid
 flowchart TD
-    subgraph NearTerm["Phase 1: Core Systems and Pipeline Maturity (v0.0.3 Preview - Next)"]
+    subgraph NearTerm["Phase 1: Core Systems and Pipeline Maturity"]
         Vinyasa["Vinyasa Layout Solver Integration\n(Stateless Scratch-Arena Constraint Engine)"]
         AOTCooker["Production Bytecode Pipeline (.tbc)\n(tether_cooker & Zero-Parse Interpreter)"]
         StrategyReg["Layout Strategy Registry\n(Container-Agnostic Extensibility: Grid/Wrap)"]
-        OverflowSystem["Scroll Viewports & Kinetic Scrolling\n(Extending Clip & Wrap Overflow Policies)"]
+        OverflowSystem["Container Wrap & Scroll Viewports\n(Shape/Container Wrap & Kinetic Scrolling)"]
     end
 
-    subgraph MidTerm["Phase 2: Modern Aesthetics and Ecosystem Expansion (v0.0.4 - v0.0.5 Preview)"]
-        Aesthetics["Modern UI Rendering Aesthetics\n(Per-Corner Radii, Shadows, Blur, Gradients, Lottie)"]
+    subgraph MidTerm["Phase 2: Modern Aesthetics and Ecosystem Expansion"]
+        Aesthetics["Modern UI Rendering Aesthetics\n(Asymmetric Per-Corner Radii, Shadows, Blur, Gradients, SVG, Lottie)"]
         Prefabs["Extended Controls & Composite Views\n(Tables, Text Input, Virtualized Lists)"]
-        OptInDrivers["Opt-in RHI & Pure CPU Software Rendering\n(TETHER_RENDER_SOFTWARE Blitter)"]
-        Bindings["Official Language Bindings\n(Rust, Python, WebAssembly, Lua, Zig)"]
+        OptInDrivers["Next-Gen Backends & Software Rendering\n(Vulkan, DirectX 12, SDL3 in Chitra, Pure CPU Blitter)"]
+        Bindings["Official Language Bindings\n(Rust, Python, Lua, Zig)"]
         Typography["HarfBuzz Unicode Typography\n(Complex Script Shaping & Bidirectional Text)"]
     end
 
-    subgraph LongTerm["Phase 3: The Universal UI Runtime (v0.1.0 and v1.0 Stable)"]
+    subgraph LongTerm["Phase 3: The Universal UI Runtime"]
         LLVMModel["The LLVM of UI Fully Realized\n(Universal N Frontends Lowering to M Hardware Backends)"]
         Spatial["Spatial Computing Runtimes\n(VR / AR 3D Offscreen Texture Projection)"]
         HotPlugins["Dynamic Component Plugins (.dll / .so)\n(Runtime Primitives & Dynamic Host Extensions)"]
@@ -63,7 +63,7 @@ Other possible future work includes automatic watched-file reload, diagnostic in
 
 ## 3. Phased Architectural Roadmap
 
-### Phase 1: Core Systems & Pipeline Maturity (v0.0.3 Preview - Next)
+### Phase 1: Core Systems & Pipeline Maturity
 
 #### 1. Full Vinyasa Layout Solver Integration
 - **Context**: Tether currently integrates a built-in two-pass layout solver supporting flexbox and canvas anchor modes. The standalone Vinyasa layout engine expands on this with advanced multi-reference constraint solving and dynamic flex wrapping.
@@ -95,47 +95,45 @@ Other possible future work includes automatic watched-file reload, diagnostic in
     ```
     Memory-maps `.tbc` bytecode directly into contiguous ECS component arrays, enabling instant sub-millisecond cold boot on low-power microcontrollers without including text parser code in firmware binaries.
 
-#### 4. Overflow Control System & Viewport Scrolling
-- **Context**: Managing child boundaries within dynamic containers and supporting scrollable viewports.
+#### 4. Overflow Control System: Container Wrap & Viewport Scrolling
+- **Context**: Hierarchical hardware scissor clipping (`TETHER_OVERFLOW_CLIP`), unconstrained display (`TETHER_OVERFLOW_VISIBLE`), and text wrapping are currently implemented. Shape and container child wrapping and scrollable viewports remain to be built.
 - **Milestone Goals**:
-  - Implement the `Tether_Overflow` component supporting four container policies:
-    - `TETHER_OVERFLOW_WRAP`: Children wrap dynamically to the next row or column.
-    - `TETHER_OVERFLOW_CLIP`: Children extending past bounds are scissored out cleanly.
-    - `TETHER_OVERFLOW_SCROLL`: Generates an interactive, kinetic scrolling viewport with scrollbars.
-    - `TETHER_OVERFLOW_VISIBLE`: Children overflow bounds without clipping.
-  - Integrate hierarchical hardware scissor clipping with scrolling offset coordinates.
+  - Complete the remaining `Tether_Overflow` container policies:
+    - `TETHER_OVERFLOW_WRAP`: Wrap child shapes and containers dynamically to the next row or column.
+    - `TETHER_OVERFLOW_SCROLL`: Generate an interactive, kinetic scrolling viewport with scrollbars.
+  - Integrate scrolling offset coordinates with hierarchical hardware scissor clipping.
 
 ---
 
-### Phase 2: Modern Aesthetics and Ecosystem Expansion (v0.0.4 - v0.0.5 Preview)
+### Phase 2: Modern Aesthetics and Ecosystem Expansion
 
 #### 1. Modern UI Rendering Aesthetics
-- **Context**: Bringing Tether to full aesthetic parity with high-end modern design tools (Figma, CSS).
+- **Context**: Bringing Tether to broader modern design parity across shaders and media primitives.
 - **Milestone Goals**:
-  - **Borders & Asymmetric Radii**: Multi-corner independent rounding (e.g., rounded top, square bottom), border stroke widths, inner/outer borders, and content clipping.
+  - **Asymmetric Per-Corner Radii & Extended Borders**: Independent per-corner rounding in GPU shaders (beyond uniform corner radius), inner/outer border alignment, and styled strokes.
   - **Shadows & Glows**: Outer drop shadows, inner shadows, and soft ambient glows.
-  - **Color Gradients**: Linear, radial, and multi-stop color gradients evaluated procedural in fragment shaders.
+  - **Color Gradients**: Linear, radial, and multi-stop color gradients evaluated procedurally in fragment shaders.
   - **Glassmorphism & Visual Effects**: Real-time backdrop blur, frosted glass, and composite post-process shaders.
   - **Images & Vector Media**: Native decoding and rendering of PNG, JPG, vector SVG, and Lottie animations.
 
 #### 2. Extended Controls and Composite Views
-- **Context**: Building on the built-in `v0.0.3-preview` widget suite (`Button`, `Slider`, `Toggle`, `Checkbox`, `Radio`, `SegmentedBar`, `Dropdown`, `Menu`, `ContextMenu`, `Collapsible`, `Switcher`) with data-heavy controls.
+- **Context**: Building on the built-in widget suite (`Button`, `Slider`, `Toggle`, `Checkbox`, `Radio`, `SegmentedBar`, `Dropdown`, `Menu`, `ContextMenu`, `Collapsible`, `Switcher`) with data-heavy controls.
 - **Milestone Goals**:
   - Multi-column data tables, virtualized scrollable lists, and interactive single/multi-line text input controls.
   - Richer reusable template and styling composition across YAML scenes and C factories.
 
-#### 3. Developer Experience & Opt-in Rendering Modes
-- **Context**: Making graphics dependencies strictly opt-in and supporting systems without GPUs.
+#### 3. Next-Generation Backends & Pure CPU Software Rendering
+- **Context**: Expanding Chitra's rendering and windowing coverage beyond the current Sokol GPU backends (`D3D11`, `GLCORE`, `METAL`, `GLES3`, `WGPU`).
 - **Milestone Goals**:
-  - **Pure CPU Software Rendering**: Add software blitter options to `Tether_Config` for systems without GPU acceleration.
-  - **Opt-in CMake Build Flags**: Wrap GPU dependencies cleanly: `TETHER_GPU_API=GL`, `WGPU`, `D3D11`, `METAL`, or `VULKAN`, allowing developers to compile minimal binaries without downloading massive external SDKs.
+  - **Vulkan & DirectX 12 Backends**: Add modern explicit-API rendering paths in Chitra.
+  - **SDL3 Backend Support in Chitra**: Provide an opt-in SDL3 windowing and input backend alongside Sokol.
+  - **Pure CPU Software Rendering (SR)**: Add a software rasterizer/blitter option for headless, embedded, and GPU-less environments.
 
 #### 4. Official Foreign Language Bindings
-- **Context**: Tether's 64-bit scalar TUID architecture enables zero-overhead language interop.
+- **Context**: Tether's 64-bit scalar `TUID` architecture enables zero-overhead language interop across native and managed runtimes.
 - **Milestone Goals**:
   - **Rust**: Safe, idiomatic Rust bindings providing compile-time type safety over Tether's C ABI.
   - **Python**: Dynamic scripting wrappers for scientific visualization, telemetry dashboards, and rapid desktop utility prototyping.
-  - **WebAssembly (WASM)**: Emscripten-based bindings for running native Tether applications inside modern web browsers via WebGPU and Canvas.
   - **Zig & Lua**: Lightweight bindings for embedded game scripting and systems utilities.
 
 #### 5. Extended Typography & Complex Script Shaping
@@ -152,7 +150,7 @@ Other possible future work includes automatic watched-file reload, diagnostic in
 
 ---
 
-### Phase 3: The Universal UI Runtime (v0.1.0 Preview and v1.0 Stable)
+### Phase 3: The Universal UI Runtime
 
 #### 1. The LLVM of UI Fully Realized
 - **Universal IR Ecosystem**: An open ecosystem where any frontend authoring tool (visual drag-and-drop IDEs, Figma design exporters, markdown documentation engines) targets Tether's format-neutral scene AST.

@@ -14,9 +14,15 @@ param(
 
 # Explicit invocation is required. CTest and normal builds never run benchmarks.
 $ErrorActionPreference = "Stop"
-$runner = Join-Path (Resolve-Path -LiteralPath $BinaryDirectory) "tether_bench.exe"
+$resolvedDir = Resolve-Path -LiteralPath $BinaryDirectory
+$runner = Join-Path $resolvedDir "tether_bench.exe"
 if (-not (Test-Path -LiteralPath $runner)) {
-    throw "Build tether_bench before running this workload matrix."
+    $altRunner = Join-Path $resolvedDir "test/tether_bench.exe"
+    if (Test-Path -LiteralPath $altRunner) {
+        $runner = $altRunner
+    } else {
+        throw "Build tether_bench before running this workload matrix."
+    }
 }
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path (Split-Path -Parent $runner) "report/benchmarks"

@@ -25,6 +25,7 @@ function(tether_configure_wasm_target TARGET_NAME)
         "--shell-file=${ARG_SHELL}"
         "-sALLOW_MEMORY_GROWTH=1"
         "-sWASM=1"
+        "-sSINGLE_FILE=1"
     )
 
     # Standard runtime methods needed by Tether platform and virtual filesystem
@@ -35,8 +36,8 @@ function(tether_configure_wasm_target TARGET_NAME)
     endif()
     list(APPEND WASM_LINK_OPTIONS "-sEXPORTED_RUNTIME_METHODS=${DEFAULT_METHODS}")
 
-    # Standard exported functions needed by Tether platform
-    set(DEFAULT_FUNCTIONS "_main,_free,_malloc,_tether_platform_on_file_loaded,_tether_platform_get_path_buf,_tether_platform_on_sync_done")
+    # Standard exported functions
+    set(DEFAULT_FUNCTIONS "_main,_free,_malloc")
     if(ARG_EXPORTED_FUNCTIONS)
         string(JOIN "," CUSTOM_FUNCTIONS ${ARG_EXPORTED_FUNCTIONS})
         set(DEFAULT_FUNCTIONS "${DEFAULT_FUNCTIONS},${CUSTOM_FUNCTIONS}")

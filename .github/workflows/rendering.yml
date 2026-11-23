@@ -1,13 +1,68 @@
-name: Tether rendering (manual desktop)
-# This runner must have an interactive desktop and a working graphics driver.
-# Do not attach this job to pull_request events on a public repository.
+name: Tether rendering validation
+# Interactive desktop and graphics rendering tests across all platforms.
+# Manual trigger via workflow_dispatch.
 on:
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
-  rendering:
-    runs-on: [self-hosted, Windows, X64, tether-gpu]
+  linux:
+    name: Linux (Ubuntu Mesa / xvfb)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev ninja-build xvfb
+      - name: Configure
+        run: cmake -S . -B build-render-linux -G Ninja -DCMAKE_BUILD_TYPE=Release -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON -DTETHER_REGISTER_RENDER_TESTS=ON
+      - name: Build
+        run: cmake --build build-render-linux --target tether_sandbox tether_ui_contract_test tether_test --parallel 4
+      - name: Rendering tests
+        run: xvfb-run ctest --test-dir build-render-linux -L rendering --output-on-failure --no-tests=error
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rendering-results-linux
+          path: |
+            build-render-linux/**/report/**/*.json*
+            build-render-linux/Testing/Temporary/LastTest.log
+
+  macos:
+    name: macOS (Apple Metal)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install dependencies
+        run: which ninja || brew install ninja
+      - name: Configure
+        run: cmake -S . -B build-render-macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON -DTETHER_REGISTER_RENDER_TESTS=ON
+      - name: Build
+        run: cmake --build build-render-macos --target tether_sandbox tether_ui_contract_test tether_test --parallel 4
+      - name: Rendering tests
+        run: ctest --test-dir build-render-macos -L rendering --output-on-failure --no-tests=error
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rendering-results-macos
+          path: |
+            build-render-macos/**/report/**/*.json*
+            build-render-macos/Testing/Temporary/LastTest.log
+
+  windows:
+    name: Windows (Cloud MSVC)
+    runs-on: windows-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -15,15 +70,15 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - name: Configure
-        run: cmake -S . -B build-render-ci -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON -DTETHER_REGISTER_RENDER_TESTS=ON
+        run: cmake -S . -B build-render-win -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON -DTETHER_REGISTER_RENDER_TESTS=ON
       - name: Build
-        run: cmake --build build-render-ci --config Release --target tether_sandbox tether_ui_contract_test --parallel 4
-      - name: Rendering and launcher tests
-        run: ctest --test-dir build-render-ci -C Release -L rendering --output-on-failure --no-tests=error
+        run: cmake --build build-render-win --config Release --target tether_sandbox tether_ui_contract_test tether_test --parallel 4
+      - name: Rendering tests
+        run: ctest --test-dir build-render-win -C Release -L rendering --output-on-failure --no-tests=error
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: rendering-results
+          name: rendering-results-windows
           path: |
-            build-render-ci/*/report/**/*.json*
-            build-render-ci/Testing/Temporary/LastTest.log
+            build-render-win/*/report/**/*.json*
+            build-render-win/Testing/Temporary/LastTest.log

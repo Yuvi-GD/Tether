@@ -5,15 +5,18 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   windows:
+    name: Windows
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         config: [Debug, Release]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
           persist-credentials: false
@@ -23,18 +26,19 @@ jobs:
         run: cmake --build build --config ${{ matrix.config }} --target tether tether_sandbox tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
       - name: Correctness tests
         run: ctest --test-dir build -C ${{ matrix.config }} -L correctness --output-on-failure --no-tests=error
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: correctness-${{ matrix.config }}
+          name: correctness-windows-${{ matrix.config }}
           path: |
             build/*/report/**/*.json
-            build/*/report/**/*.json.txt
             build/Testing/Temporary/LastTest.log
+
   windows-asan:
+    name: Windows ASan
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
           persist-credentials: false
@@ -43,12 +47,178 @@ jobs:
       - name: Build
         run: cmake --build build-asan --config Debug --target tether_test tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
       - name: Correctness tests under AddressSanitizer
-        run: ctest --test-dir build-asan -C Debug -L correctness --output-on-failure --no-tests=error
-      - uses: actions/upload-artifact@v7
+        shell: pwsh
+        run: |
+          $env:PATH = "$((Get-Item .).FullName)\build-asan\Debug\test;$((Get-Item .).FullName)\build-asan\Debug\bin;$((Get-Item .).FullName)\build-asan\Debug;$env:PATH"
+          ctest --test-dir build-asan -C Debug -L correctness --output-on-failure --no-tests=error
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: correctness-asan
+          name: correctness-windows-asan
           path: |
             build-asan/*/report/**/*.json
-            build-asan/*/report/**/*.json.txt
             build-asan/Testing/Temporary/LastTest.log
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxi-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev ninja-build xvfb
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON
+      - name: Build
+        run: cmake --build build --target tether tether_sandbox tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
+      - name: Correctness tests
+        run: ctest --test-dir build -L correctness --output-on-failure --no-tests=error
+      - name: Sandbox smoke test
+        run: |
+          if [ -f "./build/${{ matrix.config }}/bin/tether_sandbox" ]; then
+            xvfb-run ./build/${{ matrix.config }}/bin/tether_sandbox --smoke
+          elif [ -f "./build/bin/tether_sandbox" ]; then
+            xvfb-run ./build/bin/tether_sandbox --smoke
+          elif [ -f "./build/tether_sandbox" ]; then
+            xvfb-run ./build/tether_sandbox --smoke
+          else
+            SANDBOX_BIN=$(find build -type f -name "tether_sandbox" | head -n 1)
+            xvfb-run "$SANDBOX_BIN" --smoke
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: correctness-linux-${{ matrix.config }}
+          path: |
+            build/**/report/**/*.json
+            build/Testing/Temporary/LastTest.log
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install dependencies
+        run: which ninja || brew install ninja
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DTETHER_BUILD_TESTS=ON -DTETHER_BUILD_RUNNERS=ON -DTETHER_BUILD_EXAMPLES=ON
+      - name: Build
+        run: cmake --build build --target tether tether_sandbox tether_ecs_test tether_report_test tether_behavior_test tether_yaml_ast_test tether_yaml_load_test --parallel 4
+      - name: Correctness tests
+        run: ctest --test-dir build -L correctness --output-on-failure --no-tests=error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: correctness-macos-${{ matrix.config }}
+          path: |
+            build/**/report/**/*.json
+            build/Testing/Temporary/LastTest.log
+
+  android:
+    name: Android (arm64-v8a)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Configure
+        run: |
+          NDK_PATH="${ANDROID_NDK_LATEST_HOME:-$ANDROID_HOME/ndk-bundle}"
+          if [ ! -d "$NDK_PATH" ]; then
+            NDK_PATH=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
+          fi
+          echo "Using Android NDK: $NDK_PATH"
+          cmake -S . -B build-android -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK_PATH/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DTETHER_BUILD_SHARED=OFF \
+            -DTETHER_BUILD_TESTS=OFF \
+            -DTETHER_BUILD_RUNNERS=OFF \
+            -DTETHER_BUILD_EXAMPLES=ON
+      - name: Build
+        run: cmake --build build-android --target tether tether_sandbox --parallel 4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: correctness-android-arm64
+          path: |
+            build-android/**/libtether.a
+            build-android/**/libtether_sandbox.so
+
+  ios:
+    name: iOS (arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Configure
+        run: |
+          cmake -S . -B build-ios -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="" \
+            -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="" \
+            -DTETHER_BUILD_SHARED=OFF \
+            -DTETHER_BUILD_TESTS=OFF \
+            -DTETHER_BUILD_RUNNERS=OFF \
+            -DTETHER_BUILD_EXAMPLES=ON
+      - name: Build
+        run: |
+          cmake --build build-ios --config Release --target tether --parallel 4
+          cmake --build build-ios --config Release --target tether_sandbox --parallel 4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: correctness-ios-arm64
+          path: |
+            build-ios/**/libtether.a
+            build-ios/**/*.app
+
+  correctness-summary:
+    name: All correctness checks
+    if: ${{ always() }}
+    needs: [windows, windows-asan, linux, macos, android, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all correctness jobs to pass
+        env:
+          WINDOWS: ${{ needs.windows.result }}
+          WINDOWS_ASAN: ${{ needs.windows-asan.result }}
+          LINUX: ${{ needs.linux.result }}
+          MACOS: ${{ needs.macos.result }}
+          ANDROID: ${{ needs.android.result }}
+          IOS: ${{ needs.ios.result }}
+        run: |
+          for result in "$WINDOWS" "$WINDOWS_ASAN" "$LINUX" "$MACOS" "$ANDROID" "$IOS"; do
+            if [[ "$result" != success ]]; then
+              echo "A correctness job did not succeed: $result"
+              exit 1
+            fi
+          done

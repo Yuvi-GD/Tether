@@ -33,9 +33,9 @@ typedef struct {
 
 static Tether_Align parse_align_value(const char* val);
 
-static const char* resolve_scalar(Tether_ASTNode* node, Tether_ASTEnvironment* env) {
-    if (!node) return NULL;
-    if (node->type == TETHER_AST_SCALAR && node->scalar_value[0] == '$') {
+static const char* resolve_scalar(Tether_ASTNode* node, Tether_ASTEnvironment* env, const char* fallback) {
+    if (!node || node->type != TETHER_AST_SCALAR || !node->scalar_value) return fallback;
+    if (node->scalar_value[0] == '$') {
         const char* var_name = node->scalar_value + 1;
         const char* val = tether_ast_env_get(env, var_name);
         if (val) return val;
@@ -44,7 +44,7 @@ static const char* resolve_scalar(Tether_ASTNode* node, Tether_ASTEnvironment* e
 }
 
 static Tether_ASTNode* resolve_node(Tether_ASTNode* node, Tether_ASTEnvironment* env) {
-    if (node && node->type == TETHER_AST_SCALAR && node->scalar_value[0] == '$') {
+    if (node && node->type == TETHER_AST_SCALAR && node->scalar_value && node->scalar_value[0] == '$') {
         const char* var_name = node->scalar_value + 1;
         Tether_ASTNode* slot = tether_ast_env_get_slot(env, var_name);
         if (slot) return slot;
@@ -55,13 +55,13 @@ static Tether_ASTNode* resolve_node(Tether_ASTNode* node, Tether_ASTEnvironment*
 static int resolve_vec2(Tether_ASTNode* node, Tether_ASTEnvironment* env, float* x, float* y) {
     if (!node || !x || !y) return 0;
     if (node->type == TETHER_AST_SCALAR) {
-        float val = (float)atof(resolve_scalar(node, env));
+        float val = (float)atof(resolve_scalar(node, env, "0"));
         *x = val;
         *y = val;
         return 1;
     } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
-        *x = (float)atof(resolve_scalar(node->children[0], env));
-        *y = (node->child_count > 1) ? (float)atof(resolve_scalar(node->children[1], env)) : *x;
+        *x = (float)atof(resolve_scalar(node->children[0], env, "0"));
+        *y = (node->child_count > 1) ? (float)atof(resolve_scalar(node->children[1], env, "0")) : *x;
         return 1;
     }
     return 0;
@@ -70,13 +70,13 @@ static int resolve_vec2(Tether_ASTNode* node, Tether_ASTEnvironment* env, float*
 static int resolve_vec3(Tether_ASTNode* node, Tether_ASTEnvironment* env, float* x, float* y, float* z) {
     if (!node || !x || !y || !z) return 0;
     if (node->type == TETHER_AST_SCALAR) {
-        float val = (float)atof(resolve_scalar(node, env));
+        float val = (float)atof(resolve_scalar(node, env, "0"));
         *x = val; *y = val; *z = val;
         return 1;
     } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
-        *x = (float)atof(resolve_scalar(node->children[0], env));
-        *y = (node->child_count > 1) ? (float)atof(resolve_scalar(node->children[1], env)) : 0.0f;
-        *z = (node->child_count > 2) ? (float)atof(resolve_scalar(node->children[2], env)) : 0.0f;
+        *x = (float)atof(resolve_scalar(node->children[0], env, "0"));
+        *y = (node->child_count > 1) ? (float)atof(resolve_scalar(node->children[1], env, "0")) : 0.0f;
+        *z = (node->child_count > 2) ? (float)atof(resolve_scalar(node->children[2], env, "0")) : 0.0f;
         return 1;
     }
     return 0;
@@ -85,7 +85,7 @@ static int resolve_vec3(Tether_ASTNode* node, Tether_ASTEnvironment* env, float*
 static int resolve_vec4(Tether_ASTNode* node, Tether_ASTEnvironment* env, float* arr) {
     if (!node || !arr) return 0;
     if (node->type == TETHER_AST_SCALAR) {
-        float val = (float)atof(resolve_scalar(node, env));
+        float val = (float)atof(resolve_scalar(node, env, "0"));
         arr[0] = val;
         arr[1] = val;
         arr[2] = val;
@@ -93,22 +93,22 @@ static int resolve_vec4(Tether_ASTNode* node, Tether_ASTEnvironment* env, float*
         return 1;
     } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
         if (node->child_count == 1) {
-            float val = (float)atof(resolve_scalar(node->children[0], env));
+            float val = (float)atof(resolve_scalar(node->children[0], env, "0"));
             arr[0] = val; arr[1] = val; arr[2] = val; arr[3] = val;
         } else if (node->child_count == 2) {
-            float v = (float)atof(resolve_scalar(node->children[0], env));
-            float h = (float)atof(resolve_scalar(node->children[1], env));
+            float v = (float)atof(resolve_scalar(node->children[0], env, "0"));
+            float h = (float)atof(resolve_scalar(node->children[1], env, "0"));
             arr[0] = v; arr[1] = h; arr[2] = v; arr[3] = h;
         } else if (node->child_count == 3) {
-            arr[0] = (float)atof(resolve_scalar(node->children[0], env));
-            arr[1] = (float)atof(resolve_scalar(node->children[1], env));
-            arr[2] = (float)atof(resolve_scalar(node->children[2], env));
+            arr[0] = (float)atof(resolve_scalar(node->children[0], env, "0"));
+            arr[1] = (float)atof(resolve_scalar(node->children[1], env, "0"));
+            arr[2] = (float)atof(resolve_scalar(node->children[2], env, "0"));
             arr[3] = 0.0f;
         } else {
-            arr[0] = (float)atof(resolve_scalar(node->children[0], env));
-            arr[1] = (float)atof(resolve_scalar(node->children[1], env));
-            arr[2] = (float)atof(resolve_scalar(node->children[2], env));
-            arr[3] = (float)atof(resolve_scalar(node->children[3], env));
+            arr[0] = (float)atof(resolve_scalar(node->children[0], env, "0"));
+            arr[1] = (float)atof(resolve_scalar(node->children[1], env, "0"));
+            arr[2] = (float)atof(resolve_scalar(node->children[2], env, "0"));
+            arr[3] = (float)atof(resolve_scalar(node->children[3], env, "0"));
         }
         return 1;
     }
@@ -118,7 +118,7 @@ static int resolve_vec4(Tether_ASTNode* node, Tether_ASTEnvironment* env, float*
 static int resolve_color(Tether_ASTNode* node, Tether_ASTEnvironment* env, Tether_Color* color) {
     if (!node || !color) return 0;
     if (node->type == TETHER_AST_SCALAR) {
-        const char* str = resolve_scalar(node, env);
+        const char* str = resolve_scalar(node, env, NULL);
         if (str && str[0] == '#') {
             uint32_t val = (uint32_t)strtoul(str + 1, NULL, 16);
             size_t len = strlen(str + 1);
@@ -138,18 +138,18 @@ static int resolve_color(Tether_ASTNode* node, Tether_ASTEnvironment* env, Tethe
         }
     } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
         if (node->child_count == 1) {
-            uint8_t val = (uint8_t)atoi(resolve_scalar(node->children[0], env));
+            uint8_t val = (uint8_t)atoi(resolve_scalar(node->children[0], env, "0"));
             color->r = val; color->g = val; color->b = val; color->a = 255;
         } else if (node->child_count == 3) {
-            color->r = (uint8_t)atoi(resolve_scalar(node->children[0], env));
-            color->g = (uint8_t)atoi(resolve_scalar(node->children[1], env));
-            color->b = (uint8_t)atoi(resolve_scalar(node->children[2], env));
+            color->r = (uint8_t)atoi(resolve_scalar(node->children[0], env, "0"));
+            color->g = (uint8_t)atoi(resolve_scalar(node->children[1], env, "0"));
+            color->b = (uint8_t)atoi(resolve_scalar(node->children[2], env, "0"));
             color->a = 255;
         } else if (node->child_count >= 4) {
-            color->r = (uint8_t)atoi(resolve_scalar(node->children[0], env));
-            color->g = (uint8_t)atoi(resolve_scalar(node->children[1], env));
-            color->b = (uint8_t)atoi(resolve_scalar(node->children[2], env));
-            color->a = (uint8_t)atoi(resolve_scalar(node->children[3], env));
+            color->r = (uint8_t)atoi(resolve_scalar(node->children[0], env, "0"));
+            color->g = (uint8_t)atoi(resolve_scalar(node->children[1], env, "0"));
+            color->b = (uint8_t)atoi(resolve_scalar(node->children[2], env, "0"));
+            color->a = (uint8_t)atoi(resolve_scalar(node->children[3], env, "255"));
         }
         return 1;
     }
@@ -159,13 +159,13 @@ static int resolve_color(Tether_ASTNode* node, Tether_ASTEnvironment* env, Tethe
 static int resolve_align_2d(Tether_ASTNode* node, Tether_ASTEnvironment* env, Tether_Align* align_x, Tether_Align* align_y) {
     if (!node || !align_x || !align_y) return 0;
     if (node->type == TETHER_AST_SCALAR) {
-        Tether_Align a = parse_align_value(resolve_scalar(node, env));
+        Tether_Align a = parse_align_value(resolve_scalar(node, env, NULL));
         *align_x = a;
         *align_y = a;
         return 1;
     } else if (node->type == TETHER_AST_SEQUENCE && node->child_count > 0) {
-        *align_x = parse_align_value(resolve_scalar(node->children[0], env));
-        *align_y = (node->child_count > 1) ? parse_align_value(resolve_scalar(node->children[1], env)) : *align_x;
+        *align_x = parse_align_value(resolve_scalar(node->children[0], env, NULL));
+        *align_y = (node->child_count > 1) ? parse_align_value(resolve_scalar(node->children[1], env, NULL)) : *align_x;
         return 1;
     }
     return 0;
@@ -194,7 +194,7 @@ static bool register_widget_ast(Tether_ASTNode* props, bool allow_replace) {
     Tether_ASTNode* name_node = find_property(props, "name");
     Tether_ASTNode* tree = find_property(props, "tree");
     const char* name;
-    name = resolve_scalar(name_node, NULL);
+    name = resolve_scalar(name_node, NULL, NULL);
     if (!name || !*name || !tree) return false;
     size_t index = 0;
     while (index < definition_count && strcmp(definitions[index].name, name)) ++index;
@@ -329,8 +329,9 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
         }
         else if (strcmp(key, "border_width") == 0) {
             Tether_Shape* s = (Tether_Shape*)tether_ecs_get_component(ent, TETHER_COMPONENT_SHAPE);
-            if (s && val_node->type == TETHER_AST_SCALAR) {
-                s->border_width = atof(resolve_scalar(val_node, env));
+            const char* val = resolve_scalar(val_node, env, NULL);
+            if (s && val) {
+                s->border_width = (float)atof(val);
             }
         }
         else if (strcmp(key, "border_radius") == 0) {
@@ -341,8 +342,8 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
         }
         else if (strcmp(key, "overflow") == 0) {
             Tether_Overflow* of = (Tether_Overflow*)tether_ecs_get_component(ent, TETHER_COMPONENT_OVERFLOW);
-            if (of && val_node->type == TETHER_AST_SCALAR) {
-                const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
+            if (of && val) {
                 Tether_OverflowMode mode = TETHER_OVERFLOW_CLIP;
                 if (strcmp(val, "VISIBLE") == 0) mode = TETHER_OVERFLOW_VISIBLE;
                 else if (strcmp(val, "WRAP") == 0) mode = TETHER_OVERFLOW_WRAP;
@@ -353,7 +354,7 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
         }
         else if (strcmp(key, "flow") == 0) {
             Tether_Layout* n = (Tether_Layout*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT);
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (n && val) {
                 if (strcmp(val, "ROW") == 0) n->flow = TETHER_FLOW_ROW;
                 else if (strcmp(val, "COLUMN") == 0) n->flow = TETHER_FLOW_COLUMN;
@@ -374,7 +375,8 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
         }
         else if (strcmp(key, "fill_ratio") == 0) {
             Tether_FlexSlot* f = (Tether_FlexSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_FLEX_SLOT);
-            if (f) f->fill_ratio = (float)atof(resolve_scalar(val_node, env));
+            const char* val = resolve_scalar(val_node, env, NULL);
+            if (f && val) f->fill_ratio = (float)atof(val);
         }
         else if (strcmp(key, "anchor_min") == 0) {
             Tether_AnchorSlot* a = (Tether_AnchorSlot*)tether_ecs_get_component(ent, TETHER_COMPONENT_ANCHOR_SLOT);
@@ -407,7 +409,7 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
         else if (strcmp(key, "wrap") == 0) {
             Tether_Layout* n = (Tether_Layout*)tether_ecs_get_component(ent, TETHER_COMPONENT_LAYOUT);
             if (n) {
-                const char* val = resolve_scalar(val_node, env);
+                const char* val = resolve_scalar(val_node, env, NULL);
                 if (val && (strcmp(val, "true") == 0 || strcmp(val, "1") == 0)) n->wrap = 1;
                 else n->wrap = 0;
             }
@@ -417,14 +419,14 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
             if (n) resolve_vec2(val_node, env, &n->size_box.x, &n->size_box.y);
         }
         else if (strcmp(key, "id") == 0) {
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (val) {
                 tether_registry_alias_entity(ent, val);
             }
         }
         else if (strcmp(key, "hit_behavior") == 0) {
             Tether_Interactable* i = (Tether_Interactable*)tether_ecs_get_component(ent, TETHER_COMPONENT_INTERACTABLE);
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (i && val) {
                 if (strcmp(val, "BLOCK") == 0) i->hit_behavior = TETHER_HIT_BLOCK;
                 else if (strcmp(val, "IGNORE") == 0) i->hit_behavior = TETHER_HIT_IGNORE;
@@ -434,7 +436,7 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
         }
         else if (strcmp(key, "visibility") == 0) {
             Tether_Visibility* vis = (Tether_Visibility*)tether_ecs_get_component(ent, TETHER_COMPONENT_VISIBILITY);
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (vis && val) {
                 if (strcmp(val, "hidden") == 0) tether_widget_set_visibility(ent, TETHER_HIDDEN);
                 else if (strcmp(val, "collapsed") == 0) tether_widget_set_visibility(ent, TETHER_COLLAPSED);
@@ -442,38 +444,42 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
             }
         }
         else if (strcmp(key, "interactable") == 0) {
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (val && (strcmp(val, "true") == 0 || strcmp(val, "1") == 0)) {
                 tether_ecs_add_component(ent, TETHER_COMPONENT_INTERACTABLE);
             }
         }
         else if (strcmp(key, "string") == 0) {
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (val) {
                 tether_ui_set_text(ent, val);
             }
         }
         else if (strcmp(key, "font_size") == 0) {
             Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
-            if (t) t->font_size = (float)atof(resolve_scalar(val_node, env));
+            const char* val = resolve_scalar(val_node, env, NULL);
+            if (t && val) t->font_size = (float)atof(val);
         }
         else if (strcmp(key, "wrap_width") == 0) {
             Tether_Text* t = (Tether_Text*)tether_ecs_get_component(ent, TETHER_COMPONENT_TEXT);
-            if (t) t->wrap_width = (float)atof(resolve_scalar(val_node, env));
+            const char* val = resolve_scalar(val_node, env, NULL);
+            if (t && val) t->wrap_width = (float)atof(val);
         }
         else if (strcmp(key, "dynamic") == 0) {
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (val && (strcmp(val, "true") == 0 || strcmp(val, "1") == 0)) {
                 tether_ecs_add_component(ent, TETHER_COMPONENT_TEXT_DYNAMIC);
             }
         }
         else if (strcmp(key, "opacity") == 0) {
             Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
-            if (rt) rt->opacity = (float)atof(resolve_scalar(val_node, env));
+            const char* val = resolve_scalar(val_node, env, NULL);
+            if (rt && val) rt->opacity = (float)atof(val);
         }
         else if (strcmp(key, "rotation") == 0) {
             Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
-            if (rt) rt->rotation_deg = (float)atof(resolve_scalar(val_node, env));
+            const char* val = resolve_scalar(val_node, env, NULL);
+            if (rt && val) rt->rotation_deg = (float)atof(val);
         }
         else if (strcmp(key, "scale") == 0) {
             Tether_RenderTransform* rt = (Tether_RenderTransform*)tether_ecs_get_component(ent, TETHER_COMPONENT_RENDER_TRANSFORM);
@@ -489,27 +495,27 @@ static void apply_properties(TUID ent, Tether_ASTNode* props, Tether_ASTEnvironm
         }
         else if (strcmp(key, "min") == 0) {
             Tether_ValueRange* vr = (Tether_ValueRange*)tether_ecs_get_component(ent, TETHER_COMPONENT_VALUE_RANGE);
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (vr && val) vr->min_val = (float)atof(val);
         }
         else if (strcmp(key, "max") == 0) {
             Tether_ValueRange* vr = (Tether_ValueRange*)tether_ecs_get_component(ent, TETHER_COMPONENT_VALUE_RANGE);
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (vr && val) vr->max_val = (float)atof(val);
         }
         else if (strcmp(key, "step") == 0) {
             Tether_ValueRange* vr = (Tether_ValueRange*)tether_ecs_get_component(ent, TETHER_COMPONENT_VALUE_RANGE);
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (vr && val) vr->step = (float)atof(val);
         }
         else if (strcmp(key, "value") == 0) {
             Tether_ValueRange* vr = (Tether_ValueRange*)tether_ecs_get_component(ent, TETHER_COMPONENT_VALUE_RANGE);
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (vr && val) vr->value = (float)atof(val);
         }
         else if (strcmp(key, "checked") == 0 || strcmp(key, "check") == 0 || strcmp(key, "is_on") == 0) {
             Tether_BoolState* bs = (Tether_BoolState*)tether_ecs_get_component(ent, TETHER_COMPONENT_BOOL_STATE);
-            const char* val = resolve_scalar(val_node, env);
+            const char* val = resolve_scalar(val_node, env, NULL);
             if (bs && val) bs->value = (strcmp(val, "true") == 0 || strcmp(val, "1") == 0 || strcmp(val, "ON") == 0);
         }
     }
@@ -537,7 +543,7 @@ static bool bind_parameters(Tether_ASTEnvironment* target, Tether_ASTNode* props
         Tether_ASTNode* value = resolve_node(props->children[i], source);
         if (!key || key->type != TETHER_AST_SCALAR || !value) return false;
         if (value->type == TETHER_AST_SCALAR) {
-            const char* text = resolve_scalar(value, source);
+            const char* text = resolve_scalar(value, source, NULL);
             if (!text) return false;
             tether_ast_env_set(target, key->scalar_value, text);
         } else {
@@ -572,7 +578,7 @@ static TUID instantiate_body(Tether_ASTNode* node, TUID parent,
                 }
 
                 if (strcmp(key_str, "Scene") == 0) {
-                    const char* scene_path = resolve_scalar(node->children[i], env);
+                    const char* scene_path = resolve_scalar(node->children[i], env, NULL);
                     if (scene_path) return load_document(scene_path, parent, load);
                     load->failed = true;
                     return TETHER_INVALID_TUID;

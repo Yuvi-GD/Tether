@@ -72,7 +72,7 @@ Panel:
                     font_size: 20
                     color: [225, 225, 225, 255]
                 - Text:
-                    string: "The dashboard is described in UI/dashboard.yaml. Its cards use a reusable widget declared in UI/index.yaml, with colors and content supplied for each instance. Panels, text and controls form a tree that can be arranged and updated through Tether's component APIs."
+                    string: "The dashboard is described in assets/UI/dashboard.yaml. Its cards use a reusable widget declared in assets/UI/index.yaml, with colors and content supplied for each instance. Panels, text and controls form a tree that can be arranged and updated through Tether's component APIs."
                     font_size: 16
                     color: [180, 180, 180, 255]
                 - Text:

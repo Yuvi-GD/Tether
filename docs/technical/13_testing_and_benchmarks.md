@@ -71,16 +71,16 @@ Validates fundamental ECS guarantees under stress:
 Tests discrete engine subsystems across isolated scenarios:
 
 ```powershell
-# Run individual behavior scenarios via CLI
-./build/Release/tether_behavior_test layout
-./build/Release/tether_behavior_test visibility
-./build/Release/tether_behavior_test input
-./build/Release/tether_behavior_test lifetime
-./build/Release/tether_behavior_test text
-./build/Release/tether_behavior_test widgets
-./build/Release/tether_behavior_test menu_interaction
-./build/Release/tether_behavior_test event_contract
-./build/Release/tether_behavior_test disabled
+# Run individual behavior scenarios via CLI (located in build/<Config>/test)
+./build/Release/test/tether_behavior_test layout
+./build/Release/test/tether_behavior_test visibility
+./build/Release/test/tether_behavior_test input
+./build/Release/test/tether_behavior_test lifetime
+./build/Release/test/tether_behavior_test text
+./build/Release/test/tether_behavior_test widgets
+./build/Release/test/tether_behavior_test menu_interaction
+./build/Release/test/tether_behavior_test event_contract
+./build/Release/test/tether_behavior_test disabled
 ```
 
 - **`layout`**: Verifies that flex column and row containers calculate slot bounds correctly according to inner padding, gap, and child dimensions.
@@ -120,7 +120,7 @@ The standalone runner `tether_bench.exe` executes controlled ECS, layout, and re
 
 ```powershell
 # Run a 10,000-entity retained render workload for 120 frames
-./build/Release/tether_bench.exe --scenario render --mode retained --count 10000 --spawn 32 --delete 32 --mutate 100 --frames 120 --warmup 30 --fps 60 --seed 1 --memory-mib 1024
+./build/Release/test/tether_bench.exe --scenario render --mode retained --count 10000 --spawn 32 --delete 32 --mutate 100 --frames 120 --warmup 30 --fps 60 --seed 1 --memory-mib 1024
 ```
 
 ### CLI Configuration Parameters
@@ -148,7 +148,7 @@ To obtain reproducible performance comparisons across engine versions, Tether pr
 
 ```powershell
 # Execute the standard matrix across ECS churn, mutation profiles, and render loads
-./tests/benchmarks/run_standard.ps1 -BinaryDirectory build/Release -IncludeRendering
+./tests/benchmarks/run_standard.ps1 -BinaryDirectory build/Release/test -IncludeRendering
 ```
 
 The standard matrix executes:

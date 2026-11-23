@@ -2,7 +2,7 @@
 #include "lab.h"
 #include "results.h"
 #include "tool.h"
-#include "tether/platform/tether_platform.h"
+#include "sandbox_platform.h"
 #include "sandbox_events.h"
 #include "sandbox_widgets_zoo.h"
 #include "tether/tether.h"
@@ -13,6 +13,9 @@
 #include "chitra.h"
 #include <stdlib.h>
 #include <string.h>
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
 
 static TUID views[4];
 static SandboxView wanted = SANDBOX_WIDGETS;
@@ -24,6 +27,20 @@ static bool smoke_report;
 static char smoke_expected_badge[32];
 static double deadline;
 static char initial_result[4096];
+
+static void sandbox_update_mobile_inset(void) {
+#if defined(__ANDROID__) || (defined(__APPLE__) && TARGET_OS_IPHONE)
+    static TUID previous_root;
+    static int previous_height;
+    TUID root = tether_registry_find_entity("sandbox_root");
+    int height = chitra_height();
+    if (root && height > 0 && (root != previous_root || height != previous_height)) {
+        tether_ui_set_padding(root, height * 0.05f, 0.0f, 0.0f, 0.0f);
+        previous_root = root;
+        previous_height = height;
+    }
+#endif
+}
 
 static void sandbox_refresh(void) {
     refresh_requested = true;
@@ -38,7 +55,7 @@ static void on_refresh_clicked(TUID entity, const Tether_Event *event, void *dat
     (void)entity;
     (void)event;
     (void)data;
-    tether_platform_sync_ui(on_refresh_completed, NULL);
+    sandbox_platform_sync_ui(on_refresh_completed, NULL);
 }
 
 void sandbox_navigate(SandboxView view) {
@@ -65,9 +82,9 @@ static void switch_view(void) {
         sandbox_showcase_close_overlays();
     }
     if (wanted == SANDBOX_SHOWCASE && !showcase_loaded) {
-        TUID root = tether_yaml_load("UI/index.yaml", views[SANDBOX_SHOWCASE]);
+        TUID root = tether_yaml_load("assets/UI/index.yaml", views[SANDBOX_SHOWCASE]);
         if (root == TETHER_INVALID_TUID) {
-            results_message("Cannot load showcase UI/index.yaml.");
+            results_message("Cannot load showcase assets/UI/index.yaml.");
             wanted = SANDBOX_RESULTS;
         } else {
             sandbox_mount_scene(root);
@@ -90,7 +107,7 @@ static void switch_view(void) {
 }
 
 static bool create_views(void) {
-    TUID app_root = tether_yaml_load("UI/app.yaml", tether_ecs_get_main_root());
+    TUID app_root = tether_yaml_load("assets/UI/app.yaml", tether_ecs_get_main_root());
     views[SANDBOX_WIDGETS] = tether_registry_find_entity("view_widgets");
     views[SANDBOX_LAB] = tether_registry_find_entity("view_lab");
     views[SANDBOX_SHOWCASE] = tether_registry_find_entity("view_showcase");
@@ -107,7 +124,7 @@ static bool create_views(void) {
         return false;
     }
 
-    TUID lab = tether_yaml_load("UI/lab.yaml", views[SANDBOX_LAB]);
+    TUID lab = tether_yaml_load("assets/UI/lab.yaml", views[SANDBOX_LAB]);
     if (lab == TETHER_INVALID_TUID || !lab_bind()) {
         exit_code = 1;
         return false;
@@ -122,12 +139,16 @@ static bool create_views(void) {
 }
 
 static void init(void) {
-    tether_font_register("Roboto-Regular", "Font/Roboto-Regular.ttf");
+#if defined(__ANDROID__)
+    sandbox_platform_android_init();
+#endif
+    tether_font_register("Roboto-Regular", "assets/Font/Roboto-Regular.ttf");
     if (!create_views()) {
         exit_code = 1;
         chitra_quit();
         return;
     }
+    sandbox_update_mobile_inset();
     if (initial_result[0]) {
         results_load(initial_result);
         wanted = SANDBOX_RESULTS;
@@ -146,6 +167,9 @@ static void init(void) {
 }
 
 static void update(void) {
+#if defined(__ANDROID__)
+    sandbox_platform_android_poll();
+#endif
     if (refresh_requested) {
         refresh_requested = false;
         sandbox_showcase_cleanup();
@@ -160,6 +184,7 @@ static void update(void) {
             return;
         }
     }
+    sandbox_update_mobile_inset();
     sandbox_showcase_update();
     lab_update();
     switch_view();
@@ -320,7 +345,7 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i], "--showcase")) {
             wanted = SANDBOX_SHOWCASE;
         } else if (!strcmp(argv[i], "--result") && i + 1 < argc) {
-            if (!tether_platform_resolve_path(argv[++i], initial_result, sizeof initial_result)) {
+            if (!sandbox_platform_resolve_path(argv[++i], initial_result, sizeof initial_result)) {
                 return 2;
             }
         } else {

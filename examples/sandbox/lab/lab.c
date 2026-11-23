@@ -49,7 +49,7 @@ static const char *control_ids[] = {
 };
 static const unsigned lengths[] = {5, 6, 5, 5, 5, 4, 4, 2, 3, 4, 4};
 static ToolProcess process;
-static char result_path[256];
+static char result_path[4096];
 static unsigned run_number;
 static bool smoke, smoke_done;
 static int smoke_exit;
@@ -168,9 +168,11 @@ static void launch_workload(TUID entity, const Tether_Event *event_info, void *d
         return;
     }
 #if !SANDBOX_HAS_RUNNERS
-    tether_ui_set_text(status_label, "Build with TETHER_BUILD_RUNNERS=ON to launch workloads.");
+    tether_ui_set_text(status_label, "Workloads are unavailable in this build. Use a desktop release with runners.");
+    tether_ui_set_text_color(status_label, (Tether_Color){240, 100, 100, 255});
     return;
 #endif
+    tether_ui_set_text_color(status_label, (Tether_Color){167, 210, 185, 255});
     if (!tool_make_results_directory("report") ||
         !tool_make_results_directory(SANDBOX_REPORT_DIR)) {
         tether_ui_set_text(status_label, "Cannot create report/workbench beside the app.");
@@ -326,8 +328,9 @@ void lab_update(void) {
         }
         refresh_fields();
         sandbox_navigate(SANDBOX_RESULTS);
-        tether_ui_set_text(status_label, "Finished. The cards show the completed run. Change "
-                                         "parameters to run again, or load a saved report.");
+        tether_ui_set_text(status_label, loaded
+            ? "Finished. The cards show the run. Change parameters to run again, or load a saved report."
+            : "The workload ended without a valid report. Check the result details.");
         if (smoke) {
             smoke_exit = code;
             smoke_done = true;
