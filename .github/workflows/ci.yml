@@ -200,3 +200,25 @@ jobs:
           path: |
             build-ios/**/libtether.a
             build-ios/**/*.app
+
+  correctness-summary:
+    name: All correctness checks
+    if: ${{ always() }}
+    needs: [windows, windows-asan, linux, macos, android, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all correctness jobs to pass
+        env:
+          WINDOWS: ${{ needs.windows.result }}
+          WINDOWS_ASAN: ${{ needs.windows-asan.result }}
+          LINUX: ${{ needs.linux.result }}
+          MACOS: ${{ needs.macos.result }}
+          ANDROID: ${{ needs.android.result }}
+          IOS: ${{ needs.ios.result }}
+        run: |
+          for result in "$WINDOWS" "$WINDOWS_ASAN" "$LINUX" "$MACOS" "$ANDROID" "$IOS"; do
+            if [[ "$result" != success ]]; then
+              echo "A correctness job did not succeed: $result"
+              exit 1
+            fi
+          done

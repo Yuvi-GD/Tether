@@ -1,15 +1,8 @@
 name: Package & Publish Release SDK
-# This workflow runs when a release tag is pushed (e.g. v0.0.0)
-# or when triggered manually via workflow_dispatch.
+# Run manually after choosing the commit to release.
 # It produces a source SDK and standalone sandbox demos.
 
 on:
-  push:
-    tags:
-      - 'v*'
-    branches:
-      - main
-      - feat/multiplatform-support
   workflow_dispatch:
 
 permissions:
@@ -26,15 +19,29 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Extract version tag
         id: version
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+            TAG="${GITHUB_REF_NAME}"
           else
             VER=$(grep -E 'project\(.*VERSION' CMakeLists.txt | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
-            echo "tag=v${VER}" >> $GITHUB_OUTPUT
+            TAG="v${VER}"
           fi
+          if [[ -z "$VER" && "${{ github.ref }}" != refs/tags/* ]]; then
+            echo "Could not determine the release version from CMakeLists.txt" >&2
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/${TAG}^{commit}" > /dev/null; then
+            TAG_COMMIT=$(git rev-parse "refs/tags/${TAG}^{commit}")
+            if [[ "$TAG_COMMIT" != "$GITHUB_SHA" ]]; then
+              echo "Tag ${TAG} points to ${TAG_COMMIT}, not the selected commit ${GITHUB_SHA}" >&2
+              exit 1
+            fi
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
   package-source-sdk:
     name: Package Universal Source SDK
@@ -636,6 +643,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
           name: Tether ${{ env.RELEASE_TAG }}
           draft: true
           prerelease: false

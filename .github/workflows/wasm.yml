@@ -98,3 +98,19 @@ jobs:
             build/build-wasm-wgpu/**/tether_sandbox.js
             build/build-wasm-wgpu/**/tether_sandbox.wasm
             build/build-wasm-wgpu/**/tether_sandbox.data
+
+  web-summary:
+    name: All web checks
+    if: ${{ always() }}
+    needs: [wasm-webgl2, wasm-webgpu]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require both web builds to pass
+        env:
+          WEBGL: ${{ needs.wasm-webgl2.result }}
+          WEBGPU: ${{ needs.wasm-webgpu.result }}
+        run: |
+          if [[ "$WEBGL" != success || "$WEBGPU" != success ]]; then
+            echo "WebGL2: $WEBGL; WebGPU: $WEBGPU"
+            exit 1
+          fi
